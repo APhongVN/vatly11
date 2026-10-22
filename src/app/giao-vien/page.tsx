@@ -32,7 +32,7 @@ export default function GiaoVienPage() {
   const [newQs, setNewQs] = useState([{ question: "", image_url: "", options: ["", "", "", ""], correct_option: 0, explanation: "" }]);
 
   // States Tạo Nhóm cho Bài tập
-  const [currentGroups, setCurrentGroups] = useState<any[]>([]); // Lưu danh sách nhóm của bài đang mở
+  const [currentGroups, setCurrentGroups] = useState<any[]>([]); 
   const [numGroups, setNumGroups] = useState(4);
   const [maxStudentsPerGroup, setMaxStudentsPerGroup] = useState(6);
 
@@ -54,7 +54,6 @@ export default function GiaoVienPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch nhóm khi mở một bài học
   const fetchGroupsForActivity = async (actId: number) => {
     const { data } = await supabase.from('activity_groups').select('*, activity_group_members(*, students(*))').eq('activity_id', actId).order('group_number');
     if (data) setCurrentGroups(data);
@@ -116,20 +115,14 @@ export default function GiaoVienPage() {
     }
   };
 
-  // --- CHIA NHÓM (TRONG BÀI TẬP NHÓM) ---
+  // --- CHIA NHÓM ---
   const createGroups = async (actId: number, isRandom: boolean) => {
     if(!confirm(`Tạo ${numGroups} nhóm (tối đa ${maxStudentsPerGroup} SV/nhóm)? Thao tác này sẽ xóa các nhóm cũ của bài này.`)) return;
-    
-    // 1. Xóa nhóm cũ
     await supabase.from('activity_groups').delete().eq('activity_id', actId);
     
-    // 2. Chuẩn bị danh sách sinh viên
     let pool = [...students];
-    if (isRandom) {
-      pool = pool.sort(() => Math.random() - 0.5); // Xáo trộn ngẫu nhiên
-    }
+    if (isRandom) pool = pool.sort(() => Math.random() - 0.5);
 
-    // 3. Tạo nhóm và thêm thành viên
     let studentIndex = 0;
     for (let i = 1; i <= numGroups; i++) {
       const { data: groupData } = await supabase.from('activity_groups').insert([{ activity_id: actId, group_number: i }]).select();
@@ -146,7 +139,7 @@ export default function GiaoVienPage() {
     alert("Đã chia nhóm xong!"); fetchGroupsForActivity(actId);
   };
 
-  // --- CHẤM ĐIỂM TỰ LUẬN ---
+  // --- CHẤM ĐIỂM & CHAT ---
   const saveRubric = async () => {
     if (!selectedGradingAct) return;
     await supabase.from('activities').update({ grading_rubric: rubricText }).eq('id', selectedGradingAct.id);
@@ -161,12 +154,19 @@ export default function GiaoVienPage() {
     setGradingId(null);
   };
 
-  // --- CHAT & TRẮC NGHIỆM ---
+  const toggleMuteChat = async () => {
+    await supabase.from('chat_settings').update({ is_muted: !isChatMuted }).eq('id', 1); fetchData();
+  };
+  const clearAllChat = async () => {
+    if(confirm("Xóa toàn bộ tin nhắn?")) { await supabase.from('messages').delete().neq('id', '00000000-0000-0000-0000-000000000000'); fetchData(); }
+  };
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault(); if (!newMsg) return;
     await supabase.from('messages').insert([{ sender_name: "Cô Hương Xuân", content: newMsg }]);
     setNewMsg(""); fetchData();
   };
+
+  // --- TRẮC NGHIỆM ---
   const createQuiz = async () => {
     if (!quizTitle) return alert("Nhập tên bài trắc nghiệm!");
     const { data } = await supabase.from('quizzes').insert([{ activity_id: quizActivity, title: quizTitle, time_limit: quizTime }]).select();
@@ -200,7 +200,7 @@ export default function GiaoVienPage() {
       <div className="flex-1 p-8 h-screen overflow-y-auto relative">
         <Link href="/" className="absolute top-8 right-8 bg-white text-gray-600 p-3 rounded-full shadow-lg border z-10"><ArrowLeft className="w-5 h-5" /></Link>
 
-        {/* QUẢN LÝ BÀI HỌC (CÓ TÍCH HỢP QUẢN LÝ NHÓM) */}
+        {/* TAB BÀI HỌC */}
         {activeTab === 'activities' && (
           <div className="space-y-6 max-w-5xl">
             <h2 className="text-3xl font-bold">Quản lý 14 Bài học</h2>
@@ -220,7 +220,6 @@ export default function GiaoVienPage() {
                   
                   {expandedAct === act.id && (
                     <div className="border-t bg-gray-50/50">
-                      {/* FORM CẬP NHẬT BÀI HỌC */}
                       <form onSubmit={(e) => saveActivity(act.id, e)} className="p-5 border-b space-y-4">
                         <div className="grid md:grid-cols-2 gap-4">
                           <input name="title" defaultValue={act.title} className="p-2 border rounded outline-none" required />
@@ -240,25 +239,15 @@ export default function GiaoVienPage() {
                         </div>
                       </form>
 
-                      {/* QUẢN LÝ NHÓM (Chỉ hiện khi là bài tập nhóm) */}
                       {act.is_group && (
                         <div className="p-5 bg-orange-50/50">
                           <h4 className="font-bold text-orange-800 mb-3 flex items-center gap-2"><Layers className="w-5 h-5"/> Quản lý Nhóm cho bài tập này</h4>
-                          
                           <div className="flex flex-wrap items-end gap-4 mb-6 bg-white p-4 rounded-xl shadow-sm border border-orange-100">
-                            <div>
-                              <label className="text-xs font-semibold text-gray-600 block mb-1">Số lượng nhóm</label>
-                              <input type="number" value={numGroups} onChange={e => setNumGroups(Number(e.target.value))} className="border p-2 rounded w-24 outline-none" min="1" />
-                            </div>
-                            <div>
-                              <label className="text-xs font-semibold text-gray-600 block mb-1">SV tối đa / nhóm</label>
-                              <input type="number" value={maxStudentsPerGroup} onChange={e => setMaxStudentsPerGroup(Number(e.target.value))} className="border p-2 rounded w-24 outline-none" min="1" />
-                            </div>
+                            <div><label className="text-xs font-semibold text-gray-600 block mb-1">Số lượng nhóm</label><input type="number" value={numGroups} onChange={e => setNumGroups(Number(e.target.value))} className="border p-2 rounded w-24 outline-none" min="1" /></div>
+                            <div><label className="text-xs font-semibold text-gray-600 block mb-1">SV tối đa / nhóm</label><input type="number" value={maxStudentsPerGroup} onChange={e => setMaxStudentsPerGroup(Number(e.target.value))} className="border p-2 rounded w-24 outline-none" min="1" /></div>
                             <button onClick={() => createGroups(act.id, false)} className="bg-slate-800 text-white px-4 py-2 rounded font-medium hover:bg-slate-900 shadow-sm">Tạo nhóm (Tuần tự)</button>
                             <button onClick={() => createGroups(act.id, true)} className="bg-emerald-600 text-white px-4 py-2 rounded font-medium hover:bg-emerald-700 flex items-center gap-2 shadow-sm"><Shuffle className="w-4 h-4"/> Chia ngẫu nhiên</button>
                           </div>
-
-                          {/* HIỂN THỊ DANH SÁCH NHÓM HIỆN TẠI */}
                           <div className="grid md:grid-cols-3 gap-4">
                             {currentGroups.length === 0 && <p className="text-sm text-gray-500 italic">Chưa có nhóm nào. Hãy bấm nút để chia nhóm.</p>}
                             {currentGroups.map(g => (
@@ -266,10 +255,7 @@ export default function GiaoVienPage() {
                                 <h5 className="font-bold border-b pb-2 mb-2 text-blue-700">Nhóm {g.group_number}</h5>
                                 <ul className="space-y-1">
                                   {g.activity_group_members.map((m: any) => (
-                                    <li key={m.id} className="text-sm flex items-center gap-2">
-                                      <div className="w-5 h-5 rounded-full bg-gray-200 text-[10px] flex items-center justify-center font-bold">{getAvatar(m.students.full_name)}</div>
-                                      {m.students.full_name}
-                                    </li>
+                                    <li key={m.id} className="text-sm flex items-center gap-2"><div className="w-5 h-5 rounded-full bg-gray-200 text-[10px] flex items-center justify-center font-bold">{getAvatar(m.students.full_name)}</div>{m.students.full_name}</li>
                                   ))}
                                   {g.activity_group_members.length === 0 && <li className="text-xs text-gray-400 italic">(Trống)</li>}
                                 </ul>
@@ -286,7 +272,7 @@ export default function GiaoVienPage() {
           </div>
         )}
 
-        {/* CÁC TAB KHÁC (GIỮ NGUYÊN) */}
+        {/* TAB CHẤM ĐIỂM */}
         {activeTab === 'grading' && (
           <div className="flex gap-6 max-w-6xl h-[85vh]">
             <div className="w-1/3 bg-white rounded-xl shadow-sm border flex flex-col">
@@ -309,16 +295,16 @@ export default function GiaoVienPage() {
                   </div>
                   <div className="p-4 border-b bg-blue-50/50">
                     <label className="font-bold text-sm text-gray-700 block mb-1">Ma trận điểm:</label>
-                    <div className="flex gap-2">
-                      <textarea value={rubricText} onChange={e => setRubricText(e.target.value)} className="flex-1 p-2 border rounded text-sm h-16 outline-none" placeholder="VD: 2đ nêu đúng công thức..." />
-                      <button onClick={saveRubric} className="bg-slate-800 text-white px-4 rounded text-sm font-medium hover:bg-slate-900">Lưu Ma trận</button>
-                    </div>
+                    <div className="flex gap-2"><textarea value={rubricText} onChange={e => setRubricText(e.target.value)} className="flex-1 p-2 border rounded text-sm h-16 outline-none" placeholder="VD: 2đ nêu đúng công thức..." /><button onClick={saveRubric} className="bg-slate-800 text-white px-4 rounded text-sm font-medium hover:bg-slate-900">Lưu Ma trận</button></div>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
                     {currentSubmissions.length === 0 && <p className="text-center text-gray-500 mt-10">Chưa có sinh viên nào nộp bài này.</p>}
                     {currentSubmissions.map(sub => (
                       <div key={sub.id} className="border rounded-xl p-3 shadow-sm bg-white">
-                        <div className="flex justify-between items-center mb-2"><span className="font-bold text-gray-800 flex items-center gap-2">{sub.student_name.includes("Nhóm") ? <Users className="w-4 h-4 text-orange-500"/> : null} {sub.student_name}</span><span className="text-xs text-gray-400">{formatTime(sub.submitted_at)}</span></div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-bold text-gray-800 flex items-center gap-2">{sub.group_name ? <><Users className="w-4 h-4 text-orange-500"/> {sub.group_name}</> : sub.student_name}</span>
+                          <span className="text-xs text-gray-400">{formatTime(sub.submitted_at)}</span>
+                        </div>
                         <div className="bg-gray-50 p-2 rounded text-sm mb-2">{sub.answer || "Nộp file đính kèm"}</div>
                         {sub.file_url && <a href={sub.file_url} target="_blank" className="text-blue-600 text-xs underline block mb-2">Xem file đính kèm</a>}
                         <div className="flex gap-2 items-center">
@@ -331,9 +317,7 @@ export default function GiaoVienPage() {
                     ))}
                   </div>
                 </>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-gray-400"><FileText className="w-16 h-16 mb-4 opacity-20" /><p>Chọn một bài tập bên trái để chấm điểm</p></div>
-              )}
+              ) : <div className="flex-1 flex flex-col items-center justify-center text-gray-400"><FileText className="w-16 h-16 mb-4 opacity-20" /><p>Chọn một bài tập bên trái để chấm điểm</p></div>}
             </div>
           </div>
         )}
@@ -349,10 +333,7 @@ export default function GiaoVienPage() {
                <div className="relative mb-6"><Search className="w-5 h-5 absolute left-3 top-3 text-gray-400" /><input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Tìm kiếm sinh viên..." className="w-full pl-10 pr-4 py-3 border rounded-xl bg-gray-50 outline-none" /></div>
                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {students.filter(s => s.full_name.toLowerCase().includes(searchTerm.toLowerCase())).map(s => (
-                  <div key={s.id} className="bg-gray-50 border px-3 py-2 rounded-lg text-sm font-medium flex justify-between items-center group">
-                    {s.full_name}
-                    <button onClick={() => deleteStudent(s.id)} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4"/></button>
-                  </div>
+                  <div key={s.id} className="bg-gray-50 border px-3 py-2 rounded-lg text-sm font-medium flex justify-between items-center group">{s.full_name}<button onClick={() => deleteStudent(s.id)} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4"/></button></div>
                 ))}
                </div>
             </div>
@@ -364,20 +345,14 @@ export default function GiaoVienPage() {
             <h2 className="text-3xl font-bold">Tạo Bài Trắc nghiệm</h2>
             <div className="bg-white p-6 rounded-xl shadow-sm border space-y-4">
               <input value={quizTitle} onChange={e => setQuizTitle(e.target.value)} placeholder="Tên bài trắc nghiệm..." className="w-full border p-2 rounded outline-none" />
-              <div className="flex gap-4">
-                <select value={quizActivity} onChange={e => setQuizActivity(Number(e.target.value))} className="border p-2 rounded flex-1 outline-none">{activities.map(a => <option key={a.id} value={a.id}>Gắn với Bài {a.id}</option>)}</select>
-                <input type="number" value={quizTime} onChange={e => setQuizTime(Number(e.target.value))} className="border p-2 rounded w-32 outline-none" placeholder="Thời gian (phút)" />
-              </div>
+              <div className="flex gap-4"><select value={quizActivity} onChange={e => setQuizActivity(Number(e.target.value))} className="border p-2 rounded flex-1 outline-none">{activities.map(a => <option key={a.id} value={a.id}>Gắn với Bài {a.id}</option>)}</select><input type="number" value={quizTime} onChange={e => setQuizTime(Number(e.target.value))} className="border p-2 rounded w-32 outline-none" placeholder="Thời gian (phút)" /></div>
               {newQs.map((q, idx) => (
                 <div key={idx} className="border p-4 rounded-lg bg-gray-50 space-y-3">
                   <input value={q.question} onChange={e => { const n = [...newQs]; n[idx].question = e.target.value; setNewQs(n); }} placeholder={`Câu hỏi ${idx + 1}`} className="w-full border p-2 rounded outline-none" />
                   <input value={q.image_url} onChange={e => { const n = [...newQs]; n[idx].image_url = e.target.value; setNewQs(n); }} placeholder="Link ảnh (nếu có)" className="w-full border p-2 rounded text-sm outline-none" />
                   <div className="grid grid-cols-2 gap-2">
                     {q.options.map((opt, oIdx) => (
-                      <div key={oIdx} className="flex items-center gap-2">
-                        <input type="radio" checked={q.correct_option === oIdx} onChange={() => { const n = [...newQs]; n[idx].correct_option = oIdx; setNewQs(n); }} />
-                        <input value={opt} onChange={e => { const n = [...newQs]; n[idx].options[oIdx] = e.target.value; setNewQs(n); }} placeholder={`Đáp án ${oIdx + 1}`} className="w-full border p-2 rounded outline-none" />
-                      </div>
+                      <div key={oIdx} className="flex items-center gap-2"><input type="radio" checked={q.correct_option === oIdx} onChange={() => { const n = [...newQs]; n[idx].correct_option = oIdx; setNewQs(n); }} /><input value={opt} onChange={e => { const n = [...newQs]; n[idx].options[oIdx] = e.target.value; setNewQs(n); }} placeholder={`Đáp án ${oIdx + 1}`} className="w-full border p-2 rounded outline-none" /></div>
                     ))}
                   </div>
                   <textarea value={q.explanation} onChange={e => { const n = [...newQs]; n[idx].explanation = e.target.value; setNewQs(n); }} placeholder="Giải thích đáp án..." className="w-full border p-2 rounded text-sm outline-none h-16" />
@@ -389,9 +364,16 @@ export default function GiaoVienPage() {
           </div>
         )}
 
+        {/* TAB CHAT (Đã khôi phục nút Xóa / Cấm chat) */}
         {activeTab === 'chat' && (
           <div className="bg-white rounded-xl shadow-sm border h-[80vh] flex flex-col max-w-4xl mx-auto">
-            <div className="p-4 border-b bg-slate-800 text-white flex justify-between"><h2 className="font-bold">Kênh thảo luận</h2></div>
+            <div className="p-4 border-b bg-slate-800 text-white flex justify-between items-center">
+              <h2 className="font-bold">Kênh thảo luận</h2>
+              <div className="flex gap-2">
+                <button onClick={toggleMuteChat} className={`px-3 py-1 rounded text-sm font-medium ${isChatMuted ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}>{isChatMuted ? "Mở lại chat" : "Cấm chat"}</button>
+                <button onClick={clearAllChat} className="bg-red-700 hover:bg-red-800 px-3 py-1 rounded text-sm font-medium">Xóa hết</button>
+              </div>
+            </div>
             <div className="flex-1 p-4 overflow-y-auto space-y-4">
               {messages.map(m => (
                 <div key={m.id} className={`flex gap-3 ${m.sender_name.includes('Cô') ? 'flex-row-reverse' : ''}`}>
