@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { BookOpen, Clock, FileText, Download, MessageSquare, Send, ChevronRight, Lock, X, Trash2, LogOut, Home } from "lucide-react";
+import { Volume2, BookOpen, Clock, FileText, Download, MessageSquare, Send, ChevronRight, Lock, X, Trash2, LogOut, Home } from "lucide-react";
 
 export default function HocSinhPage() {
   const [activities, setActivities] = useState<any[]>([]);
@@ -29,7 +29,17 @@ export default function HocSinhPage() {
     // Tự động làm mới chat mỗi 3 giây (Polling) để fix lỗi Realtime
     const interval = setInterval(fetchData, 3000);
     const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => { clearInterval(interval); clearInterval(timer); };
+    const speakText = (text: string) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'vi-VN';
+      window.speechSynthesis.speak(utterance);
+    } else {
+      alert("Trình duyệt của bạn không hỗ trợ tính năng đọc!");
+    }
+  };
+
+  return () => { clearInterval(interval); clearInterval(timer); };
   }, []);
 
   const handleLogout = async () => { await supabase.auth.signOut(); window.location.href = "/login"; };
@@ -52,6 +62,16 @@ export default function HocSinhPage() {
     return { isLate: false, text, color: "text-orange-500" };
   };
   const isImage = (url: string) => /\.(jpg|jpeg|png|webp|gif)$/i.test(url);
+
+  const speakText = (text: string) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'vi-VN';
+      window.speechSynthesis.speak(utterance);
+    } else {
+      alert("Trình duyệt của bạn không hỗ trợ tính năng đọc!");
+    }
+  };
 
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col relative">
@@ -91,7 +111,17 @@ export default function HocSinhPage() {
             <div className="grid md:grid-cols-2 gap-4">
               {activities.map(act => {
                 const dl = getDeadlineStatus(act.deadline);
-                return (
+                const speakText = (text: string) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'vi-VN';
+      window.speechSynthesis.speak(utterance);
+    } else {
+      alert("Trình duyệt của bạn không hỗ trợ tính năng đọc!");
+    }
+  };
+
+  return (
                   <div key={act.id} className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col hover:shadow-md transition-shadow">
                     <div className="p-5 flex-1">
                       <div className="flex justify-between items-start mb-2">
@@ -130,7 +160,10 @@ export default function HocSinhPage() {
               {messages.map(m => (
                 <div key={m.id} className={`flex gap-3 ${m.sender_name.includes('Cô') ? 'flex-row-reverse' : ''}`}>
                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${m.sender_name.includes('Cô') ? 'bg-blue-600' : 'bg-emerald-500'}`}>{getAvatar(m.sender_name)}</div>
-                   <div className={`p-3 rounded-xl max-w-[70%] text-sm ${m.sender_name.includes('Cô') ? 'bg-blue-100 text-blue-900' : 'bg-white border text-gray-800'}`}><p className="text-xs font-semibold mb-1 text-gray-500">{m.sender_name}</p><p>{m.content}</p></div>
+                   <div className={`p-3 rounded-xl max-w-[70%] text-sm ${m.sender_name.includes('Cô') ? 'bg-blue-100 text-blue-900' : 'bg-white border text-gray-800'}`}><p className="text-xs font-semibold mb-1 text-gray-500">{m.sender_name}</p>                     <p>{m.content}</p>
+                     <button onClick={() => speakText(m.content)} className="mt-1 text-gray-400 hover:text-blue-500 w-fit" title="Nghe AI đọc">
+                        <Volume2 className="w-4 h-4" />
+                     </button></div>
                 </div>
               ))}
             </div>
