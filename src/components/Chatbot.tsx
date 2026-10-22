@@ -12,7 +12,6 @@ export default function Chatbot() {
   const resizingRef = useRef(false);
   const startPosRef = useRef({ x: 0, y: 0, w: 0, h: 0 });
 
-  // Sử dụng append thay vì handleSubmit của thư viện để tránh lỗi phiên bản
   const { messages, append, status, error } = useChat({ api: '/api/chat' });
   const isLoading = status === 'streaming' || status === 'submitted';
 
