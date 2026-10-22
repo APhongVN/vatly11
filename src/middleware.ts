@@ -11,25 +11,22 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) { return request.cookies.get(name)?.value },
+        get(name: string) {
+          return request.cookies.get(name)?.value
+        },
+        // Chỉ set cookie trên request để tránh lỗi 502
         set(name: string, value: string, options: CookieOptions) {
           request.cookies.set({ name, value, ...options })
-          response = NextResponse.next({ request: { headers: request.headers } })
-          response.cookies.set({ name, value, ...options })
         },
         remove(name: string, options: CookieOptions) {
           request.cookies.set({ name, value: '', ...options })
-          response = NextResponse.next({ request: { headers: request.headers } })
-          response.cookies.set({ name, value: '', ...options })
         },
       },
     }
   )
 
-  // Bỏ qua việc bắt lỗi ở đây, chỉ lấy session
   const { data: { session } } = await supabase.auth.getSession()
 
-  // Nếu vào trang giáo viên mà không có session -> Đá về login
   if (request.nextUrl.pathname.startsWith('/giao-vien') && !session) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
