@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Dùng giá trị mặc định nếu chưa có biến môi trường (tránh lỗi build)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
+const supabaseUrl = 'https://nlfobhufcuizwarfyfjn.supabase.co'; 
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sZm9iaHVmY3VpendhcmZ5ZmpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NTg4MTcsImV4cCI6MjEwODIzNDgxN30.h1Tj9ov-3zqduaBTzZFUcee58nlwIvw4M-EUPJWxUyc'; // Thay key eyJ... của bạn vào đây
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
