@@ -51,18 +51,11 @@ export default function GiaoVienPage() {
 
   const handleLogout = async () => { await supabase.auth.signOut(); window.location.href = "/login"; };
 
-  // --- QUẢN LÝ SINH VIÊN & CẤP TÀI KHOẢN ---
-  const generateAccount = (name: string) => {
-    const email = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/\s+/g, '').toLowerCase() + '@student.edu.vn';
-    const password = Math.random().toString(36).slice(-6);
-    return { email, password };
-  };
-
+  // --- QUẢN LÝ SINH VIÊN (Không tạo tài khoản) ---
   const addStudentManual = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStudentName.trim()) return;
-    const { email, password } = generateAccount(newStudentName.trim());
-    await supabase.from('students').insert([{ full_name: newStudentName.trim(), email, password, class_name: "11A1" }]);
+    await supabase.from('students').insert([{ full_name: newStudentName.trim(), class_name: "11A1" }]);
     setNewStudentName(""); fetchData();
   };
 
@@ -80,7 +73,7 @@ export default function GiaoVienPage() {
         if (val) names.push(val.trim());
       });
       names.sort((a, b) => (a.split(' ').pop() || "").localeCompare(b.split(' ').pop() || ""));
-      const inserts = names.map(n => { const { email, password } = generateAccount(n); return { full_name: n, email, password, class_name: "11A1" }; });
+      const inserts = names.map(n => ({ full_name: n, class_name: "11A1" }));
       const { error } = await supabase.from('students').insert(inserts);
       if (error) alert("Lỗi import: " + error.message);
       else { alert(`Đã import thành công ${names.length} sinh viên!`); fetchData(); }
@@ -88,12 +81,11 @@ export default function GiaoVienPage() {
     reader.readAsBinaryString(file);
   };
 
-  const exportAccounts = () => {
-    const data = students.map(s => ({ "Họ Tên": s.full_name, "Email": s.email, "Mật khẩu": s.password }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "TaiKhoan");
-    XLSX.writeFile(wb, "Danh_Sach_Tai_Khoan.xlsx");
+  const deleteStudent = async (id: string, name: string) => {
+    if(confirm(`Xóa sinh viên "${name}"?`)) {
+      await supabase.from('students').delete().eq('id', id);
+      fetchData();
+    }
   };
 
   const deleteAllStudents = async () => {
@@ -199,7 +191,7 @@ export default function GiaoVienPage() {
       <div className="flex-1 p-8 h-screen overflow-y-auto relative">
         <Link href="/" className="absolute top-8 right-8 bg-white text-gray-600 p-3 rounded-full shadow-lg border z-10"><ArrowLeft className="w-5 h-5" /></Link>
 
-        {/* CÁC TAB (Giữ nguyên logic đã code) */}
+        {/* QUẢN LÝ BÀI HỌC */}
         {activeTab === 'activities' && (
           <div className="space-y-6 max-w-5xl">
             <h2 className="text-3xl font-bold">Quản lý 14 Bài học</h2>
@@ -231,7 +223,7 @@ export default function GiaoVienPage() {
           </div>
         )}
 
-        {/* Các tab khác (Grading, Students, Groups, Quizzes, Chat) tôi đã code đầy đủ ở dưới đây: */}
+        {/* CHẤM ĐIỂM */}
         {activeTab === 'grading' && (
           <div className="space-y-6 max-w-5xl">
             <h2 className="text-3xl font-bold">Chấm điểm</h2>
@@ -253,19 +245,42 @@ export default function GiaoVienPage() {
           </div>
         )}
 
+        {/* QUẢN LÝ SINH VIÊN (Đã bỏ tạo tài khoản, thêm nút Xóa) */}
         {activeTab === 'students' && (
           <div className="space-y-6 max-w-5xl">
-            <div className="flex justify-between"><h2 className="text-3xl font-bold">Sinh viên ({students.length})</h2><button onClick={exportAccounts} className="bg-green-600 text-white px-4 py-2 rounded-lg"><Download className="w-4 h-4 inline mr-2"/>Xuất Acc</button></div>
-            <div className="flex gap-4">
-              <form onSubmit={addStudentManual} className="flex gap-2 bg-white p-4 rounded-xl shadow-sm border flex-1"><input value={newStudentName} onChange={e => setNewStudentName(e.target.value)} placeholder="Nhập tên SV..." className="flex-1 border p-2 rounded" /><button className="bg-blue-600 text-white px-4 py-2 rounded">Thêm</button></form>
-              <div className="bg-white p-4 rounded-xl shadow-sm border flex-1 flex items-center"><input type="file" accept=".xlsx" onChange={handleFileUpload} className="text-sm" /></div>
+            <div className="flex justify-between items-center">
+              <h2 className="text-3xl font-bold">Sinh viên ({students.length})</h2>
+              <button onClick={deleteAllStudents} className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-medium hover:bg-red-200 flex items-center gap-2 shadow-sm"><Trash2 className="w-4 h-4"/> Xóa tất cả</button>
             </div>
-            <div className="grid grid-cols-4 gap-3">
-              {filteredStudents.map(s => <div key={s.id} className="bg-white p-3 rounded-xl shadow-sm border text-sm flex justify-between">{s.full_name}</div>)}
+            
+            <div className="flex gap-4">
+              <form onSubmit={addStudentManual} className="flex gap-2 bg-white p-4 rounded-xl shadow-sm border flex-1">
+                <input value={newStudentName} onChange={e => setNewStudentName(e.target.value)} placeholder="Nhập tên SV..." className="flex-1 border p-2 rounded focus:ring-2 outline-none" required />
+                <button className="bg-blue-600 text-white px-4 py-2 rounded">Thêm</button>
+              </form>
+              <div className="bg-white p-4 rounded-xl shadow-sm border flex-1 flex items-center">
+                <input type="file" accept=".xlsx" onChange={handleFileUpload} className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700" />
+              </div>
+            </div>
+            
+            <div className="bg-white p-5 rounded-xl shadow-sm border">
+               <div className="relative mb-6">
+                 <Search className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
+                 <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Tìm kiếm sinh viên..." className="w-full pl-10 pr-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none" />
+               </div>
+               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {filteredStudents.map(s => (
+                  <div key={s.id} className="bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg text-sm font-medium flex justify-between items-center group hover:bg-white hover:shadow-md transition-all">
+                    <span className="truncate pr-2">{s.full_name}</span>
+                    <button onClick={() => deleteStudent(s.id, s.full_name)} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4"/></button>
+                  </div>
+                ))}
+               </div>
             </div>
           </div>
         )}
 
+        {/* QUẢN LÝ NHÓM */}
         {activeTab === 'groups' && (
           <div className="space-y-6 max-w-5xl">
             <h2 className="text-3xl font-bold">Quản lý Nhóm</h2>
@@ -284,6 +299,7 @@ export default function GiaoVienPage() {
           </div>
         )}
 
+        {/* TẠO TRẮC NGHIỆM */}
         {activeTab === 'quizzes' && (
           <div className="space-y-6 max-w-4xl">
             <h2 className="text-3xl font-bold">Tạo Bài Trắc nghiệm</h2>
@@ -313,6 +329,7 @@ export default function GiaoVienPage() {
           </div>
         )}
 
+        {/* CHAT */}
         {activeTab === 'chat' && (
           <div className="bg-white rounded-xl shadow-sm border h-[80vh] flex flex-col max-w-4xl mx-auto">
             <div className="p-4 border-b bg-slate-800 text-white flex justify-between">
