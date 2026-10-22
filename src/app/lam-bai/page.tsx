@@ -2,7 +2,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Clock, CheckCircle2, XCircle, Trophy, Loader2 } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, Trophy, Loader2, Info } from "lucide-react";
 import Link from "next/link";
 
 function QuizContent() {
@@ -27,11 +27,7 @@ function QuizContent() {
     const fetchQuiz = async () => {
       const { data: qz } = await supabase.from('quizzes').select('*').eq('id', quizId).single();
       const { data: qs } = await supabase.from('quiz_questions').select('*').eq('quiz_id', quizId).order('id');
-      if (qz && qs) {
-        setQuiz(qz);
-        setQuestions(qs);
-        setTimeLeft(qz.time_limit * 60);
-      }
+      if (qz && qs) { setQuiz(qz); setQuestions(qs); setTimeLeft(qz.time_limit * 60); }
       setLoading(false);
     };
     fetchQuiz();
@@ -41,48 +37,25 @@ function QuizContent() {
     if (loading || submitted || timeLeft <= 0) return;
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          handleSubmit(true);
-          return 0;
-        }
+        if (prev <= 1) { clearInterval(timer); handleSubmit(true); return 0; }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
   }, [loading, submitted, timeLeft]);
 
-  const handleSelect = (qId: string, optIndex: number) => {
-    if (submitted) return;
-    setAnswers({ ...answers, [qId]: optIndex });
-  };
+  const handleSelect = (qId: string, optIndex: number) => { if (!submitted) setAnswers({ ...answers, [qId]: optIndex }); };
 
   const handleSubmit = async (autoSubmit = false) => {
     if (!autoSubmit && !confirm("Em có chắc chắn muốn nộp bài?")) return;
-    
     let correctCount = 0;
-    questions.forEach(q => {
-      if (answers[q.id] === q.correct_option) correctCount++;
-    });
-    
+    questions.forEach(q => { if (answers[q.id] === q.correct_option) correctCount++; });
     const finalScore = questions.length > 0 ? (correctCount / questions.length) * 10 : 0;
-    setScore(finalScore);
-    setSubmitted(true);
-
-    if (student) {
-      await supabase.from('quiz_submissions').insert([{
-        quiz_id: quizId,
-        student_id: student.id,
-        score: finalScore
-      }]);
-    }
+    setScore(finalScore); setSubmitted(true);
+    if (student) { await supabase.from('quiz_submissions').insert([{ quiz_id: quizId, student_id: student.id, score: finalScore }]); }
   };
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
+  const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${(seconds % 60) < 10 ? '0' : ''}${seconds % 60}`;
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600"/></div>;
   if (!quiz) return <div className="min-h-screen text-center p-10 font-bold">Không tìm thấy bài trắc nghiệm.</div>;
@@ -92,13 +65,7 @@ function QuizContent() {
       <header className="bg-white shadow-sm sticky top-0 z-10 border-b">
         <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
           <h1 className="font-bold text-lg text-gray-800 truncate pr-4">{quiz.title}</h1>
-          {!submitted ? (
-            <div className={`flex items-center gap-2 font-mono text-xl font-bold px-4 py-1.5 rounded-lg ${timeLeft < 60 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-blue-50 text-blue-700'}`}>
-              <Clock className="w-5 h-5" /> {formatTime(timeLeft)}
-            </div>
-          ) : (
-            <span className="font-bold text-green-600">Đã nộp bài</span>
-          )}
+          {!submitted ? <div className={`flex items-center gap-2 font-mono text-xl font-bold px-4 py-1.5 rounded-lg ${timeLeft < 60 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-blue-50 text-blue-700'}`}><Clock className="w-5 h-5" /> {formatTime(timeLeft)}</div> : <span className="font-bold text-green-600">Đã nộp bài</span>}
         </div>
       </header>
 
@@ -118,7 +85,7 @@ function QuizContent() {
               <h3 className="font-bold text-lg mb-4"><span className="text-blue-600 mr-2">Câu {idx + 1}:</span> {q.question}</h3>
               {q.image_url && <img src={q.image_url} alt="Hình ảnh câu hỏi" className="max-h-64 rounded-lg mb-4 object-contain border" />}
               
-              <div className="grid md:grid-cols-2 gap-3">
+              <div className="grid md:grid-cols-2 gap-3 mb-4">
                 {q.options.map((opt: string, optIdx: number) => {
                   const isSelected = answers[q.id] === optIdx;
                   const isCorrect = q.correct_option === optIdx;
@@ -138,6 +105,17 @@ function QuizContent() {
                   );
                 })}
               </div>
+
+              {/* Hiển thị giải thích nếu đã nộp và có giải thích */}
+              {submitted && q.explanation && (
+                <div className="mt-4 bg-blue-50 border border-blue-200 p-4 rounded-xl flex gap-3 animate-slide-up">
+                  <Info className="w-5 h-5 text-blue-600 shrink-0" />
+                  <div>
+                    <span className="font-bold text-blue-800 text-sm block mb-1">Giải thích đáp án:</span>
+                    <p className="text-sm text-blue-700">{q.explanation}</p>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
