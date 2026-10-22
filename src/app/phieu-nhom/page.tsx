@@ -2,16 +2,16 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Users, UploadCloud, Send, CheckCircle2, ArrowLeft, FileText } from "lucide-react";
+import { Users, UploadCloud, Send, CheckCircle2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 function GroupWorksheet() {
   const searchParams = useSearchParams();
-  const activityId = Number(searchParams.get('activity'));
+  const assignmentId = searchParams.get('assignment');
   const router = useRouter();
 
   const [student, setStudent] = useState<any>(null);
-  const [activity, setActivity] = useState<any>(null);
+  const [assignment, setAssignment] = useState<any>(null);
   const [myGroup, setMyGroup] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [textAnswer, setTextAnswer] = useState("");
@@ -27,40 +27,39 @@ function GroupWorksheet() {
     setStudent(parsed);
 
     const fetchData = async () => {
-      // Lấy thông tin bài học
-      const { data: act } = await supabase.from('activities').select('*').eq('id', activityId).single();
-      setActivity(act);
+      const { data: act } = await supabase.from('group_assignments').select('*').eq('id', assignmentId).single();
+      setAssignment(act);
 
       // Tìm nhóm của sinh viên này trong bài tập này
-      const { data: memberData } = await supabase.from('activity_group_members')
-        .select('activity_group_id, activity_groups!inner(activity_id, group_number)')
+      const { data: memberData } = await supabase.from('group_assignment_members')
+        .select('group_id, group_assignment_groups!inner(assignment_id, group_number)')
         .eq('student_id', parsed.id)
-        .eq('activity_groups.activity_id', activityId)
+        .eq('group_assignment_groups.assignment_id', assignmentId)
         .single();
 
       if (memberData) {
-        setMyGroup(memberData.activity_groups);
+        setMyGroup(memberData.group_assignment_groups);
         // Lấy danh sách thành viên trong nhóm
-        const { data: allMembers } = await supabase.from('activity_group_members')
+        const { data: allMembers } = await supabase.from('group_assignment_members')
           .select('students(full_name)')
-          .eq('activity_group_id', memberData.activity_group_id);
+          .eq('group_id', memberData.group_id);
         if (allMembers) setMembers(allMembers.map((m: any) => m.students.full_name));
 
         // Kiểm tra xem nhóm đã nộp bài chưa
-        const { data: existingSub } = await supabase.from('submissions')
+        const { data: existingSub } = await supabase.from('group_submissions')
           .select('*')
-          .eq('activity_id', activityId)
-          .eq('group_name', `Nhóm ${memberData.activity_groups.group_number}`)
+          .eq('assignment_id', assignmentId)
+          .eq('group_name', `Nhóm ${memberData.group_assignment_groups.group_number}`)
           .single();
         if (existingSub) {
           setTextAnswer(existingSub.answer || "");
-          setSuccess(true); // Đã nộp thì hiển thị trạng thái đã nộp
+          setSuccess(true);
         }
       }
       setLoading(false);
     };
     fetchData();
-  }, [activityId, router]);
+  }, [assignmentId, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,23 +68,21 @@ function GroupWorksheet() {
 
     let uploadedUrl = "";
     if (file) {
-      const fileName = `groups/${activityId}-${myGroup.group_number}-${Date.now()}-${file.name}`;
+      const fileName = `groups/${assignmentId}-${myGroup.group_number}-${Date.now()}-${file.name}`;
       const { error: uploadError } = await supabase.storage.from('videos').upload(fileName, file);
       if (!uploadError) {
-        const { data } = supabase.storage.from('videos').getPublicUrl(fileName);
+        const { data } = await supabase.storage.from('videos').getPublicUrl(fileName);
         uploadedUrl = data.publicUrl;
       }
     }
 
     const groupName = `Nhóm ${myGroup.group_number}`;
 
-    // Xóa bài nộp cũ (nếu nộp lại) và thêm mới
-    await supabase.from('submissions').delete().eq('activity_id', activityId).eq('group_name', groupName);
+    await supabase.from('group_submissions').delete().eq('assignment_id', assignmentId).eq('group_name', groupName);
 
-    const { error } = await supabase.from('submissions').insert([{
-      student_name: groupName, // Lưu tên nhóm vào trường tên
+    const { error } = await supabase.from('group_submissions').insert([{
+      assignment_id: assignmentId,
       group_name: groupName,
-      activity_id: activityId,
       answer: textAnswer,
       file_url: uploadedUrl,
       status: 'pending',
@@ -99,16 +96,16 @@ function GroupWorksheet() {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Đang tải...</div>;
-  if (!activity) return <div className="min-h-screen text-center p-10">Không tìm thấy bài tập.</div>;
+  if (!assignment) return <div className="min-h-screen text-center p-10">Không tìm thấy bài tập.</div>;
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 md:p-8 flex justify-center items-center">
       <div className="bg-white rounded-2xl shadow-xl border max-w-3xl w-full overflow-hidden relative">
         <Link href="/hoc-sinh" className="absolute top-6 left-6 text-gray-500 hover:text-blue-600 flex items-center gap-1 text-sm font-medium"><ArrowLeft className="w-4 h-4"/> Quay lại</Link>
         
-        <div className="bg-blue-600 p-8 text-white text-center">
+        <div className="bg-orange-600 p-8 text-white text-center">
           <h1 className="text-2xl font-bold mb-2">Phiếu Học Tập Nhóm</h1>
-          <p className="text-blue-100">Bài {activity.id}: {activity.title}</p>
+          <p className="text-orange-100">{assignment.title}</p>
         </div>
 
         <div className="p-8 space-y-6">
@@ -139,17 +136,17 @@ function GroupWorksheet() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="text-sm font-semibold text-gray-700 mb-1 block">Nội dung thảo luận / Bài làm nhóm</label>
-                  <textarea value={textAnswer} onChange={e => setTextAnswer(e.target.value)} className="w-full p-3 border rounded-xl h-40 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nhập câu trả lời hoặc kết quả thảo luận của nhóm tại đây..." required />
+                  <textarea value={textAnswer} onChange={e => setTextAnswer(e.target.value)} className="w-full p-3 border rounded-xl h-40 outline-none focus:ring-2 focus:ring-orange-500" placeholder="Nhập câu trả lời hoặc kết quả thảo luận của nhóm tại đây..." required />
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-gray-700 mb-1 block">Đính kèm File (Ảnh, PDF, Word...)</label>
-                  <div className="border-2 border-dashed border-blue-200 bg-blue-50/50 rounded-xl p-4 text-center cursor-pointer relative">
+                  <div className="border-2 border-dashed border-orange-200 bg-orange-50/50 rounded-xl p-4 text-center cursor-pointer relative">
                     <input type="file" onChange={e => setFile(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                    <UploadCloud className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                    <p className="text-sm font-medium text-blue-700">{file ? file.name : "Bấm để tải file lên"}</p>
+                    <UploadCloud className="w-8 h-8 text-orange-500 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-orange-700">{file ? file.name : "Bấm để tải file lên"}</p>
                   </div>
                 </div>
-                <button type="submit" disabled={submitting} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 flex justify-center items-center gap-2">
+                <button type="submit" disabled={submitting} className="w-full bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 shadow-lg shadow-orange-200 flex justify-center items-center gap-2">
                   <Send className="w-5 h-5"/> {submitting ? "Đang gửi bài..." : "Nộp bài cho Nhóm"}
                 </button>
               </form>

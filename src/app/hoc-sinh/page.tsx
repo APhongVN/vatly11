@@ -8,11 +8,13 @@ import { useRouter } from "next/navigation";
 export default function HocSinhPage() {
   const [student, setStudent] = useState<any>(null);
   const [activities, setActivities] = useState<any[]>([]);
+  const [groupActs, setGroupActs] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [mySubmissions, setMySubmissions] = useState<any[]>([]);
+  const [myGroupSubs, setMyGroupSubs] = useState<any[]>([]);
   const [quizzes, setQuizzes] = useState<any[]>([]);
   const [newMsg, setNewMsg] = useState("");
-  const [activeTab, setActiveTab] = useState("personal"); // personal, group, quizzes, chat
+  const [activeTab, setActiveTab] = useState("personal"); 
   const [now, setNow] = useState(new Date());
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isChatMuted, setIsChatMuted] = useState(false);
@@ -27,13 +29,28 @@ export default function HocSinhPage() {
     const fetchData = async () => {
       const { data: acts } = await supabase.from('activities').select('*').order('id');
       if (acts) setActivities(acts);
+      
+      // Lấy bài tập nhóm
+      const { data: gActs } = await supabase.from('group_assignments').select('*').order('created_at', { ascending: false });
+      if (gActs) setGroupActs(gActs);
+      
       const { data: msgs } = await supabase.from('messages').select('*').order('created_at');
       if (msgs) setMessages(msgs);
       
-      // Lấy bài nộp cá nhân
+      // Bài nộp cá nhân
       const { data: subs } = await supabase.from('submissions').select('*').eq('student_name', parsed.full_name);
       if (subs) setMySubmissions(subs);
-      
+
+      // Bài nộp nhóm (Tìm xem sinh viên thuộc nhóm nào, rồi xem nhóm đó đã nộp chưa)
+      const { data: memberOf } = await supabase.from('group_assignment_members').select('group_id, group_assignment_groups(group_number, assignment_id)').eq('student_id', parsed.id);
+      if (memberOf) {
+         const groupIds = memberOf.map((m: any) => m.group_id);
+         const { data: gSubs } = await supabase.from('group_submissions').select('*');
+         // Lưu lại bài nộp nhóm của nhóm mình
+         const mySubs = gSubs?.filter(s => memberOf.some((m: any) => m.group_assignment_groups?.assignment_id === s.assignment_id && `Nhóm ${m.group_assignment_groups?.group_number}` === s.group_name));
+         if (mySubs) setMyGroupSubs(mySubs);
+      }
+
       const { data: qzs } = await supabase.from('quizzes').select('*').order('id');
       if (qzs) setQuizzes(qzs);
       const { data: setting } = await supabase.from('chat_settings').select('is_muted').eq('id', 1).single();
@@ -71,16 +88,10 @@ export default function HocSinhPage() {
 
   if (!student) return <div className="p-10 text-center font-bold">Đang tải...</div>;
 
-  // Phân loại bài tập
-  const personalActs = activities.filter(a => !a.is_group);
-  const groupActs = activities.filter(a => a.is_group);
-
-  // Render thẻ bài tập
-  const renderActivityCard = (act: any) => {
+  // Render thẻ bài tập cá nhân
+  const renderPersonalCard = (act: any) => {
     const dl = getDeadlineStatus(act.deadline);
-    // Với bài nhóm, check xem nhóm đã nộp chưa (tạm check tên nhóm trong submissions)
     const isSubmitted = mySubmissions.some(s => s.activity_id === act.id);
-    
     return (
       <div key={act.id} className="bg-white rounded-2xl shadow-sm border flex flex-col hover:shadow-md transition-all">
         <div className="h-2 w-full bg-gradient-to-r from-blue-400 to-indigo-500"></div>
@@ -99,10 +110,39 @@ export default function HocSinhPage() {
           {isSubmitted ? (
             <div className="flex items-center justify-between w-full">
               <span className="text-green-600 text-sm font-bold flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5"/> Đã nộp</span>
-              {!dl.isLate && <Link href={act.is_group ? `/phieu-nhom?activity=${act.id}` : `/nop-bai?activity=${act.id}`} className="text-blue-600 text-sm font-medium hover:underline">Nộp lại</Link>}
+              {!dl.isLate && <Link href={`/nop-bai?activity=${act.id}`} className="text-blue-600 text-sm font-medium hover:underline">Nộp lại</Link>}
             </div>
           ) : !dl.isLate ? (
-            <Link href={act.is_group ? `/phieu-nhom?activity=${act.id}` : `/nop-bai?activity=${act.id}`} className="w-full text-center text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2">Nộp bài <ChevronRight className="w-4 h-4"/></Link>
+            <Link href={`/nop-bai?activity=${act.id}`} className="w-full text-center text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2">Nộp bài <ChevronRight className="w-4 h-4"/></Link>
+          ) : <span className="text-red-500 text-sm w-full text-center font-medium">Đã khóa</span>}
+        </div>
+      </div>
+    );
+  };
+
+  // Render thẻ bài tập nhóm
+  const renderGroupCard = (gAct: any) => {
+    const dl = getDeadlineStatus(gAct.deadline);
+    const isSubmitted = myGroupSubs.some(s => s.assignment_id === gAct.id);
+    return (
+      <div key={gAct.id} className="bg-white rounded-2xl shadow-sm border border-orange-100 flex flex-col hover:shadow-md transition-all">
+        <div className="h-2 w-full bg-gradient-to-r from-orange-400 to-red-500"></div>
+        <div className="p-6 flex-1">
+          <div className="flex justify-between items-start mb-3">
+            <div className="bg-orange-50 text-orange-700 font-bold px-3 py-1.5 rounded-lg text-sm border border-orange-200 flex items-center gap-1"><Users className="w-3 h-3"/> Nhóm</div>
+            {dl.isLate ? <span className="bg-red-50 text-red-600 text-xs px-2.5 py-1 rounded-md flex items-center gap-1"><Lock className="w-3 h-3"/> Đã khóa</span> : <span className={`text-xs font-semibold flex items-center gap-1 ${dl.color} bg-orange-50 px-2.5 py-1 rounded-md border`}><Clock className="w-3 h-3"/> {dl.text}</span>}
+          </div>
+          <h3 className="font-bold text-lg text-gray-800 mb-2">{gAct.title}</h3>
+          <p className="text-sm text-gray-500 mb-4 line-clamp-2">{gAct.description || "Chưa có mô tả"}</p>
+        </div>
+        <div className="bg-gray-50/80 p-4 border-t flex justify-between items-center">
+          {isSubmitted ? (
+             <div className="flex items-center justify-between w-full">
+              <span className="text-green-600 text-sm font-bold flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5"/> Nhóm đã nộp</span>
+              {!dl.isLate && <Link href={`/phieu-nhom?assignment=${gAct.id}`} className="text-blue-600 text-sm font-medium hover:underline">Nộp lại</Link>}
+            </div>
+          ) : !dl.isLate ? (
+            <Link href={`/phieu-nhom?assignment=${gAct.id}`} className="w-full text-center text-sm bg-orange-600 hover:bg-orange-700 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2">Vào nộp bài Nhóm <ChevronRight className="w-4 h-4"/></Link>
           ) : <span className="text-red-500 text-sm w-full text-center font-medium">Đã khóa</span>}
         </div>
       </div>
@@ -125,7 +165,7 @@ export default function HocSinhPage() {
             <span className="text-blue-700 font-extrabold text-2xl">VẬT LÍ 11</span>
             <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
               <button onClick={() => setActiveTab('personal')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'personal' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'}`}>Cá nhân</button>
-              <button onClick={() => setActiveTab('group')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'group' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'}`}>Nhóm</button>
+              <button onClick={() => setActiveTab('group')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'group' ? 'bg-white shadow-sm text-orange-600' : 'text-gray-500'}`}>Nhóm</button>
               <button onClick={() => setActiveTab('quizzes')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'quizzes' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'}`}>Trắc nghiệm</button>
               <button onClick={() => setActiveTab('chat')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'chat' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'}`}>Hỏi đáp</button>
             </div>
@@ -144,14 +184,14 @@ export default function HocSinhPage() {
         {activeTab === 'personal' && (
           <div className="space-y-8">
             <h1 className="text-3xl font-extrabold text-gray-800">Bài tập Cá nhân</h1>
-            {personalActs.length === 0 ? <p className="text-gray-500">Chưa có bài tập cá nhân nào.</p> : <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">{personalActs.map(renderActivityCard)}</div>}
+            {activities.length === 0 ? <p className="text-gray-500">Chưa có bài tập.</p> : <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">{activities.map(renderPersonalCard)}</div>}
           </div>
         )}
 
         {activeTab === 'group' && (
           <div className="space-y-8">
-            <h1 className="text-3xl font-extrabold text-gray-800 flex items-center gap-2"><Users className="w-8 h-8 text-blue-600"/> Bài tập Nhóm</h1>
-            {groupActs.length === 0 ? <p className="text-gray-500">Chưa có bài tập nhóm nào được giao.</p> : <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">{groupActs.map(renderActivityCard)}</div>}
+            <h1 className="text-3xl font-extrabold text-orange-700 flex items-center gap-2"><Users className="w-8 h-8"/> Bài tập Nhóm</h1>
+            {groupActs.length === 0 ? <p className="text-gray-500">Chưa có bài tập nhóm nào.</p> : <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">{groupActs.map(renderGroupCard)}</div>}
           </div>
         )}
 
