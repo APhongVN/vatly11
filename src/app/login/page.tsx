@@ -17,14 +17,23 @@ export default function LoginPage() {
     setError("");
     const cleanEmail = email.trim().toLowerCase();
 
+    // Tạo bộ điều khiển hủy request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // Hủy sau 10 giây
+
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+      const { error } = await supabase.auth.signInWithPassword(
+        { email: cleanEmail, password },
+        { signal: controller.signal } // Gắn tín hiệu hủy
+      );
       
+      clearTimeout(timeoutId);
+
       if (error) {
         if (error.message === "Failed to fetch") {
-          setError("Lỗi kết nối Database. Hãy chắc chắn bạn đã dán đúng Key vào file supabase.ts.");
+          setError("Lỗi kết nối tới Supabase. Hãy kiểm tra mạng hoặc trạng thái Supabase.");
         } else if (error.message.includes("Invalid login credentials")) {
-          setError("Sai email hoặc mật khẩu.");
+          setError("Sai email hoặc mật khẩu. Vui lòng kiểm tra lại.");
         } else if (error.message.includes("Email not confirmed")) {
           setError("Tài khoản chưa được xác nhận trên Supabase.");
         } else {
@@ -39,7 +48,12 @@ export default function LoginPage() {
         }
       }
     } catch (err: any) {
-      setError("Lỗi hệ thống: " + err.message);
+      clearTimeout(timeoutId);
+      if (err.name === "AbortError") {
+        setError("Quá thời gian kết nối (10 giây). Supabase không phản hồi! (Hãy kiểm tra xem Supabase có bị Paused không).");
+      } else {
+        setError("Lỗi hệ thống: " + err.message);
+      }
       setLoading(false);
     }
   };
@@ -52,7 +66,7 @@ export default function LoginPage() {
           <p className="text-gray-500 text-sm mt-1">Hệ thống Học tập Vật lí 11</p>
         </div>
 
-        {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm text-center">{error}</div>}
+        {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm text-center font-medium">{error}</div>}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
