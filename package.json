@@ -1,35 +1,35 @@
-{
-  "name": "tu-dien-web",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "@ai-sdk/google": "^4.0.102",
-    "@ai-sdk/react": "^4.0.152",
-    "@google/genai": "^2.30.0",
-    "@supabase/ssr": "^0.12.7",
-    "ai": "^7.0.148",
-    "clsx": "^2.1.1",
-    "katex": "^0.16.11",
-    "lucide-react": "^0.446.0",
-    "next": "14.2.15",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-katex": "^3.0.1"
-  },
-  "devDependencies": {
-    "@types/node": "^20.16.11",
-    "@types/react": "^18.3.11",
-    "@types/react-dom": "^18.3.0",
-    "@types/react-katex": "^3.0.4",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.47",
-    "tailwindcss": "^3.4.13",
-    "typescript": "^5.6.2"
-  }
+﻿{
+    "name":  "tu-dien-web",
+    "version":  "1.0.0",
+    "private":  true,
+    "scripts":  {
+                    "dev":  "next dev",
+                    "build":  "next build",
+                    "start":  "node .next/standalone/server.js",
+                    "lint":  "next lint"
+                },
+    "dependencies":  {
+                         "@ai-sdk/google":  "^4.0.102",
+                         "@ai-sdk/react":  "^4.0.152",
+                         "@google/genai":  "^2.30.0",
+                         "@supabase/ssr":  "^0.12.7",
+                         "ai":  "^7.0.148",
+                         "clsx":  "^2.1.1",
+                         "katex":  "^0.16.11",
+                         "lucide-react":  "^0.446.0",
+                         "next":  "14.2.15",
+                         "react":  "^18.3.1",
+                         "react-dom":  "^18.3.1",
+                         "react-katex":  "^3.0.1"
+                     },
+    "devDependencies":  {
+                            "@types/node":  "^20.16.11",
+                            "@types/react":  "^18.3.11",
+                            "@types/react-dom":  "^18.3.0",
+                            "@types/react-katex":  "^3.0.4",
+                            "autoprefixer":  "^10.4.20",
+                            "postcss":  "^8.4.47",
+                            "tailwindcss":  "^3.4.13",
+                            "typescript":  "^5.6.2"
+                        }
 }
