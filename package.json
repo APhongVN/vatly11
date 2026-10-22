@@ -12,6 +12,7 @@
     "@ai-sdk/google": "^4.0.102",
     "@ai-sdk/react": "^4.0.152",
     "@google/genai": "^2.30.0",
+    "@supabase/ssr": "^0.12.7",
     "ai": "^7.0.148",
     "clsx": "^2.1.1",
     "katex": "^0.16.11",
