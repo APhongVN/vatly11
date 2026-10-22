@@ -3,6 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
-  output: 'standalone', // Quan trọng: Giảm dung lượng build, fix lỗi treo RAM
+  // Đã xóa output: 'standalone' để tương thích với next start
+  experimental: {
+    serverComponentsExternalPackages: ['@supabase/ssr'],
+  },
 };
 module.exports = nextConfig;
