@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { BookOpen, Clock, FileText, MessageSquare, Send, ArrowLeft, LogOut, CheckCircle2, Volume2 } from "lucide-react";
+import { BookOpen, Clock, FileText, Download, MessageSquare, Send, ChevronRight, Lock, X, LogOut, ArrowLeft, CheckCircle2, Volume2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function HocSinhPage() {
@@ -14,6 +14,7 @@ export default function HocSinhPage() {
   const [newMsg, setNewMsg] = useState("");
   const [activeTab, setActiveTab] = useState("lessons");
   const [now, setNow] = useState(new Date());
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isChatMuted, setIsChatMuted] = useState(false);
   const router = useRouter();
 
@@ -43,33 +44,48 @@ export default function HocSinhPage() {
   }, [router]);
 
   const handleLogout = () => { localStorage.removeItem('student_session'); router.push("/login"); };
-  
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault(); if (!newMsg || isChatMuted) return;
     await supabase.from('messages').insert([{ sender_name: student.full_name, content: newMsg }]);
     setNewMsg("");
   };
 
-  // Hàm đọc tin nhắn bằng giọng nói
   const speakText = (text: string) => {
     if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel(); // Dừng câu đang đọc
+      window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'vi-VN';
       window.speechSynthesis.speak(utterance);
-    } else {
-      alert("Trình duyệt của bạn không hỗ trợ tính năng đọc!");
-    }
+    } else { alert("Trình duyệt không hỗ trợ đọc!"); }
   };
 
   const getAvatar = (name: string) => name.split(' ').pop()?.charAt(0).toUpperCase() || "?";
+  const getDeadlineStatus = (deadline: string) => {
+    if (!deadline) return { isLate: false, text: "Không có hạn", color: "text-gray-500" };
+    const d = new Date(deadline); const diff = d.getTime() - now.getTime();
+    if (diff < 0) return { isLate: true, text: "Đã khóa", color: "text-red-500" };
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    let text = days > 0 ? `Còn ${days} ngày` : hours > 0 ? `Còn ${hours} giờ` : `Còn ${mins} phút`;
+    return { isLate: false, text, color: "text-orange-500" };
+  };
+  const isImage = (url: string) => /\.(jpg|jpeg|png|webp|gif)$/i.test(url);
   const formatTime = (isoString: string) => new Date(isoString).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + " - " + new Date(isoString).toLocaleDateString('vi-VN');
 
-  if (!student) return <div className="p-10 text-center font-bold">Đang tải dữ liệu...</div>;
+  if (!student) return <div className="p-10 text-center font-bold">Đang tải...</div>;
 
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col relative">
-      <header className="bg-white border-b sticky top-0 z-10 shadow-sm">
+    <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col relative">
+      {previewUrl && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4">
+          <div className="w-full max-w-5xl flex justify-between text-white mb-4"><h3 className="font-semibold text-lg">Xem trước tài liệu</h3><button onClick={() => setPreviewUrl(null)} className="hover:text-red-400"><X className="w-6 h-6"/></button></div>
+          <div className="w-full max-w-5xl h-[80vh] bg-white rounded-xl overflow-hidden shadow-2xl">{isImage(previewUrl) ? <img src={previewUrl} className="w-full h-full object-contain" /> : <iframe src={previewUrl} className="w-full h-full border-0" />}</div>
+          <a href={previewUrl} target="_blank" download className="mt-6 bg-blue-600 px-8 py-3 rounded-xl text-white font-bold hover:bg-blue-700 flex items-center gap-2"><Download className="w-5 h-5"/> Tải xuống</a>
+        </div>
+      )}
+
+      <header className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-10 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <span className="text-blue-700 font-extrabold text-2xl">VẬT LÍ 11</span>
@@ -90,27 +106,46 @@ export default function HocSinhPage() {
 
       <div className="flex-1 max-w-6xl mx-auto w-full p-4 md:p-8">
         {activeTab === 'lessons' && (
-          <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-gray-800">Bài học của em</h1>
-            <div className="grid md:grid-cols-3 gap-6">
-              {activities.map(act => (
-                <div key={act.id} className="bg-white rounded-2xl shadow-sm border p-6 flex flex-col">
-                  <div className="bg-blue-50 text-blue-700 font-bold px-3 py-1.5 rounded-lg text-sm w-fit mb-3">Bài {act.id}</div>
-                  <h3 className="font-bold text-lg mb-2">{act.title}</h3>
-                  <p className="text-sm text-gray-500 mb-4 flex-1">{act.description}</p>
-                  {act.document_url && (
-                    <a href={act.document_url} target="_blank" className="w-full text-sm bg-gray-50 border py-2 rounded-xl mb-2 flex justify-center gap-2"><FileText className="w-4 h-4"/> Xem tài liệu</a>
-                  )}
-                  <Link href={`/nop-bai?activity=${act.id}`} className="w-full text-center bg-blue-600 text-white py-2.5 rounded-xl font-bold hover:bg-blue-700">Nộp bài</Link>
-                </div>
-              ))}
+          <div className="space-y-8">
+            <h1 className="text-3xl font-extrabold text-gray-800">Hoạt động học tập</h1>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {activities.map(act => {
+                const dl = getDeadlineStatus(act.deadline);
+                const isSubmitted = mySubmissions.some(s => s.activity_id === act.id);
+                return (
+                  <div key={act.id} className="bg-white rounded-2xl shadow-sm border flex flex-col hover:shadow-md transition-all">
+                    <div className="h-2 w-full bg-gradient-to-r from-blue-400 to-indigo-500"></div>
+                    <div className="p-6 flex-1">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="bg-blue-50 text-blue-700 font-bold px-3 py-1.5 rounded-lg text-sm border">Bài {act.id}</div>
+                        {dl.isLate ? <span className="bg-red-50 text-red-600 text-xs px-2.5 py-1 rounded-md flex items-center gap-1"><Lock className="w-3 h-3"/> Đã khóa</span> : <span className={`text-xs font-semibold flex items-center gap-1 ${dl.color} bg-orange-50 px-2.5 py-1 rounded-md border`}><Clock className="w-3 h-3"/> {dl.text}</span>}
+                      </div>
+                      <h3 className="font-bold text-lg text-gray-800 mb-2">{act.title}</h3>
+                      <p className="text-sm text-gray-500 mb-4 line-clamp-2">{act.description || "Chưa có mô tả"}</p>
+                      {act.document_url && (
+                        <button onClick={() => setPreviewUrl(act.document_url)} className="w-full text-sm bg-gray-50 border hover:bg-gray-100 py-2 rounded-xl flex justify-center gap-1.5 font-medium"><FileText className="w-4 h-4"/> Xem tài liệu</button>
+                      )}
+                    </div>
+                    <div className="bg-gray-50/80 p-4 border-t flex justify-between items-center">
+                      {isSubmitted ? (
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-green-600 text-sm font-bold flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5"/> Đã nộp</span>
+                          {!dl.isLate && <Link href={`/nop-bai?activity=${act.id}`} className="text-blue-600 text-sm font-medium hover:underline">Nộp lại</Link>}
+                        </div>
+                      ) : !dl.isLate ? (
+                        <Link href={`/nop-bai?activity=${act.id}`} className="w-full text-center text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2">Nộp bài <ChevronRight className="w-4 h-4"/></Link>
+                      ) : <span className="text-red-500 text-sm w-full text-center font-medium">Đã khóa</span>}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
         {activeTab === 'quizzes' && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-gray-800">Bài tập Trắc nghiệm</h1>
+            <h1 className="text-3xl font-extrabold text-gray-800">Bài tập Trắc nghiệm</h1>
             <div className="grid md:grid-cols-2 gap-4">
               {quizzes.map(qz => (
                 <div key={qz.id} className="bg-white p-6 rounded-2xl shadow-sm border flex flex-col">
