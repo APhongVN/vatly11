@@ -5,25 +5,25 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function POST(req: Request) {
   try {
-    const { studentAnswer } = await req.json();
-    if (!studentAnswer) return NextResponse.json({ error: "Thiếu câu trả lời" }, { status: 400 });
+    const { studentAnswer, rubricText } = await req.json();
+    if (!studentAnswer) return NextResponse.json({ error: "Thiếu bài làm" }, { status: 400 });
 
-    const prompt = `Bạn là giáo viên Vật lý chấm bài tự luận. Hãy chấm điểm câu trả lời của học sinh về hiện tượng tụ điện phóng điện qua LED.
-Rubric (thang điểm 0-2 cho mỗi tiêu chí, tổng tối đa 6):
-1. Liên hệ hiện tượng (0: không liên hệ, 1: nhắc đến nạp/ngắt nguồn nhưng chưa logic, 2: lập luận từ chuỗi nạp -> ngắt nguồn -> đèn sáng).
-2. Ý tưởng tích trữ (0: không đề cập, 1: nêu "có điện còn lại" mơ hồ, 2: nhận ra tụ đã lưu trữ năng lượng trước đó).
-3. Diễn đạt khoa học (0: có lỗi bản chất, 1: có lỗi nhỏ, 2: diễn đạt phù hợp).
-Hãy trả về ĐÚNG định dạng JSON sau: {"score": [tổng điểm 0-6], "feedback": "[nhận xét chi tiết bằng tiếng Việt]"}.
-Câu trả lời của học sinh: "${studentAnswer}"`;
+    const systemPrompt = `Bạn là giáo viên chấm bài tự luận. Bạn có MA TRẬN ĐIỂM (chứa các ý, từ khóa, công thức cần có).
+Hãy đối chiếu bài làm của sinh viên với ma trận điểm.
+Nếu sinh viên có ý đó (dù diễn đạt khác), cho điểm phần đó. 
+Nếu bài làm quá khó hiểu hoặc không khớp ý nào, hãy trả về score: -1 để giáo viên tự chấm.
+Trả về ĐÚNG định dạng JSON: {"score": [tổng điểm hoặc -1], "feedback": "[nhận xét chi tiết chỉ rõ được ý nào, thiếu ý nào]"}
+MA TRẬN ĐIỂM: ${rubricText || "Chấm theo kiến thức Vật lý chuẩn."}
+BÀI LÀM CỦA SINH VIÊN: "${studentAnswer}"`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3.8-flash",
-      contents: prompt,
+      contents: systemPrompt,
     });
 
     const responseText = response.text || "";
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { score: 0, feedback: "Lỗi định dạng AI." };
+    const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { score: -1, feedback: "Lỗi AI." };
 
     return NextResponse.json(parsed);
   } catch (error: any) {

@@ -1,6 +1,10 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { MessageSquare, X, Maximize2, Minimize2, Send, Bot, User } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 export default function Chatbot() {
   const [open, setOpen] = useState(false);
@@ -10,6 +14,9 @@ export default function Chatbot() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   const send = async () => {
     if (!input.trim() || loading) return;
@@ -22,13 +29,12 @@ export default function Chatbot() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Gửi dạng { messages: [...] } để API route mới dễ xử lý
         body: JSON.stringify({ messages: [{ role: 'user', content: userMsg }] }) 
       });
       const data = await res.json();
-      setMessages(prev => [...prev, { role: "ai", text: data.reply || "Lỗi: AI không phản hồi." }]);
+      setMessages(prev => [...prev, { role: "ai", text: data.reply || "Lỗi AI." }]);
     } catch (error) {
-      setMessages(prev => [...prev, { role: "ai", text: "Lỗi mạng, không thể kết nối AI." }]);
+      setMessages(prev => [...prev, { role: "ai", text: "Lỗi mạng!" }]);
     } finally {
       setLoading(false);
     }
@@ -55,19 +61,28 @@ export default function Chatbot() {
           <button onClick={() => setOpen(false)} className="hover:bg-white/20 p-1.5 rounded-lg"><X className="w-4 h-4" /></button>
         </div>
       </div>
+      
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
         {messages.map((m, i) => (
           <div key={i} className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${m.role === "user" ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600"}`}>
               {m.role === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
             </div>
-            <div className={`text-sm p-3 rounded-2xl max-w-[75%] ${m.role === "user" ? "bg-blue-600 text-white rounded-tr-sm" : "bg-white border border-gray-100 shadow-sm text-gray-800 rounded-tl-sm"}`}>
-              {m.text}
+            <div className={`text-sm p-3 rounded-2xl max-w-[85%] overflow-x-auto ${m.role === "user" ? "bg-blue-600 text-white rounded-tr-sm" : "bg-white border border-gray-100 shadow-sm text-gray-800 rounded-tl-sm"}`}>
+              {m.role === "user" ? (
+                m.text
+              ) : (
+                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                  {m.text}
+                </ReactMarkdown>
+              )}
             </div>
           </div>
         ))}
-        {loading && <div className="text-xs text-gray-500 italic">AI đang trả lời...</div>}
+        {loading && <div className="text-xs text-gray-500 italic">AI đang suy nghĩ...</div>}
+        <div ref={messagesEndRef} />
       </div>
+
       <div className="p-3 border-t bg-white flex gap-2">
         <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} className="w-full px-4 py-2 bg-gray-100 rounded-xl outline-none" placeholder="Nhập câu hỏi..." />
         <button onClick={send} disabled={loading} className="bg-blue-600 text-white p-2 rounded-xl disabled:opacity-50"><Send className="w-5 h-5" /></button>

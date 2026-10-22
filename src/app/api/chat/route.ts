@@ -11,7 +11,10 @@ export async function POST(req: Request) {
     const response = await ai.models.generateContent({
       model: "gemini-3.8-flash",
       contents: latestMessage,
-      config: { systemInstruction: "Bạn là trợ lý Vật lí AI dạy bài Tụ điện. Trả lời ngắn gọn." }
+      config: { 
+        systemInstruction: `Bạn là trợ lý Vật lí AI xuất sắc. Hãy trả lời ngắn gọn, đi thẳng vào vấn đề.
+        ĐẶC BIỆT: Mọi công thức Toán học, Vật lý phải được viết dưới dạng LaTeX và bao bọc bởi dấu $...$ (ví dụ: $C = \\frac{\\varepsilon_0 \\varepsilon_r S}{d}$). Không dùng ký tự thường để viết phân số.` 
+      }
     });
 
     return NextResponse.json({ reply: response.text });
