@@ -32,26 +32,11 @@ body {
 .btn-secondary { @apply bg-white text-gray-700 border border-gray-200 hover:bg-gray-50; }
 .btn-success { @apply bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-200; }
 
-/* Lớp input cơ bản - bỏ px-4 mặc định để dễ tùy biến */
+/* Lớp input cơ bản */
 .input {
   @apply w-full py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all;
 }
-/* Lớp input có icon bên trái */
+/* Lớp input khi có icon bên trái (thêm padding trái 40px) */
 .input-icon-left {
   @apply pl-10 pr-4;
 }
-
-/* Hiệu ứng cho Chatbot */
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
-
-@keyframes bounceDot {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
-}
-.typing-dot { animation: bounceDot 1.4s infinite ease-in-out both; }
-.typing-dot:nth-child(1) { animation-delay: -0.32s; }
-.typing-dot:nth-child(2) { animation-delay: -0.16s; }

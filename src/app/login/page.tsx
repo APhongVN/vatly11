@@ -16,7 +16,6 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    // Chuẩn hóa email: xóa khoảng trắng và chuyển về chữ thường
     const cleanEmail = email.trim().toLowerCase();
 
     const { error } = await supabase.auth.signInWithPassword({ 
@@ -25,17 +24,17 @@ export default function LoginPage() {
     });
 
     if (error) {
-      // Phân loại lỗi để báo cho người dùng
       if (error.message.includes("Email not confirmed")) {
-        setError("Tài khoản chưa được xác nhận. Vui lòng kiểm tra email hoặc liên hệ quản trị viên.");
+        setError("Tài khoản chưa được xác nhận. Vui lòng kiểm tra email.");
       } else if (error.message.includes("Invalid login credentials")) {
         setError("Sai email hoặc mật khẩu. Vui lòng kiểm tra lại (chú ý viết thường email).");
       } else {
-        setError("Lỗi đăng nhập: " + error.message);
+        setError("Lỗi: " + error.message);
       }
       setLoading(false);
     } else {
-      if (cleanEmail.includes("cogiao")) {
+      // Mở rộng logic nhận diện giáo viên
+      if (cleanEmail.includes("cogiao") || cleanEmail.includes("huongxuan") || cleanEmail.includes("giaovien")) {
         router.push("/giao-vien");
       } else {
         router.push("/hoc-sinh");
@@ -63,7 +62,7 @@ export default function LoginPage() {
                 value={email} 
                 onChange={(e) => setEmail(e.target.value)} 
                 className="input input-icon-left" 
-                placeholder="cogiao@vatly11.com" 
+                placeholder="huongxuan@vatly11.com" 
                 required 
               />
             </div>
@@ -82,7 +81,7 @@ export default function LoginPage() {
               />
             </div>
           </div>
-          <button type="submit" disabled={loading} className="btn btn-primary w-full">
+          <button type="submit" disabled={loading} className="btn btn-primary w-full mt-2">
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Đăng nhập"}
           </button>
         </form>
