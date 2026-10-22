@@ -16,14 +16,26 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    // Chuẩn hóa email: xóa khoảng trắng và chuyển về chữ thường
+    const cleanEmail = email.trim().toLowerCase();
+
+    const { error } = await supabase.auth.signInWithPassword({ 
+      email: cleanEmail, 
+      password 
+    });
 
     if (error) {
-      setError("Sai email hoặc mật khẩu!");
+      // Phân loại lỗi để báo cho người dùng
+      if (error.message.includes("Email not confirmed")) {
+        setError("Tài khoản chưa được xác nhận. Vui lòng kiểm tra email hoặc liên hệ quản trị viên.");
+      } else if (error.message.includes("Invalid login credentials")) {
+        setError("Sai email hoặc mật khẩu. Vui lòng kiểm tra lại (chú ý viết thường email).");
+      } else {
+        setError("Lỗi đăng nhập: " + error.message);
+      }
       setLoading(false);
     } else {
-      // Nếu email là cogiao -> vào trang giáo viên, ngược lại vào trang học sinh
-      if (email.includes("cogiao")) {
+      if (cleanEmail.includes("cogiao")) {
         router.push("/giao-vien");
       } else {
         router.push("/hoc-sinh");
@@ -45,15 +57,29 @@ export default function LoginPage() {
           <div>
             <label className="text-sm font-medium text-gray-700">Email</label>
             <div className="relative mt-1">
-              <Mail className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10" placeholder="cogiao@vatly11.com" required />
+              <Mail className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" />
+              <input 
+                type="email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                className="input input-icon-left" 
+                placeholder="cogiao@vatly11.com" 
+                required 
+              />
             </div>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">Mật khẩu</label>
             <div className="relative mt-1">
-              <Lock className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input pl-10" placeholder="••••••" required />
+              <Lock className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" />
+              <input 
+                type="password" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                className="input input-icon-left" 
+                placeholder="••••••" 
+                required 
+              />
             </div>
           </div>
           <button type="submit" disabled={loading} className="btn btn-primary w-full">

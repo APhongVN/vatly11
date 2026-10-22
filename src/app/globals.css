@@ -32,8 +32,13 @@ body {
 .btn-secondary { @apply bg-white text-gray-700 border border-gray-200 hover:bg-gray-50; }
 .btn-success { @apply bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-200; }
 
+/* Lớp input cơ bản - bỏ px-4 mặc định để dễ tùy biến */
 .input {
-  @apply w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all;
+  @apply w-full py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all;
+}
+/* Lớp input có icon bên trái */
+.input-icon-left {
+  @apply pl-10 pr-4;
 }
 
 /* Hiệu ứng cho Chatbot */
