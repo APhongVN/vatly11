@@ -34,7 +34,6 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Nếu vào trang giáo viên mà chưa đăng nhập -> đá về trang login
   if (request.nextUrl.pathname.startsWith('/giao-vien') && !user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
