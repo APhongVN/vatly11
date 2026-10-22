@@ -318,7 +318,7 @@ export default function GiaoVienPage() {
                     {currentSubmissions.length === 0 && <p className="text-center text-gray-500 mt-10">Chưa có sinh viên nào nộp bài này.</p>}
                     {currentSubmissions.map(sub => (
                       <div key={sub.id} className="border rounded-xl p-3 shadow-sm bg-white">
-                        <div className="flex justify-between items-center mb-2"><span className="font-bold text-gray-800">{sub.student_name}</span><span className="text-xs text-gray-400">{formatTime(sub.submitted_at)}</span></div>
+                        <div className="flex justify-between items-center mb-2"><span className="font-bold text-gray-800 flex items-center gap-2">{sub.student_name.includes("Nhóm") ? <Users className="w-4 h-4 text-orange-500"/> : null} {sub.student_name}</span><span className="text-xs text-gray-400">{formatTime(sub.submitted_at)}</span></div>
                         <div className="bg-gray-50 p-2 rounded text-sm mb-2">{sub.answer || "Nộp file đính kèm"}</div>
                         {sub.file_url && <a href={sub.file_url} target="_blank" className="text-blue-600 text-xs underline block mb-2">Xem file đính kèm</a>}
                         <div className="flex gap-2 items-center">

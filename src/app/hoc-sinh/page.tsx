@@ -94,10 +94,10 @@ export default function HocSinhPage() {
           {isSubmitted ? (
             <div className="flex items-center justify-between w-full">
               <span className="text-green-600 text-sm font-bold flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5"/> Đã nộp</span>
-              {!dl.isLate && <Link href={`/nop-bai?activity=${act.id}`} className="text-blue-600 text-sm font-medium hover:underline">Nộp lại</Link>}
+              {!dl.isLate && <Link href={act.is_group ? `/phieu-nhom?activity=${act.id}` : act.is_group ? `/phieu-nhom?activity=${act.id}` : `/nop-bai?activity=${act.id}`} className="text-blue-600 text-sm font-medium hover:underline">Nộp lại</Link>}
             </div>
           ) : !dl.isLate ? (
-            <Link href={`/nop-bai?activity=${act.id}`} className="w-full text-center text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2">Nộp bài <ChevronRight className="w-4 h-4"/></Link>
+            <Link href={act.is_group ? `/phieu-nhom?activity=${act.id}` : act.is_group ? `/phieu-nhom?activity=${act.id}` : `/nop-bai?activity=${act.id}`} className="w-full text-center text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2">Nộp bài <ChevronRight className="w-4 h-4"/></Link>
           ) : <span className="text-red-500 text-sm w-full text-center font-medium">Đã khóa</span>}
         </div>
       </div>
