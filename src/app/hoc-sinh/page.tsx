@@ -41,14 +41,23 @@ export default function HocSinhPage() {
       const { data: subs } = await supabase.from('submissions').select('*').eq('student_name', parsed.full_name);
       if (subs) setMySubmissions(subs);
 
-      // Bài nộp nhóm (Tìm xem sinh viên thuộc nhóm nào, rồi xem nhóm đó đã nộp chưa)
-      const { data: memberOf } = await supabase.from('group_assignment_members').select('group_id, group_assignment_groups(group_number, assignment_id)').eq('student_id', parsed.id);
-      if (memberOf) {
-         const groupIds = memberOf.map((m: any) => m.group_id);
-         const { data: gSubs } = await supabase.from('group_submissions').select('*');
-         // Lưu lại bài nộp nhóm của nhóm mình
-         const mySubs = gSubs?.filter(s => memberOf.some((m: any) => m.group_assignment_groups?.assignment_id === s.assignment_id && `Nhóm ${m.group_assignment_groups?.group_number}` === s.group_name));
-         if (mySubs) setMyGroupSubs(mySubs);
+      // Bài nộp nhóm (Sửa lỗi logic tìm nhóm)
+      const { data: memberOf } = await supabase.from('group_assignment_members').select('*, group_assignment_groups(*)').eq('student_id', parsed.id);
+      if (memberOf && memberOf.length > 0) {
+        const assignIds = memberOf.map((m: any) => m.group_assignment_groups.assignment_id);
+        const { data: gSubs } = await supabase.from('group_submissions').select('*').in('assignment_id', assignIds);
+        if (gSubs) {
+           const mySubs = gSubs.filter(s => {
+              const member = memberOf.find((m: any) => m.group_assignment_groups.assignment_id === s.assignment_id);
+              if (member) {
+                return s.group_name === `Nhóm ${member.group_assignment_groups.group_number}`;
+              }
+              return false;
+           });
+           setMyGroupSubs(mySubs);
+        }
+      } else {
+        setMyGroupSubs([]);
       }
 
       const { data: qzs } = await supabase.from('quizzes').select('*').order('id');
@@ -125,11 +134,11 @@ export default function HocSinhPage() {
     const dl = getDeadlineStatus(gAct.deadline);
     const isSubmitted = myGroupSubs.some(s => s.assignment_id === gAct.id);
     return (
-      <div key={gAct.id} className="bg-white rounded-2xl shadow-sm border border-orange-100 flex flex-col hover:shadow-md transition-all">
-        <div className="h-2 w-full bg-gradient-to-r from-orange-400 to-red-500"></div>
+      <div key={gAct.id} className="bg-white rounded-2xl shadow-sm border border-blue-100 flex flex-col hover:shadow-md transition-all">
+        <div className="h-2 w-full bg-gradient-to-r from-blue-400 to-indigo-500"></div>
         <div className="p-6 flex-1">
           <div className="flex justify-between items-start mb-3">
-            <div className="bg-orange-50 text-orange-700 font-bold px-3 py-1.5 rounded-lg text-sm border border-orange-200 flex items-center gap-1"><Users className="w-3 h-3"/> Nhóm</div>
+            <div className="bg-blue-50 text-blue-700 font-bold px-3 py-1.5 rounded-lg text-sm border border-blue-200 flex items-center gap-1"><Users className="w-3 h-3"/> Nhóm</div>
             {dl.isLate ? <span className="bg-red-50 text-red-600 text-xs px-2.5 py-1 rounded-md flex items-center gap-1"><Lock className="w-3 h-3"/> Đã khóa</span> : <span className={`text-xs font-semibold flex items-center gap-1 ${dl.color} bg-orange-50 px-2.5 py-1 rounded-md border`}><Clock className="w-3 h-3"/> {dl.text}</span>}
           </div>
           <h3 className="font-bold text-lg text-gray-800 mb-2">{gAct.title}</h3>
@@ -142,7 +151,7 @@ export default function HocSinhPage() {
               {!dl.isLate && <Link href={`/phieu-nhom?assignment=${gAct.id}`} className="text-blue-600 text-sm font-medium hover:underline">Nộp lại</Link>}
             </div>
           ) : !dl.isLate ? (
-            <Link href={`/phieu-nhom?assignment=${gAct.id}`} className="w-full text-center text-sm bg-orange-600 hover:bg-orange-700 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2">Vào nộp bài Nhóm <ChevronRight className="w-4 h-4"/></Link>
+            <Link href={`/phieu-nhom?assignment=${gAct.id}`} className="w-full text-center text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2">Vào nộp bài Nhóm <ChevronRight className="w-4 h-4"/></Link>
           ) : <span className="text-red-500 text-sm w-full text-center font-medium">Đã khóa</span>}
         </div>
       </div>
@@ -190,7 +199,7 @@ export default function HocSinhPage() {
 
         {activeTab === 'group' && (
           <div className="space-y-8">
-            <h1 className="text-3xl font-extrabold text-orange-700 flex items-center gap-2"><Users className="w-8 h-8"/> Bài tập Nhóm</h1>
+            <h1 className="text-3xl font-extrabold text-blue-700 flex items-center gap-2"><Users className="w-8 h-8"/> Bài tập Nhóm</h1>
             {groupActs.length === 0 ? <p className="text-gray-500">Chưa có bài tập nhóm nào.</p> : <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">{groupActs.map(renderGroupCard)}</div>}
           </div>
         )}

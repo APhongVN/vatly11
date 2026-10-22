@@ -132,10 +132,28 @@ export default function GiaoVienPage() {
   const createGroupAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGroupTitle) return;
-    await supabase.from('group_assignments').insert([{ 
+    const { data: newAct, error } = await supabase.from('group_assignments').insert([{ 
       title: newGroupTitle, description: newGroupDesc, deadline: newGroupDeadline ? new Date(newGroupDeadline).toISOString() : null 
-    }]);
-    setNewGroupTitle(""); setNewGroupDesc(""); setNewGroupDeadline(""); alert("Đã tạo bài tập nhóm!"); fetchData();
+    }]).select();
+    
+    if (newAct && newAct.length > 0) {
+      const assignId = newAct[0].id;
+      let pool = [...students];
+      let studentIndex = 0;
+      for (let i = 1; i <= numGroups; i++) {
+        const { data: groupData } = await supabase.from('group_assignment_groups').insert([{ assignment_id: assignId, group_number: i }]).select();
+        if (groupData) {
+          const groupId = groupData[0].id;
+          const membersToAdd = pool.slice(studentIndex, studentIndex + maxStudentsPerGroup);
+          if (membersToAdd.length > 0) {
+            const inserts = membersToAdd.map(s => ({ group_id: groupId, student_id: s.id }));
+            await supabase.from('group_assignment_members').insert(inserts);
+          }
+          studentIndex += maxStudentsPerGroup;
+        }
+      }
+    }
+    setNewGroupTitle(""); setNewGroupDesc(""); setNewGroupDeadline(""); alert("Đã tạo bài tập nhóm và chia nhóm!"); fetchData();
   };
 
   const deleteGroupAssignment = async (id: string) => {
@@ -274,10 +292,10 @@ export default function GiaoVienPage() {
         {/* TAB BÀI TẬP NHÓM (MỚI) */}
         {activeTab === 'group_assignments' && (
           <div className="space-y-6 max-w-5xl">
-            <h2 className="text-3xl font-bold text-orange-600">Quản lý Bài tập Nhóm</h2>
+            <h2 className="text-3xl font-bold text-blue-600">Quản lý Bài tập Nhóm</h2>
             
             {/* FORM TẠO BÀI TẬP NHÓM MỚI */}
-            <form onSubmit={createGroupAssignment} className="bg-white p-5 rounded-xl shadow-sm border border-orange-200 flex flex-wrap gap-4 items-end">
+            <form onSubmit={createGroupAssignment} className="bg-white p-5 rounded-xl shadow-sm border border-blue-200 flex flex-wrap gap-4 items-end">
               <div className="flex-1 min-w-[200px]">
                 <label className="text-xs font-bold text-gray-600 block mb-1">Tên bài tập nhóm</label>
                 <input value={newGroupTitle} onChange={e => setNewGroupTitle(e.target.value)} placeholder="VD: Thuyết trình về Tụ điện..." className="w-full border p-2 rounded outline-none" required />
@@ -290,30 +308,38 @@ export default function GiaoVienPage() {
                 <label className="text-xs font-bold text-gray-600 block mb-1">Hạn chót</label>
                 <input type="datetime-local" value={newGroupDeadline} onChange={e => setNewGroupDeadline(e.target.value)} className="border p-2 rounded outline-none" />
               </div>
-              <button type="submit" className="bg-orange-600 text-white px-6 py-2 rounded font-bold hover:bg-orange-700 h-[42px]"><Plus className="w-5 h-5 inline mr-1"/> Tạo Bài tập</button>
+              <div>
+                <label className="text-xs font-bold text-gray-600 block mb-1">Số nhóm</label>
+                <input type="number" value={numGroups} onChange={e => setNumGroups(Number(e.target.value))} className="border p-2 rounded w-20 outline-none" min="1" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-600 block mb-1">SV/Nhóm</label>
+                <input type="number" value={maxStudentsPerGroup} onChange={e => setMaxStudentsPerGroup(Number(e.target.value))} className="border p-2 rounded w-20 outline-none" min="1" />
+              </div>
+              <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 h-[42px]"><Plus className="w-5 h-5 inline mr-1"/> Tạo & Chia nhóm</button>
             </form>
 
             {/* DANH SÁCH BÀI TẬP NHÓM ĐÃ TẠO */}
             <div className="space-y-3">
               {groupAssignments.length === 0 && <p className="text-gray-500 italic text-center py-10">Chưa có bài tập nhóm nào được tạo.</p>}
               {groupAssignments.map(gAct => (
-                <div key={gAct.id} className={`bg-white rounded-xl shadow-sm border transition-all ${expandedGroupAct === gAct.id ? 'border-orange-400 ring-1 ring-orange-100' : ''}`}>
-                  <div onClick={() => toggleExpandGroupAct(gAct.id)} className="p-4 flex items-center justify-between cursor-pointer bg-orange-50/30 rounded-t-xl">
+                <div key={gAct.id} className={`bg-white rounded-xl shadow-sm border transition-all ${expandedGroupAct === gAct.id ? 'border-blue-400 ring-1 ring-blue-100' : ''}`}>
+                  <div onClick={() => toggleExpandGroupAct(gAct.id)} className="p-4 flex items-center justify-between cursor-pointer bg-blue-50/30 rounded-t-xl">
                     <div>
-                      <h3 className="font-bold text-lg text-orange-800">{gAct.title}</h3>
+                      <h3 className="font-bold text-lg text-blue-800">{gAct.title}</h3>
                       <p className="text-xs text-gray-500">{gAct.description} | Hạn: {gAct.deadline ? new Date(gAct.deadline).toLocaleString('vi-VN') : 'Không có'}</p>
                     </div>
                     <div className="flex gap-2">
                       <button onClick={(e) => { e.stopPropagation(); deleteGroupAssignment(gAct.id); }} className="text-red-500 hover:text-red-700 p-2"><Trash2 className="w-4 h-4"/></button>
-                      <button className="text-orange-600 font-medium text-sm">{expandedGroupAct === gAct.id ? "Đóng" : "Chi tiết"}</button>
+                      <button className="text-blue-600 font-medium text-sm">{expandedGroupAct === gAct.id ? "Đóng" : "Chi tiết"}</button>
                     </div>
                   </div>
                   
                   {expandedGroupAct === gAct.id && (
-                    <div className="border-t border-orange-100 p-5 space-y-6">
+                    <div className="border-t border-blue-100 p-5 space-y-6">
                       {/* PHẦN CHIA NHÓM */}
                       <div>
-                        <h4 className="font-bold text-orange-800 mb-3 flex items-center gap-2"><Layers className="w-5 h-5"/> Quản lý Nhóm</h4>
+                        <h4 className="font-bold text-blue-800 mb-3 flex items-center gap-2"><Layers className="w-5 h-5"/> Quản lý Nhóm</h4>
                         <div className="flex flex-wrap items-end gap-4 mb-4 bg-gray-50 p-4 rounded-xl border">
                           <div><label className="text-xs font-semibold text-gray-600 block mb-1">Số lượng nhóm</label><input type="number" value={numGroups} onChange={e => setNumGroups(Number(e.target.value))} className="border p-2 rounded w-24 outline-none" min="1" /></div>
                           <div><label className="text-xs font-semibold text-gray-600 block mb-1">SV tối đa / nhóm</label><input type="number" value={maxStudentsPerGroup} onChange={e => setMaxStudentsPerGroup(Number(e.target.value))} className="border p-2 rounded w-24 outline-none" min="1" /></div>
@@ -338,7 +364,7 @@ export default function GiaoVienPage() {
 
                       {/* PHẦN CHẤM ĐIỂM NHÓM */}
                       <div className="border-t pt-4">
-                        <h4 className="font-bold text-orange-800 mb-3 flex items-center gap-2"><FileText className="w-5 h-5"/> Chấm điểm Bài nộp Nhóm</h4>
+                        <h4 className="font-bold text-blue-800 mb-3 flex items-center gap-2"><FileText className="w-5 h-5"/> Chấm điểm Bài nộp Nhóm</h4>
                         <div className="mb-4">
                           <label className="font-bold text-sm text-gray-700 block mb-1">Ma trận điểm bài nhóm:</label>
                           <div className="flex gap-2"><textarea value={groupRubricText} onChange={e => setGroupRubricText(e.target.value)} className="flex-1 p-2 border rounded text-sm h-16 outline-none" placeholder="VD: 2đ nêu đúng công thức..." /><button onClick={() => saveGroupRubric(gAct.id)} className="bg-slate-800 text-white px-4 rounded text-sm font-medium hover:bg-slate-900">Lưu</button></div>
