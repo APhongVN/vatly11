@@ -6,10 +6,12 @@ export default function Chatbot() {
   const [open, setOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [size, setSize] = useState({ width: 380, height: 500 });
+  const [input, setInput] = useState("");
+  
   const resizingRef = useRef(false);
   const startPosRef = useRef({ x: 0, y: 0, w: 0, h: 0 });
 
-  const { messages, input, handleInputChange, handleSubmit, status } = useChat({ api: '/api/chat' });
+  const { messages, append, status } = useChat({ api: '/api/chat' });
   const isLoading = status === 'streaming' || status === 'submitted';
 
   // Logic kéo để resize
@@ -34,6 +36,13 @@ export default function Chatbot() {
     startPosRef.current = { x: e.clientX, y: e.clientY, w: size.width, h: size.height };
   };
 
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    append({ role: 'user', content: input });
+    setInput("");
+  };
+
   if (!open) {
     return <button onClick={() => setOpen(true)} className="fixed bottom-4 right-4 w-14 h-14 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 z-50">💬</button>;
   }
@@ -55,12 +64,20 @@ export default function Chatbot() {
         </div>
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {messages.map((m) => (
-            <div key={m.id} className={`text-sm p-2 rounded-lg max-w-[85%] ${m.role === "user" ? "bg-blue-100 ml-auto" : "bg-gray-100"}`}>{m.content}</div>
+            <div key={m.id} className={`text-sm p-2 rounded-lg max-w-[85%] ${m.role === "user" ? "bg-blue-100 ml-auto" : "bg-gray-100"}`}>
+              {m.content}
+            </div>
           ))}
           {isLoading && <div className="text-xs text-gray-400 italic">AI đang trả lời...</div>}
         </div>
-        <form onSubmit={handleSubmit} className="p-2 border-t flex gap-2">
-          <input value={input} onChange={handleInputChange} className="input text-sm" placeholder="Hỏi gì đó..." disabled={isLoading} />
+        <form onSubmit={handleFormSubmit} className="p-2 border-t flex gap-2">
+          <input 
+            value={input} 
+            onChange={(e) => setInput(e.target.value)} 
+            className="input text-sm" 
+            placeholder="Hỏi gì đó..." 
+            disabled={isLoading} 
+          />
           <button type="submit" disabled={isLoading || !input.trim()} className="btn btn-primary text-sm px-3 disabled:opacity-50">Gửi</button>
         </form>
         {!isExpanded && (
