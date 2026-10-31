@@ -26,10 +26,13 @@ const privateFileHref = (value: string) => value.startsWith("http") ? value : `/
 const loadTeacherStudentRoster = async () => {
   const withAccountFields = await supabase.from("students")
     .select("id,full_name,class_name,auth_user_id,login_email").order("full_name").limit(1000);
-  if (!withAccountFields.error) return withAccountFields;
-  if (withAccountFields.error.code !== "42703" && withAccountFields.error.code !== "PGRST204") return withAccountFields;
-  // Keep the public preview/dashboard roster readable until the account migration is applied.
-  return supabase.from("students").select("id,full_name,class_name").order("full_name").limit(1000);
+  if (!withAccountFields.error) return { ...withAccountFields, accountFieldsReady: true, accountSchemaMissing: false };
+  if (withAccountFields.error.code !== "42703" && withAccountFields.error.code !== "PGRST204") {
+    return { ...withAccountFields, accountFieldsReady: false, accountSchemaMissing: false };
+  }
+  // Keep the roster readable until the account migration is applied, and disable provisioning meanwhile.
+  const legacyRoster = await supabase.from("students").select("id,full_name,class_name").order("full_name").limit(1000);
+  return { ...legacyRoster, accountFieldsReady: false, accountSchemaMissing: true };
 };
 
 export default function GiaoVienPage({ previewMode = false }: { previewMode?: boolean }) {
@@ -92,6 +95,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [studentAccountError, setStudentAccountError] = useState("");
   const [studentAccountNotice, setStudentAccountNotice] = useState("");
   const [isCreatingStudentAccount, setIsCreatingStudentAccount] = useState(false);
+  const [canProvisionStudentAccounts, setCanProvisionStudentAccounts] = useState(false);
+  const [studentAccountSchemaMissing, setStudentAccountSchemaMissing] = useState(false);
 
   // Quản lý bài tập nhóm
   const [groupAssignments, setGroupAssignments] = useState<any[]>([]);
@@ -135,6 +140,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
   const fetchData = useCallback(async () => {
     if (previewMode) {
+      setCanProvisionStudentAccounts(false);
+      setStudentAccountSchemaMissing(false);
       setActivities(ACTIVITIES);
       setStudents([
         { id: "demo-student-1", full_name: "Nguyễn Minh Anh", class_name: "11A1" },
@@ -158,7 +165,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     try {
       const [
         { data: acts },
-        { data: studs },
+        { data: studs, accountFieldsReady, accountSchemaMissing },
         { data: subs },
         { data: msgs },
         { data: qzs },
@@ -177,6 +184,9 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         supabase.from('group_submissions').select('*').order('submitted_at', { ascending: false }).limit(300),
         supabase.from('activity_grading_guides').select('activity_id,model_answer,grading_rubric'),
       ]);
+
+      setCanProvisionStudentAccounts(accountFieldsReady === true);
+      setStudentAccountSchemaMissing(accountSchemaMissing === true);
 
       if (acts) {
         const guidesByActivity = new Map((guides || []).map((guide) => [guide.activity_id, guide]));
@@ -940,7 +950,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
 
   const openStudentAccountModal = (student: any) => {
-    if (previewMode || student.auth_user_id) return;
+    if (previewMode || !canProvisionStudentAccounts || student.auth_user_id) return;
     setAccountStudent(student);
     setAccountEmail("");
     setStudentAccountCredentials(null);
@@ -950,7 +960,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
   const createStudentAccount = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (previewMode || !accountStudent || isCreatingStudentAccount) return;
+    if (previewMode || !canProvisionStudentAccounts || !accountStudent || isCreatingStudentAccount) return;
     setIsCreatingStudentAccount(true);
     setStudentAccountError("");
     setStudentAccountNotice("");
@@ -2250,6 +2260,7 @@ maxLength={20000}
               </div>
             </div>
 
+            {!previewMode && !canProvisionStudentAccounts && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{studentAccountSchemaMissing ? "Cần áp dụng migration 20261031002600_student_account_provisioning.sql trên Supabase trước khi cấp tài khoản. Danh sách học sinh cũ vẫn dùng được." : "Chưa đọc được trạng thái tài khoản học sinh. Hãy kiểm tra kết nối/quyền Supabase rồi tải lại trang."}</p>}
             <div className="grid md:grid-cols-2 gap-4">
               <form onSubmit={addStudentManual} className="bg-white p-5 rounded-2xl border shadow-sm flex gap-2">
                 <input value={newStudentName} onChange={e => setNewStudentName(e.target.value)} placeholder="Nhập họ và tên học sinh mới..." className="flex-1 border p-2.5 rounded-xl text-sm outline-none bg-slate-50/50" required />
@@ -2276,7 +2287,7 @@ maxLength={20000}
                     <div className="flex min-w-0 items-center justify-between gap-2">
                       <span className="truncate font-bold">{s.full_name}</span>
                       <div className="flex shrink-0 items-center gap-1">
-                        {s.auth_user_id ? <span className="rounded-md bg-emerald-100 px-1.5 py-1 text-[9px] font-bold text-emerald-800">Đã cấp</span> : <button type="button" disabled={previewMode} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
+                        {s.auth_user_id ? <span className="rounded-md bg-emerald-100 px-1.5 py-1 text-[9px] font-bold text-emerald-800">Đã cấp</span> : <button type="button" disabled={previewMode || !canProvisionStudentAccounts} title={!canProvisionStudentAccounts ? "Cần cập nhật schema Supabase trước khi cấp tài khoản." : undefined} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
                         <button type="button" aria-label={`Xóa học sinh ${s.full_name}`} onClick={() => deleteStudent(s.id)} className="rounded-md p-1 text-slate-400 hover:text-rose-600">
                           <Trash2 className="h-3.5 w-3.5"/>
                         </button>
@@ -2295,7 +2306,7 @@ maxLength={20000}
                 <section role="dialog" aria-modal="true" aria-labelledby="student-account-title" className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
                   <div className="flex items-start justify-between gap-4"><div><h3 id="student-account-title" className="text-xl font-black text-slate-900">Cấp tài khoản học sinh</h3><p className="mt-1 text-sm text-slate-500">{accountStudent.full_name} · tài khoản được gắn với hồ sơ lớp này.</p></div><button type="button" aria-label="Đóng" onClick={closeStudentAccountModal} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
                   {studentAccountError && <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{studentAccountError}</p>}
-                  {studentAccountCredentials ? <div className="mt-5 space-y-3"><p className="rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">Tài khoản đã được tạo. Mật khẩu tạm chỉ hiển thị trong lần này; học sinh phải đổi mật khẩu khi đăng nhập lần đầu.</p><dl className="space-y-2 rounded-xl border p-4 text-sm"><div><dt className="text-xs text-slate-500">Email</dt><dd className="break-all font-semibold">{studentAccountCredentials.email}</dd></div><div><dt className="text-xs text-slate-500">Mật khẩu tạm</dt><dd className="break-all font-mono font-bold">{studentAccountCredentials.password}</dd></div></dl><button type="button" onClick={() => void navigator.clipboard.writeText(`${studentAccountCredentials.email}\n${studentAccountCredentials.password}`).then(() => setStudentAccountNotice("Đã sao chép thông tin đăng nhập.")).catch(() => setStudentAccountNotice("Không sao chép tự động được; hãy chép thông tin đang hiển thị."))} className="w-full rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white">Sao chép thông tin đăng nhập</button><p role="status" className="text-xs text-slate-500">{studentAccountNotice}</p></div> : <form onSubmit={createStudentAccount} className="mt-5 space-y-4"><label className="block text-sm font-semibold text-slate-700">Email học sinh<input type="email" required maxLength={254} autoComplete="off" value={accountEmail} onChange={(event) => setAccountEmail(event.target.value)} placeholder="hoc.sinh@example.com" className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-600" /></label><p className="text-xs leading-5 text-slate-500">Hệ thống tạo mật khẩu tạm ngẫu nhiên và không lưu mật khẩu vào danh sách. Chỉ cô xem được một lần sau khi tạo.</p><div className="flex justify-end gap-2"><button type="button" onClick={closeStudentAccountModal} disabled={isCreatingStudentAccount} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-50">Hủy</button><button type="submit" disabled={isCreatingStudentAccount || previewMode} className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isCreatingStudentAccount ? "Đang cấp tài khoản…" : "Tạo tài khoản"}</button></div></form>}
+                  {studentAccountCredentials ? <div className="mt-5 space-y-3"><p className="rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">Tài khoản đã được tạo. Mật khẩu tạm chỉ hiển thị trong lần này; học sinh phải đổi mật khẩu khi đăng nhập lần đầu.</p><dl className="space-y-2 rounded-xl border p-4 text-sm"><div><dt className="text-xs text-slate-500">Email</dt><dd className="break-all font-semibold">{studentAccountCredentials.email}</dd></div><div><dt className="text-xs text-slate-500">Mật khẩu tạm</dt><dd className="break-all font-mono font-bold">{studentAccountCredentials.password}</dd></div></dl><button type="button" onClick={() => void navigator.clipboard.writeText(`${studentAccountCredentials.email}\n${studentAccountCredentials.password}`).then(() => setStudentAccountNotice("Đã sao chép thông tin đăng nhập.")).catch(() => setStudentAccountNotice("Không sao chép tự động được; hãy chép thông tin đang hiển thị."))} className="w-full rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white">Sao chép thông tin đăng nhập</button><p role="status" className="text-xs text-slate-500">{studentAccountNotice}</p></div> : <form onSubmit={createStudentAccount} className="mt-5 space-y-4"><label className="block text-sm font-semibold text-slate-700">Email học sinh<input type="email" required maxLength={254} autoComplete="off" value={accountEmail} onChange={(event) => setAccountEmail(event.target.value)} placeholder="hoc.sinh@example.com" className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-600" /></label><p className="text-xs leading-5 text-slate-500">Hệ thống tạo mật khẩu tạm ngẫu nhiên và không lưu mật khẩu vào danh sách. Chỉ cô xem được một lần sau khi tạo.</p><div className="flex justify-end gap-2"><button type="button" onClick={closeStudentAccountModal} disabled={isCreatingStudentAccount} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-50">Hủy</button><button type="submit" disabled={isCreatingStudentAccount || previewMode || !canProvisionStudentAccounts} className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isCreatingStudentAccount ? "Đang cấp tài khoản…" : "Tạo tài khoản"}</button></div></form>}
                 </section>
               </div>
             )}

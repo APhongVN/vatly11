@@ -440,4 +440,7 @@ assert.match(proxy, /must_change_password && request\.nextUrl\.pathname !== "\/d
 assert.match(loginPage, /profile\.must_change_password[\s\S]*router\.push\("\/doi-mat-khau"\)/);
 assert.match(passwordChangePage, /Đổi mật khẩu lần đầu/);
 assert.match(studentDashboard, /Cấp tài khoản/);
+assert.ok(studentDashboard.includes('studentAccountSchemaMissing ? "Cần áp dụng migration 20261031002600_student_account_provisioning.sql'), "Missing account migration must be clearly reported.");
+assert.match(studentDashboard, /disabled=\{previewMode \|\| !canProvisionStudentAccounts\}/);
+assert.match(studentDashboard, /const legacyRoster = await supabase\.from\("students"\)/);
 console.log("Teacher-provisioned student accounts, one-time temporary passwords and first-login password enforcement verified.");
