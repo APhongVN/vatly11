@@ -58,4 +58,4 @@ Mọi điểm AI chỉ là gợi ý; giáo viên duyệt hoặc ghi đè điểm
 
 ## Điều kiện phát hành an toàn
 
-Không đẩy một nhánh có khóa thật trong lịch sử Git. Nếu khóa từng bị commit hoặc push, hãy thu hồi/đổi khóa trước, sau đó làm sạch lịch sử đã công khai; xóa file ở commit mới không thu hồi khóa cũ. Chỉ đẩy phiên bản đã kiểm tra sau khi các bí mật bị lộ đã được thay thế.
+Không đẩy một ref có khóa thật trong lịch sử Git. Nếu khóa từng bị commit hoặc push, hãy thu hồi/đổi khóa trước, sau đó làm sạch lịch sử đã công khai; xóa file ở commit mới không thu hồi khóa cũ. Chạy `scripts/check-release-secrets.ps1` trên đúng ref cần phát hành và chỉ đẩy ref đã kiểm tra; không dùng `git push --all` hoặc `--mirror` khi repository còn các worktree/ref cũ.
