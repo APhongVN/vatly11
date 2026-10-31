@@ -19,11 +19,11 @@ export async function POST(req: Request) {
   try {
     if (!process.env.GEMINI_API_KEY) return NextResponse.json({ error: "Dịch vụ chấm AI chưa được cấu hình." }, { status: 503 });
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return NextResponse.json({ error: "Dịch vụ chấm chưa được cấu hình đầy đủ trên máy chủ." }, { status: 503 });
-    if (Number(req.headers.get("content-length") || 0) > 24_000) {
+    if (Number(req.headers.get("content-length") || 0) > 48_000) {
       return NextResponse.json({ error: "Bài làm vượt quá dung lượng cho phép." }, { status: 413 });
     }
     const rawBody = await req.text();
-    if (new TextEncoder().encode(rawBody).byteLength > 24_000) {
+    if (new TextEncoder().encode(rawBody).byteLength > 48_000) {
       return NextResponse.json({ error: "Bài làm vượt quá dung lượng cho phép." }, { status: 413 });
     }
     const body = JSON.parse(rawBody);
