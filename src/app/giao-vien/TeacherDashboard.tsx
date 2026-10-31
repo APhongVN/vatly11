@@ -370,40 +370,39 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   // --- QUẢN LÝ BÀI TẬP NHÓM ---
   const createGroupAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newGroupTitle) return;
-
-    const { data: newAct, error } = await supabase.from('group_assignments').insert([{
-      title: newGroupTitle,
-      description: newGroupDesc,
-      deadline: newGroupDeadline ? new Date(newGroupDeadline).toISOString() : null,
-      document_url: newGroupDocUrl || null,
-      rubric: newGroupRubric || null,
-    }]).select();
-
-    if (newAct && newAct.length > 0) {
-      const assignId = newAct[0].id;
-      let pool = [...students];
-      let studentIndex = 0;
-      for (let i = 1; i <= numGroups; i++) {
-        const { data: groupData } = await supabase.from('group_assignment_groups').insert([{ assignment_id: assignId, group_number: i, group_name: `Nhóm ${i}` }]).select();
-        if (groupData) {
-          const groupId = groupData[0].id;
-          const membersToAdd = pool.slice(studentIndex, studentIndex + maxStudentsPerGroup);
-          if (membersToAdd.length > 0) {
-            const inserts = membersToAdd.map(s => ({ group_id: groupId, student_id: s.id }));
-            await supabase.from('group_assignment_members').insert(inserts);
-          }
-          studentIndex += maxStudentsPerGroup;
-        }
-      }
+    const title = newGroupTitle.trim();
+    if (!title) return alert("Nhập tên bài tập nhóm trước khi lưu.");
+    if (!Number.isInteger(numGroups) || numGroups < 1 || numGroups > 50 || !Number.isInteger(maxStudentsPerGroup) || maxStudentsPerGroup < 1 || maxStudentsPerGroup > 100) {
+      return alert("Số nhóm phải từ 1–50 và sĩ số tối đa mỗi nhóm phải từ 1–100.");
     }
+    if (!students.length) return alert("Hãy nhập danh sách học sinh trước khi chia nhóm.");
+    if (students.length > numGroups * maxStudentsPerGroup) return alert(`Sức chứa hiện tại là ${numGroups * maxStudentsPerGroup} học sinh, chưa đủ cho lớp có ${students.length} em. Hãy tăng số nhóm hoặc sĩ số tối đa.`);
+
+    let deadline: string | null = null;
+    try { deadline = newGroupDeadline ? new Date(newGroupDeadline).toISOString() : null; }
+    catch { return alert("Thời hạn chưa hợp lệ."); }
+
+    const { data: assignmentId, error } = await supabase.rpc("create_group_assignment_with_groups", {
+      p_title: title,
+      p_description: newGroupDesc.trim(),
+      p_deadline: deadline,
+      p_document_url: newGroupDocUrl.trim() || null,
+      p_rubric: newGroupRubric.trim(),
+      p_group_count: numGroups,
+      p_max_students: maxStudentsPerGroup,
+    });
+    if (error || !assignmentId) {
+      alert("Không tạo được bài tập nhóm. Không có dữ liệu dở dang được lưu. " + (error?.message || "Máy chủ chưa trả mã bài tập."));
+      return;
+    }
+
     setNewGroupTitle("");
     setNewGroupDesc("");
     setNewGroupDeadline("");
     setNewGroupDocUrl("");
     setNewGroupRubric("");
-    alert("✅ Đã tạo bài tập nhóm, thiết lập tài liệu và chia nhóm thành công!");
-    fetchData();
+    alert(`Đã tạo bài tập nhóm và chia đủ ${students.length} học sinh thành ${numGroups} nhóm.`);
+    await fetchData();
   };
 
   const deleteGroupAssignment = async (id: string) => {

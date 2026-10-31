@@ -191,6 +191,7 @@ console.log("Four published microteaching videos, 18 persisted checkpoints, rubr
 
 const teacherDashboardSource = await readFile(new URL("../src/app/giao-vien/TeacherDashboard.tsx", import.meta.url), "utf8");
 const chatRealtimeMigration = await readFile(new URL("../supabase/migrations/20261031001800_chat_realtime.sql", import.meta.url), "utf8");
+const atomicGroupMigration = await readFile(new URL("../supabase/migrations/20261031001900_atomic_group_assignment.sql", import.meta.url), "utf8");
 assert.match(studentPortal, /channel\("class-chat-student"\)/);
 assert.match(studentPortal, /order\('created_at', \{ ascending: false \}\)\.limit\(300\)/);
 assert.match(teacherDashboardSource, /channel\("class-chat-teacher"\)/);
@@ -200,3 +201,12 @@ assert.match(chatRealtimeMigration, /END;\s*\$\$;/, "The Realtime publication mi
 assert.match(studentPortal, /setInterval\(\(\) => void refreshChat\(\), 30000\)/);
 assert.match(teacherDashboardSource, /setInterval\(\(\) => void refreshMessages\(\), 30000\)/);
 console.log("Teacher/student chat now uses Realtime, bounded history and a 30-second recovery poll.");
+const groupCreationSection = teacherDashboardSource.split("const createGroupAssignment = async")[1]?.split("const deleteGroupAssignment")[0] || "";
+assert.match(groupCreationSection, /rpc\("create_group_assignment_with_groups"/);
+assert.doesNotMatch(groupCreationSection, /from\('group_assignment_(?:groups|members)'\)\.insert/);
+assert.match(atomicGroupMigration, /SECURITY INVOKER/);
+assert.match(atomicGroupMigration, /Group capacity is smaller than the class size/);
+assert.match(atomicGroupMigration, /INSERT INTO public\.group_assignment_members/);
+assert.match(atomicGroupMigration, /REVOKE ALL ON FUNCTION[\s\S]+FROM PUBLIC/);
+assert.match(atomicGroupMigration, /GRANT EXECUTE[\s\S]+TO authenticated/);
+console.log("Group assignment and roster allocation now commit atomically with capacity and role checks.");
