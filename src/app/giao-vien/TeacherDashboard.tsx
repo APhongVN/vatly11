@@ -197,8 +197,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(100);
       if (data) setMessages([...data].reverse());
     };
-    const timer = window.setInterval(() => void refreshMessages(), 5000);
-    return () => window.clearInterval(timer);
+    const channel = supabase.channel("class-chat-teacher")
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => void refreshMessages())
+      .subscribe();
+    const timer = window.setInterval(() => void refreshMessages(), 30000);
+    return () => { window.clearInterval(timer); void supabase.removeChannel(channel); };
   }, [previewMode]);
   const handleLogout = async () => {
     if (previewMode) return;

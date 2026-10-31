@@ -70,11 +70,14 @@ export default function HocSinhPage() {
     if (previewMode || !student) return;
     const refreshChat = async () => {
       if (document.visibilityState !== "visible") return;
-      const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: true }).limit(300);
-      if (data) setMessages(data);
+      const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(300);
+      if (data) setMessages([...data].reverse());
     };
-    const timer = window.setInterval(() => void refreshChat(), 5000);
-    return () => window.clearInterval(timer);
+    const channel = supabase.channel("class-chat-student")
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => void refreshChat())
+      .subscribe();
+    const timer = window.setInterval(() => void refreshChat(), 30000);
+    return () => { window.clearInterval(timer); void supabase.removeChannel(channel); };
   }, [previewMode, student]);
   async function fetchData(student: any) {
     if (!student) return;
@@ -84,8 +87,8 @@ export default function HocSinhPage() {
     const { data: gActs } = await supabase.from('group_assignments').select('*').order('created_at', { ascending: false });
     if (gActs) setGroupActs(gActs);
 
-    const { data: msgs } = await supabase.from('messages').select('*').order('created_at');
-    if (msgs) setMessages(msgs);
+    const { data: msgs } = await supabase.from('messages').select('*').order('created_at', { ascending: false }).limit(300);
+    if (msgs) setMessages([...msgs].reverse());
 
     const { data: subs } = await supabase.from('submissions').select('*').eq('student_id', student.id);
     if (subs) setMySubmissions(subs);

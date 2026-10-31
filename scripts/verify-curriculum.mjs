@@ -188,3 +188,15 @@ assert.match(publishedResourceMigration, /FOR SELECT TO anon, authenticated/);
 assert.match(publishedResourceMigration, /r\.is_published/);
 assert.doesNotMatch(publishedResourceMigration, /FOR INSERT TO anon|FOR UPDATE TO anon|FOR DELETE TO anon/);
 console.log("Four published microteaching videos, 18 persisted checkpoints, rubric-based project uploads and public read-only published resources verified.");
+
+const teacherDashboardSource = await readFile(new URL("../src/app/giao-vien/TeacherDashboard.tsx", import.meta.url), "utf8");
+const chatRealtimeMigration = await readFile(new URL("../supabase/migrations/20261031001800_chat_realtime.sql", import.meta.url), "utf8");
+assert.match(studentPortal, /channel\("class-chat-student"\)/);
+assert.match(studentPortal, /order\('created_at', \{ ascending: false \}\)\.limit\(300\)/);
+assert.match(teacherDashboardSource, /channel\("class-chat-teacher"\)/);
+assert.match(teacherDashboardSource, /table: "messages"/);
+assert.match(chatRealtimeMigration, /ALTER PUBLICATION supabase_realtime ADD TABLE public\.messages/);
+assert.match(chatRealtimeMigration, /END;\s*\$\$;/, "The Realtime publication migration must close its PL/pgSQL block correctly.");
+assert.match(studentPortal, /setInterval\(\(\) => void refreshChat\(\), 30000\)/);
+assert.match(teacherDashboardSource, /setInterval\(\(\) => void refreshMessages\(\), 30000\)/);
+console.log("Teacher/student chat now uses Realtime, bounded history and a 30-second recovery poll.");
