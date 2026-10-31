@@ -26,13 +26,16 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const expectedRole = request.nextUrl.pathname.startsWith("/giao-vien") ? "teacher" : "student";
   if (!user) return NextResponse.redirect(new URL("/login", request.url));
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  const { data: profile } = await supabase.from("profiles").select("role,must_change_password").eq("id", user.id).maybeSingle();
   if (!profile || profile.role !== expectedRole) {
     return NextResponse.redirect(new URL("/login?error=role", request.url));
+  }
+  if (profile.role === "student" && profile.must_change_password && request.nextUrl.pathname !== "/doi-mat-khau") {
+    return NextResponse.redirect(new URL("/doi-mat-khau", request.url));
   }
   return response;
 }
 
 export const config = {
-  matcher: ["/nop-bai/:path*", "/phieu-nhom/:path*", "/lam-bai/:path*"],
+  matcher: ["/nop-bai/:path*", "/phieu-nhom/:path*", "/lam-bai/:path*", "/doi-mat-khau/:path*"],
 };

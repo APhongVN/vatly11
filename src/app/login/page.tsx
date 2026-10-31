@@ -20,7 +20,7 @@ export default function LoginPage() {
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (signInError || !data.user) throw new Error("Email hoặc mật khẩu không đúng.");
-      const { data: profile, error: profileError } = await supabase.from("profiles").select("role,full_name").eq("id", data.user.id).maybeSingle();
+      const { data: profile, error: profileError } = await supabase.from("profiles").select("role,full_name,must_change_password").eq("id", data.user.id).maybeSingle();
       if (profileError || !profile || profile.role !== role) {
         await supabase.auth.signOut();
         throw new Error("Tài khoản chưa được cấp quyền cho vai trò này. Hãy liên hệ giáo viên quản lý.");
@@ -34,6 +34,10 @@ export default function LoginPage() {
       if (studentError || !student) {
         await supabase.auth.signOut();
         throw new Error("Tài khoản chưa được liên kết với danh sách học sinh của lớp.");
+      }
+      if (profile.must_change_password) {
+        router.push("/doi-mat-khau");
+        return;
       }
       localStorage.setItem("student_session", JSON.stringify(student));
       router.push("/hoc-sinh");

@@ -55,6 +55,9 @@ export default function HocSinhPage() {
         setIsChatMuted(false);
         return;
       }
+      const { data: accountProfile, error: accountProfileError } = await supabase.from("profiles").select("role,must_change_password").eq("id", user.id).maybeSingle();
+      if (accountProfileError || accountProfile?.role !== "student") { await supabase.auth.signOut(); router.replace("/login?error=role"); return; }
+      if (accountProfile.must_change_password) { router.replace("/doi-mat-khau"); return; }
       const { data: profile } = await supabase.from('students').select('id,full_name,class_name').eq('auth_user_id', user.id).maybeSingle();
       if (!profile) { router.replace('/login?error=student-profile'); return; }
       if (cancelled) return;

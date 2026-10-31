@@ -38,6 +38,8 @@ BEGIN
     WHEN 'quiz' THEN 10
     WHEN 'analytics' THEN 5
     WHEN 'readiness-analysis' THEN 5
+    WHEN 'student-account' THEN 10
+    WHEN 'account-password' THEN 6
     ELSE NULL
   END;
   IF expected_limit IS NULL OR p_limit < 1 OR p_limit > expected_limit THEN

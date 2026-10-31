@@ -13,7 +13,9 @@ type RateLimitBucket =
   | "ocr"
   | "quiz"
   | "analytics"
-  | "readiness-analysis";
+  | "readiness-analysis"
+  | "student-account"
+  | "account-password"
 
 export async function authorizeApi(allowedRoles: Role[], rateLimit: number, bucket: RateLimitBucket) {
   const supabase = await createServerSupabaseClient();
@@ -22,9 +24,12 @@ export async function authorizeApi(allowedRoles: Role[], rateLimit: number, buck
     return { response: NextResponse.json({ error: "Vui lòng đăng nhập để tiếp tục." }, { status: 401 }) };
   }
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  const { data: profile } = await supabase.from("profiles").select("role,must_change_password").eq("id", user.id).maybeSingle();
   if (!profile || !allowedRoles.includes(profile.role as Role)) {
     return { response: NextResponse.json({ error: "Tài khoản không có quyền thực hiện thao tác này." }, { status: 403 }) };
+  }
+  if (profile.role === "student" && profile.must_change_password && bucket !== "account-password") {
+    return { response: NextResponse.json({ error: "Hãy đổi mật khẩu tạm trước khi tiếp tục." }, { status: 403 }) };
   }
 
   let rateLimiter: ReturnType<typeof createSupabaseAdminClient>;

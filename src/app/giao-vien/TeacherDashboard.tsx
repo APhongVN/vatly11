@@ -23,6 +23,14 @@ import { extractStudentNamesFromText } from "@/lib/student-import.mjs";
 import { csvSafeCell } from "@/lib/csv-export.mjs";
 
 const privateFileHref = (value: string) => value.startsWith("http") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
+const loadTeacherStudentRoster = async () => {
+  const withAccountFields = await supabase.from("students")
+    .select("id,full_name,class_name,auth_user_id,login_email").order("full_name").limit(1000);
+  if (!withAccountFields.error) return withAccountFields;
+  if (withAccountFields.error.code !== "42703" && withAccountFields.error.code !== "PGRST204") return withAccountFields;
+  // Keep the public preview/dashboard roster readable until the account migration is applied.
+  return supabase.from("students").select("id,full_name,class_name").order("full_name").limit(1000);
+};
 
 export default function GiaoVienPage({ previewMode = false }: { previewMode?: boolean }) {
   const router = useRouter();
@@ -78,6 +86,12 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [isSavingStudents, setIsSavingStudents] = useState(false);
   const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [accountStudent, setAccountStudent] = useState<any>(null);
+  const [accountEmail, setAccountEmail] = useState("");
+  const [studentAccountCredentials, setStudentAccountCredentials] = useState<{ email: string; password: string; studentName: string } | null>(null);
+  const [studentAccountError, setStudentAccountError] = useState("");
+  const [studentAccountNotice, setStudentAccountNotice] = useState("");
+  const [isCreatingStudentAccount, setIsCreatingStudentAccount] = useState(false);
 
   // Quản lý bài tập nhóm
   const [groupAssignments, setGroupAssignments] = useState<any[]>([]);
@@ -154,7 +168,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         { data: guides },
       ] = await Promise.all([
         supabase.from('activities').select('*').order('id').limit(300),
-        supabase.from('students').select('id,full_name,class_name').order('full_name').limit(1000),
+        loadTeacherStudentRoster(),
         supabase.from('submissions').select('*').order('submitted_at', { ascending: false }).limit(300),
         supabase.from('messages').select('*').order('created_at', { ascending: false }).limit(100),
         supabase.from('quizzes').select('*').order('id').limit(300),
@@ -925,6 +939,46 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     setStudents((current) => current.filter((item) => item.id !== id));
   };
 
+  const openStudentAccountModal = (student: any) => {
+    if (previewMode || student.auth_user_id) return;
+    setAccountStudent(student);
+    setAccountEmail("");
+    setStudentAccountCredentials(null);
+    setStudentAccountError("");
+    setStudentAccountNotice("");
+  };
+
+  const createStudentAccount = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (previewMode || !accountStudent || isCreatingStudentAccount) return;
+    setIsCreatingStudentAccount(true);
+    setStudentAccountError("");
+    setStudentAccountNotice("");
+    try {
+      const response = await fetch("/api/teacher/student-accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: accountStudent.id, email: accountEmail.trim() }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Không cấp được tài khoản.");
+      setStudentAccountCredentials({ email: result.email, password: result.password, studentName: result.studentName });
+      setStudentAccountNotice("Mật khẩu tạm chỉ hiển thị lần này. Hãy sao chép và gửi riêng cho học sinh.");
+      await fetchData();
+    } catch (accountError) {
+      setStudentAccountError(accountError instanceof Error ? accountError.message : "Không cấp được tài khoản học sinh.");
+    } finally {
+      setIsCreatingStudentAccount(false);
+    }
+  };
+
+  const closeStudentAccountModal = () => {
+    setAccountStudent(null);
+    setAccountEmail("");
+    setStudentAccountCredentials(null);
+    setStudentAccountError("");
+    setStudentAccountNotice("");
+  };
   const handleExcelUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     handleSmartFileUpload(event);
   };
@@ -2218,11 +2272,17 @@ maxLength={20000}
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {students.filter(s => s.full_name?.toLowerCase().includes(searchTerm.toLowerCase())).map(s => (
-                  <div key={s.id} className="bg-slate-50 border px-3.5 py-2.5 rounded-xl text-xs font-bold flex justify-between items-center group">
-                    <span className="truncate">{s.full_name}</span>
-                    <button type="button" aria-label={`Xóa học sinh ${s.full_name}`} onClick={() => deleteStudent(s.id)} className="text-slate-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Trash2 className="w-3.5 h-3.5"/>
-                    </button>
+                  <div key={s.id} className="min-w-0 rounded-xl border bg-slate-50 px-3 py-2.5 text-xs group">
+                    <div className="flex min-w-0 items-center justify-between gap-2">
+                      <span className="truncate font-bold">{s.full_name}</span>
+                      <div className="flex shrink-0 items-center gap-1">
+                        {s.auth_user_id ? <span className="rounded-md bg-emerald-100 px-1.5 py-1 text-[9px] font-bold text-emerald-800">Đã cấp</span> : <button type="button" disabled={previewMode} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
+                        <button type="button" aria-label={`Xóa học sinh ${s.full_name}`} onClick={() => deleteStudent(s.id)} className="rounded-md p-1 text-slate-400 hover:text-rose-600">
+                          <Trash2 className="h-3.5 w-3.5"/>
+                        </button>
+                      </div>
+                    </div>
+                    <p className="mt-1 truncate text-[10px] font-normal text-slate-500">{s.login_email || (s.auth_user_id ? "Tài khoản đã liên kết" : "Chưa có tài khoản đăng nhập")}</p>
                   </div>
                 ))}
                 {students.filter(s => s.full_name?.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
@@ -2230,6 +2290,15 @@ maxLength={20000}
                 )}
               </div>
             </div>
+            {accountStudent && (
+              <div className="fixed inset-0 z-[85] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeStudentAccountModal(); }}>
+                <section role="dialog" aria-modal="true" aria-labelledby="student-account-title" className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+                  <div className="flex items-start justify-between gap-4"><div><h3 id="student-account-title" className="text-xl font-black text-slate-900">Cấp tài khoản học sinh</h3><p className="mt-1 text-sm text-slate-500">{accountStudent.full_name} · tài khoản được gắn với hồ sơ lớp này.</p></div><button type="button" aria-label="Đóng" onClick={closeStudentAccountModal} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
+                  {studentAccountError && <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{studentAccountError}</p>}
+                  {studentAccountCredentials ? <div className="mt-5 space-y-3"><p className="rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">Tài khoản đã được tạo. Mật khẩu tạm chỉ hiển thị trong lần này; học sinh phải đổi mật khẩu khi đăng nhập lần đầu.</p><dl className="space-y-2 rounded-xl border p-4 text-sm"><div><dt className="text-xs text-slate-500">Email</dt><dd className="break-all font-semibold">{studentAccountCredentials.email}</dd></div><div><dt className="text-xs text-slate-500">Mật khẩu tạm</dt><dd className="break-all font-mono font-bold">{studentAccountCredentials.password}</dd></div></dl><button type="button" onClick={() => void navigator.clipboard.writeText(`${studentAccountCredentials.email}\n${studentAccountCredentials.password}`).then(() => setStudentAccountNotice("Đã sao chép thông tin đăng nhập.")).catch(() => setStudentAccountNotice("Không sao chép tự động được; hãy chép thông tin đang hiển thị."))} className="w-full rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white">Sao chép thông tin đăng nhập</button><p role="status" className="text-xs text-slate-500">{studentAccountNotice}</p></div> : <form onSubmit={createStudentAccount} className="mt-5 space-y-4"><label className="block text-sm font-semibold text-slate-700">Email học sinh<input type="email" required maxLength={254} autoComplete="off" value={accountEmail} onChange={(event) => setAccountEmail(event.target.value)} placeholder="hoc.sinh@example.com" className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-600" /></label><p className="text-xs leading-5 text-slate-500">Hệ thống tạo mật khẩu tạm ngẫu nhiên và không lưu mật khẩu vào danh sách. Chỉ cô xem được một lần sau khi tạo.</p><div className="flex justify-end gap-2"><button type="button" onClick={closeStudentAccountModal} disabled={isCreatingStudentAccount} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-50">Hủy</button><button type="submit" disabled={isCreatingStudentAccount || previewMode} className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isCreatingStudentAccount ? "Đang cấp tài khoản…" : "Tạo tài khoản"}</button></div></form>}
+                </section>
+              </div>
+            )}
             {showPasteModal && (
               <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowPasteModal(false); }}>
                 <section role="dialog" aria-modal="true" aria-labelledby="paste-students-title" className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
