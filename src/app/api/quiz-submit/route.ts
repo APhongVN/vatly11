@@ -70,6 +70,9 @@ export async function POST(request: Request) {
       score,
     });
     if (saveError) {
+      if (saveError.code === "23505") {
+        return NextResponse.json({ error: "Bài trắc nghiệm này đã được nộp." }, { status: 409 });
+      }
       console.error("Could not save quiz result", { code: saveError.code });
       return NextResponse.json({ error: "Không lưu được kết quả bài làm." }, { status: 503 });
     }

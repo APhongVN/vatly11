@@ -13,6 +13,7 @@ const dashboard = await readFile(new URL("../src/app/giao-vien/TeacherDashboard.
 const groupMigration = await readFile(new URL("../supabase/migrations/20261031001100_named_groups.sql", import.meta.url), "utf8");
 const privateDataMigration = await readFile(new URL("../supabase/migrations/20261031001300_private_activity_data.sql", import.meta.url), "utf8");
 const answerPrivacyMigration = await readFile(new URL("../supabase/migrations/20261031001400_protect_answer_keys.sql", import.meta.url), "utf8");
+const uniqueQuizMigration = await readFile(new URL("../supabase/migrations/20261031001500_unique_quiz_attempts.sql", import.meta.url), "utf8");
 const schema = await readFile(new URL("../supabase/migrations/20261031000000_initial_schema.sql", import.meta.url), "utf8");
 const quizPage = await readFile(new URL("../src/app/lam-bai/page.tsx", import.meta.url), "utf8");
 const quizSubmitApi = await readFile(new URL("../src/app/api/quiz-submit/route.ts", import.meta.url), "utf8");
@@ -41,6 +42,9 @@ assert.match(schema, /CREATE TABLE IF NOT EXISTS public\.activity_grading_guides
 assert.match(schema, /CREATE TABLE IF NOT EXISTS public\.quiz_question_keys/);
 assert.doesNotMatch(quizPage, /correct_option|explanation/, "Student quiz pages must not load answer keys.");
 assert.match(quizSubmitApi, /createSupabaseAdminClient/);
+assert.match(uniqueQuizMigration, /CREATE UNIQUE INDEX IF NOT EXISTS idx_quiz_submissions_one_attempt_per_student/);
+assert.match(uniqueQuizMigration, /quiz_submission_duplicate_archive/);
+assert.match(quizSubmitApi, /saveError\.code === "23505"[\s\S]*status: 409/);
 assert.doesNotMatch(quizSubmitApi, /return NextResponse\.json\(\{ score,.*correct/i, "Quiz API must not return the answer key.");
 
 
