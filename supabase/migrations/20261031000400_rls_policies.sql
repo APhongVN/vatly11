@@ -222,8 +222,11 @@ VALUES ('videos', 'videos', FALSE, 104857600, ARRAY[
 ])
 ON CONFLICT (id) DO UPDATE SET public = FALSE, file_size_limit = 104857600, allowed_mime_types = EXCLUDED.allowed_mime_types;
 
-CREATE POLICY "videos_read_authenticated" ON storage.objects FOR SELECT TO authenticated
-  USING (bucket_id = 'videos');
+CREATE POLICY "videos_read_activity_document" ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'videos' AND (public.is_teacher() OR EXISTS (
+    SELECT 1 FROM public.activities a
+    WHERE a.document_url = storage.objects.name AND a.status = 'available'
+  )));
 CREATE POLICY "videos_teacher_upload" ON storage.objects FOR INSERT TO authenticated
   WITH CHECK (bucket_id = 'videos' AND public.is_teacher());
 CREATE POLICY "videos_teacher_update" ON storage.objects FOR UPDATE TO authenticated
