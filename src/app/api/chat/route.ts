@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { authorizeApi } from "@/lib/api-security";
 import { GEMINI_MODELS } from "@/lib/gemini-config";
+import { getChatActivityId, isStudentTaskAwaitingWork } from "@/lib/chat-context.mjs";
 
 const MAX_MESSAGES = 12;
 const MAX_MESSAGE_CHARS = 1200;
@@ -10,6 +11,7 @@ const MAX_REQUEST_BYTES = 24_000;
 const SYSTEM_INSTRUCTION = `Bạn là trợ lý học tập Vật lí 11, tập trung vào tụ điện. Trả lời bằng tiếng Việt, đúng vật lí, rõ ý và ngắn gọn: thường 2–5 câu. Nếu là bài tập, nêu công thức, thay số, đơn vị và kết quả; nếu học sinh đang làm nhiệm vụ chưa nộp, chỉ gợi ý từng bước, không cho đáp án hoàn chỉnh. Viết công thức bằng LaTeX trong $...$. Nếu thiếu dữ kiện hoặc không chắc, nói rõ điều cần bổ sung thay vì đoán. Nội dung chuẩn: C = ε₀εᵣS/d; Q = CU; W = 1/2 CU² = 1/2 QU = Q²/(2C). Khi tụ còn nối nguồn thì U do nguồn giữ ổn định; khi đã ngắt nguồn thì Q được giữ (bỏ qua rò điện). Không khẳng định học liệu chưa được cung cấp là nội dung đã có trên website.`;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
+function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === "object" && !Array.isArray(value); }
 
 export async function POST(request: Request) {
   const access = await authorizeApi(["teacher", "student"], 12, "chat");
@@ -30,7 +32,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Tin nhắn quá dài. Em hãy rút gọn câu hỏi rồi gửi lại nhé." }, { status: 413 });
     }
 
-    const parsed = JSON.parse(rawBody) as { messages?: unknown };
+    const parsed = JSON.parse(rawBody) as { messages?: unknown; context?: unknown };
     if (!Array.isArray(parsed.messages) || parsed.messages.length === 0) {
       return NextResponse.json({ error: "Em hãy nhập câu hỏi trước nhé." }, { status: 400 });
     }
@@ -59,6 +61,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Em hãy gửi một câu hỏi mới nhé." }, { status: 400 });
     }
 
+    let taskContext = "Không có nhiệm vụ đang mở trong ngữ cảnh hiện tại. Có thể giải thích kiến thức và hướng dẫn lời giải đầy đủ.";
+    const suppliedContext = isRecord(parsed.context) ? parsed.context : {};
+    const activityId = getChatActivityId(typeof suppliedContext.pathname === "string" ? suppliedContext.pathname : "", typeof suppliedContext.search === "string" ? suppliedContext.search : "");
+    if (access.profile.role === "student" && activityId !== null) {
+      const { data: student, error: studentError } = await access.supabase.from("students")
+        .select("id").eq("auth_user_id", access.user.id).maybeSingle();
+      if (studentError || !student) {
+        taskContext = "Không xác minh được hồ sơ học sinh; chỉ đưa gợi ý khái niệm, không cung cấp đáp số hay lời giải hoàn chỉnh.";
+      } else {
+        const { data: activity, error: activityError } = await access.supabase.from("activities")
+          .select("title,status,accepting_submissions,deadline").eq("id", activityId).maybeSingle();
+        if (activityError || !activity) {
+          taskContext = "Không xác minh được trạng thái hoạt động; chỉ đưa gợi ý khái niệm, không cung cấp đáp số hay lời giải hoàn chỉnh.";
+        } else {
+          const { data: evidence, error: evidenceError } = await access.supabase.from("activity_evidence")
+            .select("completed_at").eq("student_id", student.id).eq("activity_id", activityId).maybeSingle();
+          if (evidenceError) {
+            taskContext = "Không xác minh được bài đã nộp hay chưa; chỉ đưa gợi ý khái niệm, không cung cấp đáp số hay lời giải hoàn chỉnh.";
+          } else {
+            const awaitingWork = isStudentTaskAwaitingWork(activity, evidence?.completed_at || null);
+            taskContext = awaitingWork
+              ? `Học sinh đang ở hoạt động ${activityId}: ${activity.title}, chưa nộp và hoạt động đang nhận bài. Chỉ hỏi gợi mở từng bước, giúp xác định dữ kiện/công thức và yêu cầu học sinh tự suy luận; không đưa đáp số, đáp án trắc nghiệm hay lời giải hoàn chỉnh.`
+              : `Hoạt động ${activityId}: ${activity.title} đã đóng hoặc học sinh đã nộp. Có thể giải thích đầy đủ, chữa bài từng bước và đối chiếu kết quả.`;
+          }
+        }
+      }
+    }
+    const systemInstruction = `${SYSTEM_INSTRUCTION}\n\nNgữ cảnh nhiệm vụ do máy chủ kiểm tra: ${taskContext}`;
     const ai = new GoogleGenAI({ apiKey });
     for (const model of GEMINI_MODELS) {
       try {
@@ -69,7 +99,7 @@ export async function POST(request: Request) {
             parts: [{ text: message.content }],
           })),
           config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
+            systemInstruction,
             temperature: 0.25,
             maxOutputTokens: 700,
           },

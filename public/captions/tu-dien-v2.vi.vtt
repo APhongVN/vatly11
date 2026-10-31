@@ -1,0 +1,16 @@
+WEBVTT
+
+00:00:00.000 --> 00:01:10.000
+Mô hình đơn giản nhất của tụ điện gồm hai vật dẫn đặt gần nhau và ngăn cách bởi môi trường cách điện, gọi là điện môi. Mỗi vật dẫn là một bản tụ.
+
+00:01:10.000 --> 00:02:20.000
+Khi nối với nguồn, điện tích phân bố trên hai bản: một bản mang điện dương, bản kia mang điện âm; độ lớn điện tích trên hai bản bằng nhau.
+
+00:02:20.000 --> 00:03:20.000
+Sau khi ngắt khỏi nguồn và nếu bỏ qua rò điện, tụ vẫn có thể giữ điện tích trong một khoảng thời gian.
+
+00:03:20.000 --> 00:04:30.000
+Khi tạo mạch ngoài, tụ phóng điện. Năng lượng dự trữ được truyền sang tải.
+
+00:04:30.000 --> 00:05:30.000
+Ba trạng thái nạp, giữ điện tích và phóng điện là nền tảng để hiểu các ứng dụng của tụ điện.

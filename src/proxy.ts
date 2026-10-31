@@ -34,5 +34,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/hoc-sinh/:path*", "/nop-bai/:path*", "/phieu-nhom/:path*", "/lam-bai/:path*"],
+  matcher: ["/nop-bai/:path*", "/phieu-nhom/:path*", "/lam-bai/:path*"],
 };

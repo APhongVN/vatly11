@@ -34,6 +34,7 @@ BEGIN
     RAISE EXCEPTION 'Group size settings are out of range' USING ERRCODE = '22023';
   END IF;
 
+  LOCK TABLE public.students IN SHARE MODE;
   SELECT COUNT(*) INTO v_student_count FROM public.students;
   IF v_student_count = 0 THEN
     RAISE EXCEPTION 'Import students before creating groups' USING ERRCODE = '22023';

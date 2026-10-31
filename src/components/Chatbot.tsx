@@ -55,6 +55,7 @@ export default function Chatbot({ initiallyOpen = false }: { initiallyOpen?: boo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: nextMessages.slice(-12).map(({ role, text }) => ({ role, content: text })),
+          context: { pathname: window.location.pathname, search: window.location.search },
         }),
       });
       const data = await response.json();

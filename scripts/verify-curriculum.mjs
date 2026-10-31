@@ -4,8 +4,21 @@ import { filterSubmissionsForStudentGroups } from "../src/lib/group-submissions.
 import { extractStudentNamesFromText } from "../src/lib/student-import.mjs";
 import { getResourceDownloadName } from "../src/lib/resource-download.mjs";
 import { scoreActivityQuiz } from "../src/lib/activity-quiz.mjs";
+import { isValidReadinessEvidence } from "../src/lib/readiness-check.mjs";
+import { canSeekToWatchedTime, isTimelineComplete, normalizePlayedRanges } from "../src/lib/microteaching-progress.mjs";
+import { DELAYED_PRACTICE_DELAY_MS, getDelayedPracticeWindow } from "../src/lib/activity-schedule.mjs";
+import { getChatActivityId, isStudentTaskAwaitingWork } from "../src/lib/chat-context.mjs";
+import { getPeerDiscussionWindow, isPeerChoiceSet, PEER_DISCUSSION_DURATION_MS, summarizePeerVotes } from "../src/lib/peer-votes.mjs";
 import { readFile } from "node:fs/promises";
+import { csvSafeCell } from "../src/lib/csv-export.mjs";
+import { isValidQUVariablePlan } from "../src/lib/virtual-lab-validation.mjs";
 
+assert.equal(csvSafeCell("=1+1"), "\"'=1+1\"");
+assert.equal(csvSafeCell("abc,def"), "\"abc,def\"");
+assert.equal(isValidQUVariablePlan({ independent: "", dependent: "", controls: [] }, false), true, "Students must be able to save an unfinished variable plan.");
+assert.equal(isValidQUVariablePlan({ independent: "U", dependent: "Q", controls: ["S", "d", "epsilon"] }, true), true);
+assert.equal(isValidQUVariablePlan({ independent: "U", dependent: "Q", controls: ["S", "d"] }, true), false);
+assert.equal(isValidQUVariablePlan({ independent: "U", dependent: "Q", controls: ["S", "S", "epsilon"] }, false), false);
 const curriculum = JSON.parse(await readFile(new URL("../src/lib/data/curriculum.json", import.meta.url), "utf8"));
 const activities = await readFile(new URL("../src/lib/data/activities.ts", import.meta.url), "utf8");
 const questions = await readFile(new URL("../src/lib/data/questions.ts", import.meta.url), "utf8");
@@ -26,13 +39,15 @@ const virtualLab = await readFile(new URL("../src/components/VirtualLab.tsx", im
 const staticQuiz = await readFile(new URL("../src/components/Quiz.tsx", import.meta.url), "utf8");
 const publicQuizBank = await readFile(new URL("../src/lib/data/questions.ts", import.meta.url), "utf8");
 const activityResponseForm = await readFile(new URL("../src/components/ActivityResponseForm.tsx", import.meta.url), "utf8");
+const readinessAnalysisApi = await readFile(new URL("../src/app/api/readiness-analysis/route.ts", import.meta.url), "utf8");
+const evidencePanel = await readFile(new URL("../src/components/ActivityEvidencePanel.tsx", import.meta.url), "utf8");
 
 assert.equal(curriculum.length, 11, "The merged course must contain 11 web activities.");
 assert.deepEqual(curriculum.map(({ id }) => id), [1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14]);
 assert.equal(curriculum.reduce((sum, activity) => sum + activity.sourceSections.length, 0), 14, "All 14 source sections must be preserved.");
 assert.deepEqual(curriculum.find(({ id }) => id === 8).sourceSections.map((section) => Number(section.match(/^HOẠT ĐỘNG (\d+)/)?.[1])), [8, 9, 10, 11]);
 assert.equal((questions.match(/id: "G\d+"/g) || []).length, 16, "Capacitor Challenge must contain 16 questions.");
-assert.equal((questions.match(/id: "R\d+"/g) || []).length, 10, "Readiness quiz must contain 10 scored questions.");
+assert.equal((questions.match(/id: "R\d+"/g) || []).length, 10, "Readiness survey must contain 10 diagnostic questions.");
 assert.deepEqual([...activities.matchAll(/\bid: (\d+),/g)].map(([, id]) => Number(id)), [1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14]);
 assert.doesNotMatch(activities, /^\s*(?:model_answer|grading_rubric):/m, "Teacher answers and rubrics must not ship in public activity data.");
 assert.match(activities, /title: "Các thí nghiệm liên quan đến tụ điện"/);
@@ -106,6 +121,8 @@ assert.match(studentDashboard, /showImportModal &&/);
 assert.match(studentDashboard, /showPasteModal &&/);
 assert.match(studentDashboard, /setShowPasteModal\(true\)/);
 assert.match(studentDashboard, /extractStudentNamesFromText\(text\)/);
+assert.match(studentDashboard, /file\.size > 10 \* 1024 \* 1024/);
+assert.match(studentDashboard, /\.map\(csvSafeCell\)/);
 console.log("Student roster import preview, paste flow, CSV/TXT parsing and duplicate-safe review verified.");
 
 assert.equal(getResourceDownloadName("2026/123e4567-e89b-42d3-a456-426614174000-bai_giang.pdf", "Tài liệu lớp"), "bai_giang.pdf", "Downloads must preserve the original file extension and readable name.");
@@ -135,13 +152,17 @@ console.log("Grading API keeps model answers teacher-only while students receive
 assert.match(submissionPage, /model_answer: result\.model_answer \?\? ""/);
 assert.doesNotMatch(submissionPage, /Không có đáp án mẫu/);
 const studentPortal = await readFile(new URL("../src/app/hoc-sinh/page.tsx", import.meta.url), "utf8");
+const proxy = await readFile(new URL("../src/proxy.ts", import.meta.url), "utf8");
+assert.ok(!proxy.includes("\"/hoc-sinh/:path*\""));
 assert.match(studentPortal, /setPreviewMode\(true\)/);
 assert.match(studentPortal, /Bản xem trước học sinh/);
 assert.match(studentPortal, /data-preview-navigation="true"/);
 assert.match(studentPortal, /if \(previewMode \|\| !student\) return/);
 console.log("Student portal is publicly reviewable in a read-only sample mode without opening account access.");
-assert.equal(scoreActivityQuiz(6, { R1:1,R2:1,R3:0,R4:0,R5:0,R6:1,R7:1,R8:0,R9:2,R10:0 }), 10, "Readiness quiz scores must come from the server-side answer key.");
-assert.equal(scoreActivityQuiz(6, { R1:1 }), null, "The server must reject incomplete quiz answers.");
+assert.equal(scoreActivityQuiz(6, { R1:1,R2:1,R3:0,R4:0,R5:0,R6:1,R7:1,R8:0,R9:2,R10:0 }), null, "Readiness must never be scored as right or wrong.");
+assert.equal(scoreActivityQuiz(6, { R1:1 }), null, "Readiness questions are not part of the scored quiz system.");
+assert.equal(isValidReadinessEvidence({ kind: "readiness-check", answers: Object.fromEntries(Array.from({ length: 10 }, (_, i) => [`R${i + 1}`, 0])), muddyTopics: ["energy"], muddyPoint: "Em chưa hiểu công thức năng lượng.", confidence: "partial" }), true);
+assert.equal(isValidReadinessEvidence({ kind: "readiness-check", answers: Object.fromEntries(Array.from({ length: 10 }, (_, i) => [`R${i + 1}`, 0])), muddyTopics: ["energy"], muddyPoint: "Chưa rõ.", confidence: "partial" }), false);
 assert.equal(scoreActivityQuiz(7, { PI1:2,PI2:1,PI3:0 }), 3);
 assert.equal(scoreActivityQuiz(12, { G1:1,G2:2,G3:1,G4:0,G5:1,G6:0,G7:1,G8:0,G9:1,G10:0,G11:1,G12:0,G13:0,G14:1,G15:1,G16:1 }), 16);
 assert.doesNotMatch(publicQuizBank, /correct(?:Index)?:\s*\d/, "Scoring keys must not be shipped with client-visible questions.");
@@ -149,6 +170,12 @@ assert.match(staticQuiz, /\/api\/activity-evidence/);
 assert.doesNotMatch(staticQuiz, /markActivityComplete|\.correct\b/);
 assert.match(activityEvidenceApi, /authorizeApi\(\["student"\]/);
 assert.match(activityEvidenceApi, /scoreActivityQuiz/);
+assert.ok(activityEvidenceApi.includes("activityId === 6") && activityEvidenceApi.includes("isValidReadinessEvidence"));
+assert.match(activityEvidenceApi, /ONE_ATTEMPT_ACTIVITY_IDS/);
+assert.ok(readinessAnalysisApi.includes("authorizeApi([\"teacher\"]"));
+assert.ok(readinessAnalysisApi.includes("eq(\"activity_id\", 6)"));
+assert.match(evidencePanel, /Phân tích bằng AI/);
+assert.match(staticQuiz, /không chấm điểm đúng sai/);
 assert.match(activityEvidenceApi, /QUIZ_ACTIVITY_IDS\.has\(activityId\)[\s\S]*\.insert\(payload\)/, "One-attempt quizzes must use insert so concurrent submits cannot overwrite each other.");
 assert.match(activityEvidenceApi, /is\("completed_at", null\)/, "Completed lab notebooks must not be overwritten by racing drafts.");
 assert.match(activityEvidenceMigration, /UNIQUE \(student_id, activity_id\)/);
@@ -162,8 +189,23 @@ assert.match(interactions, /ActivityResponseForm activityId=\{activityId\}/);
 assert.equal((virtualLab.match(/id: "(?:charge-discharge|charge-voltage|capacitance-factors|source-state|circuit-builder|energy-graph)"/g) || []).length, 6, "The virtual lab must implement all six source experiments.");
 assert.match(virtualLab, /const Q = capacitance \* U \* randomMeasurementError/);
 assert.match(virtualLab, /fittedCapacitance/);
+assert.match(virtualLab, /measurementRange >= labSettings\.maxVoltage \* 0\.6/);
+assert.match(virtualLab, /measurementAlreadyTaken/);
+assert.match(virtualLab, /Dự đoán trước khi chạy khảo sát/);
+assert.match(virtualLab, /name === "dielectric" \? 3 : 4/);
+assert.match(virtualLab, /disabled=\{readOnly \|\| measurements\.length > 0\}/, "Q–U controls must stay fixed while collecting one data set.");
+assert.match(virtualLab, /Xóa bộ số liệu nếu muốn thay đổi cấu hình tụ/);
 assert.match(virtualLab, /Nộp sổ tay cho giáo viên/);
-const evidencePanel = await readFile(new URL("../src/components/ActivityEvidencePanel.tsx", import.meta.url), "utf8");
+assert.match(activityEvidenceApi, /Math\.max\(\.\.\.voltages\) - Math\.min\(\.\.\.voltages\) < settings\.maxVoltage \* 0\.6/);
+assert.match(activityEvidenceApi, /allFactorPredictionsValid/);
+assert.match(activityEvidenceApi, /pointCount = name === "dielectric" \? 3 : 4/);
+assert.match(virtualLab, /type QUVaria = \{ independent: string; dependent: string; controls: string\[\] \}/);
+assert.match(virtualLab, /value=\{qUVariables\.independent\}/);
+assert.match(virtualLab, /value=\{qUVariables\.dependent\}/);
+assert.match(virtualLab, /controlVariablesCorrect = \["S", "d", "epsilon"\]/);
+assert.match(activityEvidenceApi, /isValidQUVariablePlan\(qU\.variables, complete\)/);
+assert.match(await readFile(new URL("../src/lib/virtual-lab-validation.mjs", import.meta.url), "utf8"), /independent === "U" && dependent === "Q"/);
+
 assert.match(evidencePanel, /Xuất JSON/);
 assert.match(evidencePanel, /deleteRecord/);
 console.log("Six virtual experiments, server-scored quiz keys and persistent teacher-visible activity evidence verified.");
@@ -209,6 +251,7 @@ assert.match(groupCreationSection, /rpc\("create_group_assignment_with_groups"/)
 assert.doesNotMatch(groupCreationSection, /from\('group_assignment_(?:groups|members)'\)\.insert/);
 assert.match(atomicGroupMigration, /SECURITY INVOKER/);
 assert.match(atomicGroupMigration, /Group capacity is smaller than the class size/);
+assert.match(atomicGroupMigration, /LOCK TABLE public\.students IN SHARE MODE/);
 assert.match(atomicGroupMigration, /INSERT INTO public\.group_assignment_members/);
 assert.match(atomicGroupMigration, /REVOKE ALL ON FUNCTION[\s\S]+FROM PUBLIC/);
 assert.match(atomicGroupMigration, /GRANT EXECUTE[\s\S]+TO authenticated/);
@@ -242,4 +285,109 @@ assert.match(atomicRegroupMigration, /Cannot regroup after group work has been s
 assert.match(atomicRegroupMigration, /CREATE OR REPLACE FUNCTION public\.normalize_group_submission/);
 assert.match(atomicRegroupMigration, /Student is not a member of this group/);
 assert.match(teacherDashboardSource, /Tên này đã được một nhóm khác/);
+assert.match(teacherDashboardSource, /Không lưu được ma trận điểm/);
+assert.match(teacherDashboardSource, /maxLength=\{20000\}/);
+assert.match(teacherDashboardSource, /savingGroupRubricId === gAct\.id/);
 console.log("Group reassignment is transactional, preserves submission history, and rejects stale-member submissions.");
+
+assert.deepEqual(normalizePlayedRanges([[30, 60], [0, 31], [61, 90]]), [[0, 90]], "Continuous playback fragments should merge without treating a seek as watched.");
+assert.equal(isTimelineComplete([[0, 240]], 240, 240), true, "The shortest specified video can pass after full timeline playback.");
+assert.equal(isTimelineComplete([[0, 80], [160, 240]], 240, 240), false, "A forward-seek gap must keep the video incomplete.");
+assert.equal(isTimelineComplete([[0, 237]], 240, 240), false, "The final segment must be watched before completion.");
+assert.equal(isTimelineComplete([[0, 240]], 239, 240), false, "Videos below the DOCX minimum duration cannot pass.");
+assert.equal(canSeekToWatchedTime([], 0), true);
+assert.equal(canSeekToWatchedTime([], 12), false, "Unseen video time must not be seekable.");
+assert.equal(canSeekToWatchedTime([[0, 20]], 15), true, "Replaying already watched time must remain possible.");
+assert.match(microteaching, /onSeeking=/);
+assert.match(microteaching, /onTimeUpdate=/);
+assert.match(microteaching, /role="dialog"/);
+assert.match(microteaching, /kind="captions"/);
+assert.match(microteaching, /Transcript và phụ đề tiếng Việt/);
+assert.match(activityEvidenceApi, /passedCheckpoints\[id\] === true/);
+assert.match(activityEvidenceApi, /isTimelineComplete\(/);
+for (const id of ["v1", "v2", "v3", "v4"]) {
+  const caption = await readFile(new URL(`../public/captions/tu-dien-${id}.vi.vtt`, import.meta.url), "utf8");
+  assert.match(caption, /^WEBVTT/);
+  assert.match(caption, /--> /);
+}
+console.log("Microteaching now validates full playback ranges, pauses at checkpoints, and includes Vietnamese transcripts/subtitles.");
+
+const activity8CompletedAt = "2026-01-01T00:00:00.000Z";
+assert.deepEqual(getDelayedPracticeWindow(null, Date.parse("2026-02-01T00:00:00.000Z")), { availableAt: null, available: false });
+assert.equal(getDelayedPracticeWindow(activity8CompletedAt, Date.parse(activity8CompletedAt) + DELAYED_PRACTICE_DELAY_MS - 1).available, false);
+assert.equal(getDelayedPracticeWindow(activity8CompletedAt, Date.parse(activity8CompletedAt) + DELAYED_PRACTICE_DELAY_MS).available, true);
+assert.match(activityEvidenceApi, /activityId === 14[\s\S]+activity_id\", 8[\s\S]+getDelayedPracticeWindow/);
+assert.match(activityEvidenceApi, /delayedPractice\.available[\s\S]+status: 403/);
+assert.match(activityResponseForm, /delayedPracticeAvailable/);
+assert.match(activityResponseForm, /field\.key\.startsWith\("d"\)/);
+assert.match(activityResponseForm, /mở sau một tuần/);
+console.log("Delayed D1–D8 practice unlocks seven days after each student's completed in-class lab and is enforced by the API.");
+
+assert.equal(getChatActivityId("/hoat-dong/8"), 8);
+assert.equal(getChatActivityId("/hoat-dong/14/"), 14);
+assert.equal(getChatActivityId("/lam-bai", "?activityId=7"), 7);
+assert.equal(getChatActivityId("/hoat-dong/99"), null);
+assert.equal(getChatActivityId("/lam-bai", "?activityId=8%3Bselect"), null);
+const activeChatTask = { status: "available", accepting_submissions: true, deadline: "2026-11-01T00:00:00.000Z" };
+assert.equal(isStudentTaskAwaitingWork(activeChatTask, null, Date.parse("2026-10-31T00:00:00.000Z")), true);
+assert.equal(isStudentTaskAwaitingWork(activeChatTask, "2026-10-30T00:00:00.000Z", Date.parse("2026-10-31T00:00:00.000Z")), false);
+assert.equal(isStudentTaskAwaitingWork({ ...activeChatTask, status: "draft" }, null), false);
+assert.equal(isStudentTaskAwaitingWork({ ...activeChatTask, deadline: "invalid" }, null), false);
+const chatbot = await readFile(new URL("../src/components/Chatbot.tsx", import.meta.url), "utf8");
+const chatApi = await readFile(new URL("../src/app/api/chat/route.ts", import.meta.url), "utf8");
+assert.match(chatbot, /context: \{ pathname: window\.location\.pathname, search: window\.location\.search \}/);
+assert.match(chatApi, /\.eq\("student_id", student\.id\)\.eq\("activity_id", activityId\)/);
+assert.match(chatApi, /Không xác minh được bài đã nộp hay chưa/);
+assert.match(chatApi, /systemInstruction = `\$\{SYSTEM_INSTRUCTION\}\\n\\n/);
+assert.match(activityEvidenceApi, /linkedStudent\.id\)\.eq\("activity_id", 8\)/);
+console.log("Chat hints now use server-checked activity/student state; delayed practice uses the current student's own lab timestamp.");
+const peerRows = [];
+for (let student = 0; student < 5; student += 1) {
+  for (const [index, questionId] of ["PI1", "PI2", "PI3"].entries()) {
+    peerRows.push({ question_id: questionId, first_choice: student % 3, second_choice: (student + index) % 3 });
+  }
+}
+assert.equal(isPeerChoiceSet({ PI1: 0, PI2: 2, PI3: 1 }), true);
+assert.equal(isPeerChoiceSet({ PI1: 0, PI2: 2, PI3: 3 }), false);
+assert.equal(summarizePeerVotes(peerRows, 5).results[0].first.reduce((sum, count) => sum + count, 0), 5);
+assert.equal(summarizePeerVotes(peerRows.slice(0, 12), 5).results[0].first, null, "Anonymous class distributions must remain hidden below five complete participants.");
+assert.match(staticQuiz, /phase: "first"/);
+assert.match(staticQuiz, /phase: "second"/);
+assert.match(staticQuiz, /Thảo luận cặp · 2 phút/);
+assert.match(staticQuiz, /discussionSeconds > 0/);
+assert.match(staticQuiz, /renderPeerHistogram/);
+assert.match(readFile.toString(), /readFile/);
+const peerVoteApi = await readFile(new URL("../src/app/api/peer-votes/route.ts", import.meta.url), "utf8");
+const peerVoteRules = await readFile(new URL("../src/lib/peer-votes.mjs", import.meta.url), "utf8");
+const peerVoteMigration = await readFile(new URL("../supabase/migrations/20261031002200_peer_instruction_votes.sql", import.meta.url), "utf8");
+assert.match(peerVoteRules, /minimumForPrivacy/);
+assert.match(peerVoteApi, /myFirstAnswers/);
+assert.match(peerVoteMigration, /REVOKE ALL ON public\.peer_instruction_votes FROM anon, authenticated/);
+assert.match(peerVoteMigration, /first_voted_at TIMESTAMPTZ/);
+console.log("Peer instruction now persists both votes, enforces a two-minute discussion and suppresses distributions below five participants.");
+assert.match(virtualLab, /recordLabEvent\("Ghi phép đo U=/);
+assert.match(virtualLab, /recordLabEvent\("Đặt C₁=/);
+assert.match(virtualLab, /Nhật ký thao tác ·/);
+assert.match(activityEvidenceApi, /events\.length > 300/);
+console.log("Virtual lab action logs are visible in the notebook, stored with student evidence and bounded server-side.");
+
+const firstVoteRecordedAt = "2026-10-31T00:00:00.000Z";
+assert.equal(getPeerDiscussionWindow(firstVoteRecordedAt, Date.parse(firstVoteRecordedAt) + PEER_DISCUSSION_DURATION_MS - 1).available, false);
+assert.equal(getPeerDiscussionWindow(firstVoteRecordedAt, Date.parse(firstVoteRecordedAt) + PEER_DISCUSSION_DURATION_MS).available, true);
+assert.equal(getPeerDiscussionWindow("invalid").available, false);
+assert.match(peerVoteApi, /getPeerDiscussionWindow\(firstVoteTime\)/);
+assert.match(peerVoteApi, /first_choice: answers\[id\], first_voted_at: firstVotedAt/);
+assert.match(peerVoteApi, /secondsRemaining: discussionWindow\.secondsRemaining/);
+console.log("The peer discussion's two-minute minimum is enforced by the server timestamp, not only by the browser timer.");
+
+
+
+assert.match(activityResponseForm, /freezeInitial: activityId === 3 && complete/);
+assert.match(activityEvidenceApi, /activityId === 3 && complete && !freezeInitial/);
+assert.match(activityEvidenceApi, /hasSameInitialPrediction\(evidence\.responses, existing\.evidence\.initialResponses\)/);
+assert.match(activityEvidenceApi, /initialPredictionSnapshot/);
+assert.match(virtualLab, /predictionRevisions/);
+assert.match(virtualLab, /Dự đoán ban đầu/);
+assert.match(virtualLab, /Thay đổi dự đoán/);
+assert.match(activityEvidenceApi, /Hãy chốt bốn giả thuyết ở hoạt động 3/);
+console.log("Activity 3 initial hypotheses freeze server-side; the merged lab compares them with evidence and records keep/revise reasoning.");

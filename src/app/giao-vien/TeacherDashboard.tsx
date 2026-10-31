@@ -16,9 +16,11 @@ import {
 import TeacherHome from "@/components/TeacherHome";
 import ResourceLibrary from "@/components/ResourceLibrary";
 import ActivityEvidencePanel from "@/components/ActivityEvidencePanel";
+import CapacitanceLabSettings from "@/components/CapacitanceLabSettings";
 import { formatVietnameseName, getFirstName, sortVietnameseNames, isHeaderOrInvalidCell } from "@/lib/vietnameseName";
 import { ACTIVITIES } from "@/lib/data/activities";
 import { extractStudentNamesFromText } from "@/lib/student-import.mjs";
+import { csvSafeCell } from "@/lib/csv-export.mjs";
 
 const privateFileHref = (value: string) => value.startsWith("http") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
 
@@ -91,6 +93,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
   const [groupNameDraft, setGroupNameDraft] = useState("");
   const [groupRubricText, setGroupRubricText] = useState("");
+  const [savingGroupRubricId, setSavingGroupRubricId] = useState<string | null>(null);
   const [groupSubmissions, setGroupSubmissions] = useState<any[]>([]);
 
   // OCR chấm ảnh & Lưu DB
@@ -481,8 +484,17 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
 
   const saveGroupRubric = async (assignId: string) => {
-    await supabase.from('group_assignments').update({ rubric: groupRubricText }).eq('id', assignId);
-    alert("✅ Đã lưu ma trận điểm bài nhóm!");
+    if (previewMode || savingGroupRubricId) return;
+    if (groupRubricText.length > 20000) return alert("Ma trận điểm tối đa 20.000 ký tự.");
+    setSavingGroupRubricId(assignId);
+    try {
+      const { data, error } = await supabase.from("group_assignments")
+        .update({ rubric: groupRubricText }).eq("id", assignId).select("id").maybeSingle();
+      if (error || !data) return alert("Không lưu được ma trận điểm: " + (error?.message || "Không tìm thấy bài tập nhóm."));
+      alert("Đã lưu ma trận điểm bài nhóm.");
+    } finally {
+      setSavingGroupRubricId(null);
+    }
   };
 
   const gradeGroupWithAI = async (subId: string, answer: string) => {
@@ -783,6 +795,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
     const extension = file.name.toLowerCase().split(".").pop();
     if (!extension || !["xlsx", "csv", "txt"].includes(extension)) { alert("Chỉ hỗ trợ tệp .xlsx, .csv hoặc .txt."); e.target.value = ""; return; }
+    if (file.size > 10 * 1024 * 1024) { alert("Tệp danh sách không được vượt quá 10 MB."); e.target.value = ""; return; }
     const isExcel = extension === "xlsx";
     if (isExcel) {
       try {
@@ -803,6 +816,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     } else {
       // File văn bản txt/csv
       const reader = new FileReader();
+      reader.onerror = () => alert("Không đọc được tệp văn bản. Hãy thử lưu lại dưới dạng UTF-8.");
       reader.onload = (evt) => {
         try {
           const text = evt.target?.result as string;
@@ -963,10 +977,10 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const exportScores = () => {
     if (submissions.length === 0) return alert("Chưa có bài nộp nào.");
     const csv = [
-      "Học sinh,Bài tập,Điểm AI,Nhận xét,Trạng thái,Ngày nộp",
+      ["Học sinh", "Bài tập", "Điểm AI", "Nhận xét", "Trạng thái", "Ngày nộp"].map(csvSafeCell).join(","),
       ...submissions.map((s: any) => {
         const act = activities.find(a => a.id === s.activity_id);
-        return `"${s.student_name}","${act ? act.title : 'Bài ' + s.activity_id}","${s.ai_score ?? 0}","${(s.ai_feedback || "").replace(/"/g, '""')}","${s.status}","${new Date(s.submitted_at).toLocaleString('vi-VN')}"`;
+        return [s.student_name, act ? act.title : `Bài ${s.activity_id}`, s.ai_score, s.ai_feedback, s.status, new Date(s.submitted_at).toLocaleString("vi-VN")].map(csvSafeCell).join(",");
       }),
     ].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -1321,6 +1335,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
               )}
             </div>
 
+            <CapacitanceLabSettings previewMode={previewMode} />
             {/* Danh sách bài tập */}
             <div className="space-y-3">
               {activities.map(act => {
@@ -1745,12 +1760,13 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                           <div className="flex gap-2">
                             <textarea
                               value={groupRubricText}
+maxLength={20000}
                               onChange={e => setGroupRubricText(e.target.value)}
                               className="flex-1 p-2.5 border rounded-xl text-xs h-16 outline-none bg-slate-50/50"
                               placeholder="Nhập tiêu chí chấm điểm nhóm..."
                             />
-                            <button onClick={() => saveGroupRubric(gAct.id)} className="bg-slate-800 hover:bg-slate-900 text-white px-4 rounded-xl text-xs font-bold">
-                              Lưu
+                            <button type="button" disabled={savingGroupRubricId !== null} onClick={() => void saveGroupRubric(gAct.id)} className="bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white px-4 rounded-xl text-xs font-bold">
+                              {savingGroupRubricId === gAct.id ? "Đang lưu…" : "Lưu"}
                             </button>
                           </div>
                         </div>
