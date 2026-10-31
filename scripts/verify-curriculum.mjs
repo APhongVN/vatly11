@@ -35,6 +35,8 @@ const gradeApi = await readFile(new URL("../src/app/api/grade/route.ts", import.
 const submissionPage = await readFile(new URL("../src/app/nop-bai/page.tsx", import.meta.url), "utf8");
 const activityEvidenceApi = await readFile(new URL("../src/app/api/activity-evidence/route.ts", import.meta.url), "utf8");
 const activityEvidenceMigration = await readFile(new URL("../supabase/migrations/20261031001600_activity_evidence.sql", import.meta.url), "utf8");
+const apiRateLimitMigration = await readFile(new URL("../supabase/migrations/20261031002400_harden_api_rate_limit.sql", import.meta.url), "utf8");
+const apiSecuritySource = await readFile(new URL("../src/lib/api-security.ts", import.meta.url), "utf8");
 const virtualLab = await readFile(new URL("../src/components/VirtualLab.tsx", import.meta.url), "utf8");
 const staticQuiz = await readFile(new URL("../src/components/Quiz.tsx", import.meta.url), "utf8");
 const publicQuizBank = await readFile(new URL("../src/lib/data/questions.ts", import.meta.url), "utf8");
@@ -62,6 +64,16 @@ assert.match(answerPrivacyMigration, /LEFT JOIN public\.quiz_question_keys[\s\S]
 assert.match(answerPrivacyMigration, /REVOKE INSERT, UPDATE, DELETE ON public\.quiz_submissions FROM authenticated/);
 assert.match(schema, /CREATE TABLE IF NOT EXISTS public\.activity_grading_guides/);
 assert.match(schema, /CREATE TABLE IF NOT EXISTS public\.quiz_question_keys/);
+assert.match(apiRateLimitMigration, /DROP FUNCTION IF EXISTS public\.consume_api_rate_limit\(TEXT, INTEGER, INTEGER\)/);
+assert.match(apiRateLimitMigration, /auth\.role\(\) IS DISTINCT FROM 'service_role'/);
+assert.match(apiRateLimitMigration, /WHEN 'activity-evidence' THEN 120/);
+assert.match(apiRateLimitMigration, /WHEN 'readiness-analysis' THEN 5/);
+assert.match(apiRateLimitMigration, /REVOKE ALL ON FUNCTION[\s\S]+FROM PUBLIC, anon, authenticated/);
+assert.match(apiRateLimitMigration, /GRANT EXECUTE ON FUNCTION[\s\S]+TO service_role/);
+assert.doesNotMatch(apiRateLimitMigration, /TO authenticated/);
+assert.match(apiSecuritySource, /createSupabaseAdminClient\(\)/);
+assert.match(apiSecuritySource, /p_user_id: user\.id/);
+assert.match(apiSecuritySource, /p_window_seconds: 60/);
 assert.doesNotMatch(quizPage, /correct_option|explanation/, "Student quiz pages must not load answer keys.");
 assert.match(quizSubmitApi, /createSupabaseAdminClient/);
 assert.match(uniqueQuizMigration, /CREATE UNIQUE INDEX IF NOT EXISTS idx_quiz_submissions_one_attempt_per_student/);

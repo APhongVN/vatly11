@@ -1,9 +1,21 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 type Role = "teacher" | "student";
+type RateLimitBucket =
+  | "activity-evidence"
+  | "capacitance-lab-settings"
+  | "file-download"
+  | "peer-votes"
+  | "chat"
+  | "grade"
+  | "ocr"
+  | "quiz"
+  | "analytics"
+  | "readiness-analysis";
 
-export async function authorizeApi(allowedRoles: Role[], rateLimit = 20, bucket = "ai") {
+export async function authorizeApi(allowedRoles: Role[], rateLimit: number, bucket: RateLimitBucket) {
   const supabase = await createServerSupabaseClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) {
@@ -15,7 +27,14 @@ export async function authorizeApi(allowedRoles: Role[], rateLimit = 20, bucket 
     return { response: NextResponse.json({ error: "Tài khoản không có quyền thực hiện thao tác này." }, { status: 403 }) };
   }
 
-  const { data: allowed, error: limitError } = await supabase.rpc("consume_api_rate_limit", {
+  let rateLimiter: ReturnType<typeof createSupabaseAdminClient>;
+  try {
+    rateLimiter = createSupabaseAdminClient();
+  } catch {
+    return { response: NextResponse.json({ error: "Dịch vụ tạm thời chưa sẵn sàng." }, { status: 503 }) };
+  }
+  const { data: allowed, error: limitError } = await rateLimiter.rpc("consume_api_rate_limit", {
+    p_user_id: user.id,
     p_bucket: bucket,
     p_limit: rateLimit,
     p_window_seconds: 60,
