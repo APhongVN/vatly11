@@ -77,6 +77,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [pasteNamesText, setPasteNamesText] = useState("");
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [isSavingStudents, setIsSavingStudents] = useState(false);
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
 
   // Quản lý bài tập nhóm
   const [groupAssignments, setGroupAssignments] = useState<any[]>([]);
@@ -365,8 +366,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       setNewActFile(null);
       setActiveTab("activities");
       fetchData();
-    } catch (err: any) {
-      alert("Lỗi: " + err.message);
+    } catch (err: unknown) {
+      alert("Không tạo được bài học: " + (err instanceof Error ? err.message : "Lỗi kết nối cơ sở dữ liệu."));
     } finally {
       setIsCreatingAct(false);
     }
@@ -610,8 +611,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         setIsOcrProcessing(false);
       };
       reader.readAsDataURL(file);
-    } catch (err: any) {
-      alert("Lỗi: " + err.message);
+    } catch (err: unknown) {
+      alert("Không xử lý được ảnh OCR: " + (err instanceof Error ? err.message : "Lỗi kết nối cơ sở dữ liệu."));
       setIsOcrProcessing(false);
     }
   };
@@ -743,24 +744,35 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   // --- SINH VIÊN & XỬ LÝ NHẬP FILE THÔNG MINH ---
   const addStudentManual = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStudentName.trim()) return;
+    if (isAddingStudent) return;
     const formattedName = formatVietnameseName(newStudentName);
+    if (formattedName.length < 3 || formattedName.length > 120) {
+      alert("Họ tên học sinh cần dài từ 3 đến 120 ký tự.");
+      return;
+    }
 
-    // Kiểm tra trùng
-    const exists = students.some(s => s.full_name?.toLowerCase() === formattedName.toLowerCase());
+    const exists = students.some((student) => student.full_name?.trim().toLocaleLowerCase("vi") === formattedName.toLocaleLowerCase("vi"));
     if (exists) {
       alert(`Học sinh "${formattedName}" đã có trong danh sách!`);
       return;
     }
 
-    const { data, error } = await supabase.from('students').insert([{ full_name: formattedName, class_name: "11A1" }]).select("id,full_name,class_name").single();
-    if (error || !data) {
-      alert("Không lưu được học sinh: " + (error?.message || "Cơ sở dữ liệu chưa trả về bản ghi."));
-      return;
+    setIsAddingStudent(true);
+    try {
+      const { data, error } = await supabase.from("students")
+        .insert({ full_name: formattedName, class_name: "11A1" })
+        .select("id,full_name,class_name").single();
+      if (error || !data) throw new Error(error?.message || "Cơ sở dữ liệu chưa trả về bản ghi đã lưu.");
+      setStudents((current) => current.some((student) => student.id === data.id)
+        ? current
+        : [...current, data].sort(sortVietnameseNames));
+      setNewStudentName("");
+      alert(`Đã lưu học sinh: ${formattedName}`);
+    } catch (error: unknown) {
+      alert("Không lưu được học sinh: " + (error instanceof Error ? error.message : "Lỗi kết nối cơ sở dữ liệu."));
+    } finally {
+      setIsAddingStudent(false);
     }
-    setStudents((current) => [...current, data].sort(sortVietnameseNames));
-    setNewStudentName("");
-    alert(`Đã lưu học sinh: ${formattedName}`);
   };
 
   // Hàm trích xuất và chuẩn hóa danh sách tên từ mảng chuỗi
@@ -865,6 +877,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       const existingNames = new Set(students.map(s => s.full_name?.toLowerCase()));
       const newToAdd = importPreviewNames.filter(n => !existingNames.has(n.toLowerCase()));
 
+      if (newToAdd.length > 500) {
+        alert("Mỗi lượt chỉ nhập tối đa 500 học sinh. Hãy chia danh sách thành nhiều lượt.");
+        return;
+      }
+
       if (newToAdd.length === 0) {
         alert("Toàn bộ học sinh trong danh sách đều đã có trong cơ sở dữ liệu!");
         setShowImportModal(false);
@@ -877,18 +894,24 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         class_name: "11A1"
       }));
 
-      const { error } = await supabase.from('students').insert(inserts);
-      if (!error) {
-        alert(`✅ Đã nhập thành công ${newToAdd.length} học sinh vào lớp học!`);
-        setShowImportModal(false);
-        setImportPreviewNames([]);
-        setPasteNamesText("");
-        fetchData();
-      } else {
-        alert("Lỗi lưu học sinh: " + error.message);
+      const { data: insertedStudents, error } = await supabase.from("students")
+        .insert(inserts)
+        .select("id,full_name,class_name");
+      if (error) throw new Error(error.message);
+      if (!insertedStudents || insertedStudents.length !== newToAdd.length) {
+        throw new Error("Cơ sở dữ liệu không xác nhận đủ số học sinh đã lưu. Hãy tải lại danh sách trước khi thử lại.");
       }
-    } catch (err: any) {
-      alert("Lỗi: " + err.message);
+
+      setStudents((current) => {
+        const existingIds = new Set(current.map((student) => student.id));
+        return [...current, ...insertedStudents.filter((student) => !existingIds.has(student.id))].sort(sortVietnameseNames);
+      });
+      alert(`✅ Đã lưu và hiển thị ${insertedStudents.length} học sinh vào lớp học!`);
+      setShowImportModal(false);
+      setImportPreviewNames([]);
+      setPasteNamesText("");
+    } catch (err: unknown) {
+      alert("Lỗi lưu danh sách: " + (err instanceof Error ? err.message : "Lỗi kết nối cơ sở dữ liệu."));
     } finally {
       setIsSavingStudents(false);
     }
@@ -2176,7 +2199,7 @@ maxLength={20000}
             <div className="grid md:grid-cols-2 gap-4">
               <form onSubmit={addStudentManual} className="bg-white p-5 rounded-2xl border shadow-sm flex gap-2">
                 <input value={newStudentName} onChange={e => setNewStudentName(e.target.value)} placeholder="Nhập họ và tên học sinh mới..." className="flex-1 border p-2.5 rounded-xl text-sm outline-none bg-slate-50/50" required />
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold">Thêm ngay</button>
+                <button disabled={isAddingStudent} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-5 py-2.5 rounded-xl text-xs font-bold">{isAddingStudent ? "Đang lưu…" : "Thêm ngay"}</button>
               </form>
               <div className="bg-white p-5 rounded-2xl border shadow-sm flex flex-col justify-center gap-3">
                 <span className="text-xs font-bold text-slate-600">Nhập danh sách học sinh</span>
@@ -2222,9 +2245,9 @@ maxLength={20000}
             {showImportModal && (
               <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/55 p-4" role="presentation">
                 <section role="dialog" aria-modal="true" aria-labelledby="import-students-title" className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
-                  <div className="flex items-start justify-between gap-4"><div><h3 id="import-students-title" className="text-xl font-black text-slate-900">Kiểm tra danh sách trước khi lưu</h3><p className="mt-1 text-sm text-slate-500">Tìm thấy {importPreviewNames.length} tên học sinh. Tên trùng trong tệp đã được gộp.</p></div><button type="button" aria-label="Đóng" onClick={() => { setShowImportModal(false); setImportPreviewNames([]); }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
+                  <div className="flex items-start justify-between gap-4"><div><h3 id="import-students-title" className="text-xl font-black text-slate-900">Kiểm tra danh sách trước khi lưu</h3><p className="mt-1 text-sm text-slate-500">Tìm thấy {importPreviewNames.length} tên học sinh. Tên trùng trong tệp đã được gộp.{importPreviewNames.length > 500 ? " Mỗi lượt tối đa 500 học sinh; hãy chia danh sách nhỏ hơn." : ""}</p></div><button type="button" aria-label="Đóng" onClick={() => { setShowImportModal(false); setImportPreviewNames([]); }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
                   <div className="mt-4 max-h-72 overflow-y-auto rounded-xl border border-slate-200"><ol className="divide-y divide-slate-100">{importPreviewNames.map((name, index) => <li key={`${name}-${index}`} className="flex items-center gap-3 px-4 py-2.5 text-sm"><span className="w-8 text-right text-xs text-slate-400">{index + 1}.</span><span className="font-medium text-slate-800">{name}</span></li>)}</ol></div>
-                  <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setShowImportModal(false); setImportPreviewNames([]); }} disabled={isSavingStudents} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-50">Hủy</button><button type="button" onClick={confirmSaveImportedStudents} disabled={isSavingStudents || importPreviewNames.length === 0} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50">{isSavingStudents ? "Đang lưu…" : `Lưu ${importPreviewNames.length} học sinh`}</button></div>
+                  <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setShowImportModal(false); setImportPreviewNames([]); }} disabled={isSavingStudents} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-50">Hủy</button><button type="button" onClick={confirmSaveImportedStudents} disabled={isSavingStudents || importPreviewNames.length === 0 || importPreviewNames.length > 500} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50">{isSavingStudents ? "Đang lưu…" : `Lưu ${importPreviewNames.length} học sinh`}</button></div>
                 </section>
               </div>
             )}
