@@ -94,7 +94,7 @@ ${JSON.stringify({ activity: activityTitle, rubric, student_submission: sanitize
           return NextResponse.json({
             score: Math.round(parsed.score * 2) / 2,
             feedback: parsed.feedback || "Đã chấm điểm hoàn tất.",
-            model_answer: parsed.model_answer || "",
+            ...(access.profile.role === "teacher" ? { model_answer: parsed.model_answer || "" } : {}),
             strengths: parsed.strengths || "",
             weaknesses: parsed.weaknesses || "",
             modelUsed: model,

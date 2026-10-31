@@ -80,7 +80,7 @@ function NopBaiContent() {
       return {
         score: result.score ?? null,
         feedback: result.feedback ?? "Không có phản hồi từ AI",
-        model_answer: result.model_answer ?? "Không có đáp án mẫu",
+        model_answer: result.model_answer ?? "",
         strengths: result.strengths ?? "",
         weaknesses: result.weaknesses ?? "",
       };

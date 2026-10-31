@@ -11,6 +11,9 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import VirtualLab from "@/components/VirtualLab";
+import { filterSubmissionsForStudentGroups } from "@/lib/group-submissions.mjs";
+import ActivityResources from "@/components/ActivityResources";
+import { ACTIVITIES } from "@/lib/data/activities";
 
 const attachmentHref = (value: string) => value.startsWith("http") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
 
@@ -29,13 +32,29 @@ export default function HocSinhPage() {
   const [now, setNow] = useState(new Date());
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isChatMuted, setIsChatMuted] = useState(false);
+  const [previewMode, setPreviewMode] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     let cancelled = false;
     const loadIdentity = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace('/login'); return; }
+      if (!user) {
+        if (cancelled) return;
+        setPreviewMode(true);
+        setStudent({ id: "preview-student", full_name: "Nguyễn Minh Anh", class_name: "11A1" });
+        setActivities(ACTIVITIES);
+        setGroupActs([{ id: "preview-assignment", title: "Báo cáo thí nghiệm tụ điện", description: "Mẫu hoạt động nhóm để xem trước giao diện.", deadline: null }]);
+        setMessages([
+          { id: "preview-message-1", sender_name: "Cô giáo", content: "Các em nhớ ghi rõ đơn vị trong bảng số liệu nhé.", created_at: new Date().toISOString() },
+          { id: "preview-message-2", sender_name: "Nguyễn Minh Anh", content: "Cô ơi, em đã hoàn thành phiếu thí nghiệm ạ.", created_at: new Date().toISOString() },
+        ]);
+        setMySubmissions([{ id: "preview-submission", student_id: "preview-student", student_name: "Nguyễn Minh Anh", activity_id: 1, ai_score: 8.5, status: "graded", submitted_at: new Date().toISOString(), answer: "Bản ghi minh họa; không phải dữ liệu thật." }]);
+        setMyGroupSubs([{ id: "preview-group-submission", assignment_id: "preview-assignment", group_id: "preview-group", group_name: "Nhóm Thí nghiệm A", status: "pending" }]);
+        setQuizzes([]);
+        setIsChatMuted(false);
+        return;
+      }
       const { data: profile } = await supabase.from('students').select('id,full_name,class_name').eq('auth_user_id', user.id).maybeSingle();
       if (!profile) { router.replace('/login?error=student-profile'); return; }
       if (cancelled) return;
@@ -48,6 +67,7 @@ export default function HocSinhPage() {
   }, [router]);
 
   useEffect(() => {
+    if (previewMode || !student) return;
     const refreshChat = async () => {
       if (document.visibilityState !== "visible") return;
       const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: true }).limit(300);
@@ -55,7 +75,7 @@ export default function HocSinhPage() {
     };
     const timer = window.setInterval(() => void refreshChat(), 5000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [previewMode, student]);
   async function fetchData(student: any) {
     if (!student) return;
     const { data: acts } = await supabase.from('activities').select('*').order('id');
@@ -74,16 +94,7 @@ export default function HocSinhPage() {
     if (memberOf && memberOf.length > 0) {
       const assignIds = memberOf.map((m: any) => m.group_assignment_groups.assignment_id);
       const { data: gSubs } = await supabase.from('group_submissions').select('*').in('assignment_id', assignIds);
-      if (gSubs) {
-         const mySubs = gSubs.filter(s => {
-           const member = memberOf.find((m: any) => m.group_assignment_groups.assignment_id === s.assignment_id);
-           if (member) {
-             return s.group_name === `Nhóm ${member.group_assignment_groups.group_number}`;
-           }
-           return false;
-         });
-         setMyGroupSubs(mySubs);
-       }
+      if (gSubs) setMyGroupSubs(filterSubmissionsForStudentGroups(memberOf, gSubs));
     } else {
       setMyGroupSubs([]);
     }
@@ -175,7 +186,16 @@ export default function HocSinhPage() {
   if (!student) return <div className="p-10 text-center font-bold text-slate-500">Đang tải thông tin học sinh...</div>;
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/20 flex flex-col relative">
+    <main
+      className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/20 flex flex-col relative"
+      onClickCapture={(event) => {
+        if (!previewMode || (event.target instanceof Element && (event.target.closest("[data-preview-navigation]") || event.target.closest('a[href="/"]')))) return;
+        event.preventDefault(); event.stopPropagation();
+      }}
+      onSubmitCapture={(event) => { if (previewMode) { event.preventDefault(); event.stopPropagation(); } }}
+      onChangeCapture={(event) => { if (previewMode) { event.preventDefault(); event.stopPropagation(); } }}
+    >
+      {previewMode && <div className="fixed bottom-4 right-4 z-[70] max-w-sm rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-950 shadow-lg">Bản xem trước học sinh · Dữ liệu minh họa, thao tác ghi và nộp bài đang khóa.</div>}
       {/* Modal xem trước tài liệu */}
       {previewUrl && (
         <div className="fixed inset-0 bg-black/85 z-50 flex flex-col items-center justify-center p-4 backdrop-blur-sm">
@@ -217,7 +237,7 @@ export default function HocSinhPage() {
             {/* TAB ĐIỀU HƯỚNG CHÍNH */}
             <div className="hidden lg:flex gap-1 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60 text-xs font-bold">
               <button
-                onClick={() => setActiveTab('personal')}
+                onClick={() => setActiveTab('personal')} data-preview-navigation="true"
                 className={`px-4 py-2 rounded-xl transition-all ${
                   activeTab === 'personal' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
@@ -225,7 +245,7 @@ export default function HocSinhPage() {
                 Bài cá nhân ({activities.length})
               </button>
               <button
-                onClick={() => setActiveTab('group')}
+                onClick={() => setActiveTab('group')} data-preview-navigation="true"
                 className={`px-4 py-2 rounded-xl transition-all ${
                   activeTab === 'group' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
@@ -233,7 +253,7 @@ export default function HocSinhPage() {
                 Bài tập Nhóm ({groupActs.length})
               </button>
               <button
-                onClick={() => setActiveTab('lab')}
+                onClick={() => setActiveTab('lab')} data-preview-navigation="true"
                 className={`px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
                   activeTab === 'lab' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
@@ -241,7 +261,7 @@ export default function HocSinhPage() {
                 <Microscope className="w-3.5 h-3.5" /> Thí nghiệm ảo
               </button>
               <button
-                onClick={() => setActiveTab('quizzes')}
+                onClick={() => setActiveTab('quizzes')} data-preview-navigation="true"
                 className={`px-4 py-2 rounded-xl transition-all ${
                   activeTab === 'quizzes' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
@@ -249,7 +269,7 @@ export default function HocSinhPage() {
                 Trắc nghiệm ({quizzes.length})
               </button>
               <button
-                onClick={() => setActiveTab('results')}
+                onClick={() => setActiveTab('results')} data-preview-navigation="true"
                 className={`px-4 py-2 rounded-xl transition-all ${
                   activeTab === 'results' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
@@ -257,7 +277,7 @@ export default function HocSinhPage() {
                 Kết quả ({completedCount})
               </button>
               <button
-                onClick={() => setActiveTab('chat')}
+                onClick={() => setActiveTab('chat')} data-preview-navigation="true"
                 className={`px-4 py-2 rounded-xl transition-all ${
                   activeTab === 'chat' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
@@ -289,12 +309,12 @@ export default function HocSinhPage() {
 
         {/* Thanh điều hướng Mobile */}
         <div className="flex lg:hidden overflow-x-auto px-4 py-2 gap-1.5 border-t bg-slate-50 text-xs font-bold whitespace-nowrap">
-          <button onClick={() => setActiveTab('personal')} className={`px-3 py-1.5 rounded-lg ${activeTab === 'personal' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>Cá nhân</button>
-          <button onClick={() => setActiveTab('group')} className={`px-3 py-1.5 rounded-lg ${activeTab === 'group' ? 'bg-orange-600 text-white' : 'text-slate-600'}`}>Nhóm</button>
-          <button onClick={() => setActiveTab('lab')} className={`px-3 py-1.5 rounded-lg ${activeTab === 'lab' ? 'bg-purple-600 text-white' : 'text-slate-600'}`}>Thí nghiệm ảo</button>
-          <button onClick={() => setActiveTab('quizzes')} className={`px-3 py-1.5 rounded-lg ${activeTab === 'quizzes' ? 'bg-emerald-600 text-white' : 'text-slate-600'}`}>Trắc nghiệm</button>
-          <button onClick={() => setActiveTab('results')} className={`px-3 py-1.5 rounded-lg ${activeTab === 'results' ? 'bg-indigo-600 text-white' : 'text-slate-600'}`}>Kết quả</button>
-          <button onClick={() => setActiveTab('chat')} className={`px-3 py-1.5 rounded-lg ${activeTab === 'chat' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>Hỏi đáp</button>
+          <button onClick={() => setActiveTab('personal')} data-preview-navigation="true" className={`px-3 py-1.5 rounded-lg ${activeTab === 'personal' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>Cá nhân</button>
+          <button onClick={() => setActiveTab('group')} data-preview-navigation="true" className={`px-3 py-1.5 rounded-lg ${activeTab === 'group' ? 'bg-orange-600 text-white' : 'text-slate-600'}`}>Nhóm</button>
+          <button onClick={() => setActiveTab('lab')} data-preview-navigation="true" className={`px-3 py-1.5 rounded-lg ${activeTab === 'lab' ? 'bg-purple-600 text-white' : 'text-slate-600'}`}>Thí nghiệm ảo</button>
+          <button onClick={() => setActiveTab('quizzes')} data-preview-navigation="true" className={`px-3 py-1.5 rounded-lg ${activeTab === 'quizzes' ? 'bg-emerald-600 text-white' : 'text-slate-600'}`}>Trắc nghiệm</button>
+          <button onClick={() => setActiveTab('results')} data-preview-navigation="true" className={`px-3 py-1.5 rounded-lg ${activeTab === 'results' ? 'bg-indigo-600 text-white' : 'text-slate-600'}`}>Kết quả</button>
+          <button onClick={() => setActiveTab('chat')} data-preview-navigation="true" className={`px-3 py-1.5 rounded-lg ${activeTab === 'chat' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>Hỏi đáp</button>
         </div>
       </header>
 
@@ -415,6 +435,7 @@ export default function HocSinhPage() {
                 );
               })}
             </div>
+            <ActivityResources activityId={null} />
           </div>
         )}
 

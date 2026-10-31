@@ -17,6 +17,7 @@ import TeacherHome from "@/components/TeacherHome";
 import ResourceLibrary from "@/components/ResourceLibrary";
 import { formatVietnameseName, getFirstName, sortVietnameseNames, isHeaderOrInvalidCell } from "@/lib/vietnameseName";
 import { ACTIVITIES } from "@/lib/data/activities";
+import { extractStudentNamesFromText } from "@/lib/student-import.mjs";
 
 const privateFileHref = (value: string) => value.startsWith("http") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
 
@@ -767,7 +768,9 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+    const extension = file.name.toLowerCase().split(".").pop();
+    if (!extension || !["xlsx", "csv", "txt"].includes(extension)) { alert("Chỉ hỗ trợ tệp .xlsx, .csv hoặc .txt."); e.target.value = ""; return; }
+    const isExcel = extension === "xlsx";
     if (isExcel) {
       try {
         if (file.size > 10 * 1024 * 1024) throw new Error("Tệp Excel vượt quá 10 MB.");
@@ -790,7 +793,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       reader.onload = (evt) => {
         try {
           const text = evt.target?.result as string;
-          const lines = text.split(/\r?\n/);
+          const lines = extractStudentNamesFromText(text);
           const sortedList = processAndSortNames(lines);
           if (sortedList.length === 0) {
             alert("Không tìm thấy danh sách tên học sinh hợp lệ trong tệp văn bản này!");
@@ -865,10 +868,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
 
   const deleteStudent = async (id: string) => {
-    if(confirm("Xóa học sinh này khỏi danh sách lớp?")) {
-      await supabase.from('students').delete().eq('id', id);
-      fetchData();
-    }
+    const student = students.find((item) => item.id === id);
+    if (!confirm(`Xóa ${student?.full_name || "học sinh này"} khỏi danh sách lớp? Lịch sử bài nộp vẫn được giữ.`)) return;
+    const { error } = await supabase.from("students").delete().eq("id", id);
+    if (error) { alert("Không xóa được học sinh: " + error.message); return; }
+    setStudents((current) => current.filter((item) => item.id !== id));
   };
 
   const handleExcelUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -2135,9 +2139,13 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 <input value={newStudentName} onChange={e => setNewStudentName(e.target.value)} placeholder="Nhập họ và tên học sinh mới..." className="flex-1 border p-2.5 rounded-xl text-sm outline-none bg-slate-50/50" required />
                 <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold">Thêm ngay</button>
               </form>
-              <div className="bg-white p-5 rounded-2xl border shadow-sm flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-600">Nhập danh sách từ Excel (.xlsx):</span>
-                <input type="file" accept=".xlsx" onChange={handleExcelUpload} className="text-xs file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-emerald-100 file:text-emerald-700 file:font-semibold" />
+              <div className="bg-white p-5 rounded-2xl border shadow-sm flex flex-col justify-center gap-3">
+                <span className="text-xs font-bold text-slate-600">Nhập danh sách học sinh</span>
+                <div className="flex flex-wrap items-center gap-3">
+                  <input type="file" accept=".xlsx,.csv,.txt" onChange={handleExcelUpload} aria-label="Chọn Excel, CSV hoặc TXT chứa danh sách học sinh" className="min-w-0 flex-1 text-xs file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-emerald-100 file:text-emerald-700 file:font-semibold" />
+                  <button type="button" onClick={() => setShowPasteModal(true)} className="shrink-0 rounded-lg border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50">Dán danh sách</button>
+                </div>
+                <p className="text-[11px] text-slate-500">Excel: mỗi học sinh ở một ô. CSV: cột “Họ và tên” (hoặc Họ/Tên). TXT: một họ tên mỗi dòng. Có bước xem lại trước khi lưu.</p>
               </div>
             </div>
 
@@ -2150,13 +2158,37 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 {students.filter(s => s.full_name?.toLowerCase().includes(searchTerm.toLowerCase())).map(s => (
                   <div key={s.id} className="bg-slate-50 border px-3.5 py-2.5 rounded-xl text-xs font-bold flex justify-between items-center group">
                     <span className="truncate">{s.full_name}</span>
-                    <button onClick={() => deleteStudent(s.id)} className="text-slate-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button type="button" aria-label={`Xóa học sinh ${s.full_name}`} onClick={() => deleteStudent(s.id)} className="text-slate-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Trash2 className="w-3.5 h-3.5"/>
                     </button>
                   </div>
                 ))}
+                {students.filter(s => s.full_name?.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                  <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-slate-500">{students.length ? "Không tìm thấy học sinh phù hợp." : "Chưa có học sinh. Thêm tên hoặc nhập danh sách để bắt đầu."}</p>
+                )}
               </div>
             </div>
+            {showPasteModal && (
+              <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowPasteModal(false); }}>
+                <section role="dialog" aria-modal="true" aria-labelledby="paste-students-title" className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
+                  <div className="flex items-start justify-between gap-4">
+                    <div><h3 id="paste-students-title" className="text-xl font-black text-slate-900">Dán danh sách học sinh</h3><p className="mt-1 text-sm text-slate-500">Mỗi dòng một họ tên. Danh sách sẽ được chuẩn hóa và xem lại trước khi lưu.</p></div>
+                    <button type="button" aria-label="Đóng" onClick={() => setShowPasteModal(false)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+                  </div>
+                  <textarea value={pasteNamesText} onChange={(event) => setPasteNamesText(event.target.value)} autoFocus rows={9} placeholder={'Nguyễn Văn An\nTrần Thị Bình\nLê Minh Châu'} className="mt-5 w-full resize-y rounded-xl border border-slate-300 p-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                  <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setShowPasteModal(false)} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600">Hủy</button><button type="button" onClick={handleProcessPastedText} className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-800">Xem danh sách</button></div>
+                </section>
+              </div>
+            )}
+            {showImportModal && (
+              <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/55 p-4" role="presentation">
+                <section role="dialog" aria-modal="true" aria-labelledby="import-students-title" className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
+                  <div className="flex items-start justify-between gap-4"><div><h3 id="import-students-title" className="text-xl font-black text-slate-900">Kiểm tra danh sách trước khi lưu</h3><p className="mt-1 text-sm text-slate-500">Tìm thấy {importPreviewNames.length} tên học sinh. Tên trùng trong tệp đã được gộp.</p></div><button type="button" aria-label="Đóng" onClick={() => { setShowImportModal(false); setImportPreviewNames([]); }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
+                  <div className="mt-4 max-h-72 overflow-y-auto rounded-xl border border-slate-200"><ol className="divide-y divide-slate-100">{importPreviewNames.map((name, index) => <li key={`${name}-${index}`} className="flex items-center gap-3 px-4 py-2.5 text-sm"><span className="w-8 text-right text-xs text-slate-400">{index + 1}.</span><span className="font-medium text-slate-800">{name}</span></li>)}</ol></div>
+                  <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setShowImportModal(false); setImportPreviewNames([]); }} disabled={isSavingStudents} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-50">Hủy</button><button type="button" onClick={confirmSaveImportedStudents} disabled={isSavingStudents || importPreviewNames.length === 0} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50">{isSavingStudents ? "Đang lưu…" : `Lưu ${importPreviewNames.length} học sinh`}</button></div>
+                </section>
+              </div>
+            )}
           </div>
         )}
 
