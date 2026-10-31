@@ -1,0 +1,59 @@
+@import "katex/dist/katex.min.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --status-locked: #9CA3AF;
+  --status-active: #3B82F6;
+  --status-done: #10B981;
+  --status-review: #F59E0B;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #f6f8fb 0%, #eef2f6 100%);
+  color: #111827;
+  min-height: 100vh;
+}
+
+.card {
+  @apply bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-6 transition-all duration-300;
+}
+.card:hover {
+  @apply shadow-[0_8px_30px_rgb(0,0,0,0.08)] transform -translate-y-1;
+}
+
+.btn {
+  @apply px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2;
+}
+.btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200; }
+.btn-secondary { @apply bg-white text-gray-700 border border-gray-200 hover:bg-gray-50; }
+.btn-success { @apply bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-200; }
+
+/* Lớp input cơ bản */
+.input {
+  @apply w-full py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all;
+}
+/* Lớp input khi có icon bên trái (thêm padding trái 40px) */
+.input-icon-left {
+  @apply pl-10 pr-4;
+}
+@keyframes portal-enter {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .portal-enter { animation: portal-enter 420ms cubic-bezier(.2,.7,.2,1) both; }
+  .portal-enter-delay { animation-delay: 80ms; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+@media (max-width: 640px) {
+  .home-glow { filter: blur(32px); opacity: .45; }
+}

@@ -1,0 +1,3910 @@
+[
+  {
+    "id": 1,
+    "sourceSections": [
+      "HOẠT ĐỘNG 1. XÁC ĐỊNH VẤN ĐỀ BÀI HỌC"
+    ],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "HOẠT ĐỘNG 1. XÁC ĐỊNH VẤN ĐỀ BÀI HỌC"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Pha",
+            "Mã",
+            "Thời lượng",
+            "Sản phẩm bắt buộc"
+          ],
+          [
+            "Trước lớp",
+            "PRE01",
+            "8–10 phút",
+            "Xem chi tiết dưới đây"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "1.1. Video tình huống mở đầu – kịch bản production"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Thời gian",
+            "Hình ảnh/âm thanh",
+            "Lời dẫn/nội dung trên màn hình",
+            "Tương tác"
+          ],
+          [
+            "0:00–0:12",
+            "Cận cảnh một tụ điện phân, LED, nguồn DC 5 V và điện trở bảo vệ.",
+            "“Một linh kiện nhỏ có thể giữ lại năng lượng sau khi nguồn đã được tháo ra hay không?”",
+            "Không."
+          ],
+          [
+            "0:12–0:28",
+            "Tụ được nối với nguồn qua điện trở, hiển thị nhãn “NẠP”.",
+            "“Tụ được nối với nguồn trong một khoảng thời gian.”",
+            "Không."
+          ],
+          [
+            "0:28–0:38",
+            "Ngắt nguồn hoàn toàn. Phóng to trạng thái “SOURCE DISCONNECTED”.",
+            "“Bây giờ nguồn đã được ngắt.”",
+            "Không."
+          ],
+          [
+            "0:38–0:50",
+            "Đưa dây về phía LED nhưng dừng trước khi đóng mạch.",
+            "“Theo em, khi nối tụ với LED, điều gì sẽ xảy ra?”",
+            "Video pause bắt buộc; mở PRE01-Q1."
+          ],
+          [
+            "Sau khi nộp Q1",
+            "Đóng mạch; LED ló sáng rồi mờ/tắt.",
+            "Không giải thích cơ chế. Chỉ hiện: “Hiện tượng này đặt ra câu hỏi gì về tụ điện?”",
+            "Mở Q2 và Q3."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "PRE01-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Sau khi nguồn đã được ngắt hoàn toàn, em dự đoán điều gì xảy ra khi nối tụ điện vừa được nạp với LED?"
+          ],
+          [
+            "Phương án",
+            "A. LED không sáng vì không còn nguồn điện. B. LED sáng trong một khoảng thời gian ngắn rồi tắt. C. LED sáng liên tục như khi nối trực tiếp với nguồn. D. Chưa thể dự đoán."
+          ],
+          [
+            "Đáp án/ý chính",
+            "B là đáp án phù hợp với thí nghiệm được thiết kế, nhưng hệ thống chưa công bố đáp án ở bước dự đoán."
+          ],
+          [
+            "Gợi ý mức 1",
+            "Hãy chú ý tụ vừa được nối với nguồn trước khi nguồn bị tháo."
+          ],
+          [
+            "Gợi ý mức 2",
+            "Hãy suy nghĩ xem liệu một linh kiện có thể lưu trữ năng lượng trong khoảng thời gian ngắn hay không."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_CAP_NO_SOURCE_NO_LIGHT; MC_CAP_AS_SOURCE_CONTINUOUS"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "PRE01-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Hãy giải thích ngắn gọn lí do cho dự đoán của em."
+          ],
+          [
+            "Đáp án/ý chính",
+            "Rubric mở: không yêu cầu thuật ngữ “năng lượng điện trường” ở giai đoạn đầu; ưu tiên lập luận dựa trên hiện tượng nạp – ngắt nguồn – nối tải."
+          ],
+          [
+            "Gợi ý mức 1",
+            "Hãy liên hệ ba thời điểm: trước khi nạp, sau khi nạp và sau khi ngắt nguồn."
+          ],
+          [
+            "Gợi ý mức 2",
+            "Nếu nguồn đã tháo mà đèn vẫn có thể sáng, năng lượng phải đến từ đâu?"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_ENERGY_SOURCE_UNCLEAR"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "PRE01-Q3"
+          ],
+          [
+            "Câu hỏi",
+            "Sau khi quan sát hiện tượng, hãy viết một câu hỏi mà em cho rằng bài học cần trả lời."
+          ],
+          [
+            "Đáp án/ý chính",
+            "Câu hỏi hợp lệ nếu liên quan cấu tạo, khả năng tích điện, phóng điện, điện dung, năng lượng hoặc ứng dụng của tụ điện."
+          ],
+          [
+            "Gợi ý mức 1",
+            "Câu hỏi nên bắt đầu bằng “Vì sao…?”, “Điều gì quyết định…?”, “Tụ điện… như thế nào?”"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_QUESTION_TOO_GENERAL"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "1.2. Rubric AI cho câu giải thích PRE01-Q2"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Tiêu chí",
+            "0",
+            "1",
+            "2"
+          ],
+          [
+            "Liên hệ với hiện tượng",
+            "Không liên hệ hoặc phi vật lí",
+            "Nhắc đến nạp/ngắt nguồn nhưng chưa nối logic",
+            "Lập luận từ chuỗi nạp → ngắt nguồn → đèn sáng"
+          ],
+          [
+            "Ý tưởng tích trữ",
+            "Phủ nhận/không đề cập",
+            "Nêu “có điện còn lại” nhưng mơ hồ",
+            "Nhận ra tụ đã lưu trữ điện tích/năng lượng trước đó"
+          ],
+          [
+            "Diễn đạt khoa học",
+            "Có lỗi bản chất nghiêm trọng",
+            "Có lỗi nhỏ nhưng ý chính hiểu được",
+            "Diễn đạt phù hợp, không suy diễn quá mức"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Phản hồi AI mẫu “Em đã dựa vào việc nguồn bị ngắt để giải thích hiện tượng, đây là hướng lập luận phù hợp. Tuy nhiên câu trả lời chưa nêu rõ bộ phận nào đã lưu trữ năng lượng trước đó. Hãy giữ câu hỏi này để kiểm chứng trong các hoạt động tiếp theo.”"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "sourceSections": [
+      "HOẠT ĐỘNG 2. MICROTEACHING – VIDEO BÀI GIẢNG NGẮN ĐỊNH HƯỚNG KIẾN THỨC"
+    ],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "HOẠT ĐỘNG 2. MICROTEACHING – VIDEO BÀI GIẢNG NGẮN ĐỊNH HƯỚNG KIẾN THỨC"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Pha",
+            "Mã",
+            "Thời lượng",
+            "Sản phẩm bắt buộc"
+          ],
+          [
+            "Trước lớp",
+            "PRE02",
+            "20–25 phút",
+            "Xem chi tiết dưới đây"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "2.1. Video 1 – Tụ điện trong đời sống và kĩ thuật (4–5 phút)"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Đoạn",
+            "Nội dung hình ảnh",
+            "Lời thuyết minh dự kiến",
+            "Checkpoint"
+          ],
+          [
+            "0:00–0:40",
+            "Các loại tụ: tụ gốm, tụ điện phân, tụ film; bo mạch thực tế.",
+            "“Tụ điện xuất hiện trong rất nhiều mạch điện. Hình dạng khác nhau nhưng chúng đều có một đặc điểm chung: có thể tích trữ điện tích và năng lượng điện trường trong một giới hạn nhất định.”",
+            "—"
+          ],
+          [
+            "0:40–1:35",
+            "Cận cảnh tụ trên bo nguồn; máy ảnh có đèn flash phóng điện.",
+            "“Trong một số ứng dụng, tụ được nạp từ nguồn rồi giải phóng năng lượng trong thời gian ngắn. Đèn flash kiểu phóng điện của máy ảnh là một ví dụ điển hình.”",
+            "V1-Q1"
+          ],
+          [
+            "1:35–2:40",
+            "So sánh dây dẫn đơn thuần và tụ điện.",
+            "“Một dây dẫn chỉ tạo đường dẫn dòng điện; tụ điện còn có khả năng tích điện trên hai bản dẫn cách nhau bởi điện môi.”",
+            "V1-Q2"
+          ],
+          [
+            "2:40–4:20",
+            "Đặt câu hỏi bài học, hiện tiêu đề “TỤ ĐIỆN”.",
+            "“Vậy tụ được cấu tạo như thế nào? Điều gì quyết định khả năng tích điện? Năng lượng của tụ được xác định ra sao?”",
+            "V1-Q3"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V1-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Ví dụ nào phù hợp nhất với chức năng tích trữ rồi giải phóng năng lượng nhanh của tụ điện?"
+          ],
+          [
+            "Phương án",
+            "A. Dây đồng nối hai điểm trong mạch. B. Tụ điện trong mạch đèn flash phóng điện của máy ảnh. C. Công tắc cơ học. D. Điện trở thuần."
+          ],
+          [
+            "Đáp án/ý chính",
+            "B"
+          ],
+          [
+            "Gợi ý mức 1",
+            "Hãy chọn linh kiện có khả năng được nạp trước rồi giải phóng năng lượng."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_CAP_WIRE_CONFUSION"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V1-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Điểm khác biệt quan trọng giữa tụ điện và một đoạn dây dẫn đơn thuần là gì?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Tụ có hai bản dẫn cách nhau bởi điện môi và có thể tích điện/lưu trữ năng lượng điện trường; dây dẫn đơn thuần không thực hiện chức năng này theo cùng cách."
+          ],
+          [
+            "Gợi ý mức 1",
+            "Hãy chú ý đến cấu tạo hai bản dẫn và lớp cách điện."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_CAP_IS_WIRE"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V1-Q3"
+          ],
+          [
+            "Câu hỏi",
+            "Theo em, đại lượng nào nên dùng để mô tả “khả năng tích điện” của một tụ điện?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Chưa bắt buộc trả lời “điện dung”; hệ thống lưu ý tưởng ban đầu để đối chiếu về sau."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_CAPACITY_CONCEPT_UNFORMED"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "2.2. Video 2 – Cấu tạo, tích điện và phóng điện (5–6 phút)"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Đoạn",
+            "Hình ảnh/animation",
+            "Lời thuyết minh",
+            "Checkpoint"
+          ],
+          [
+            "0:00–1:10",
+            "Sơ đồ hai bản kim loại song song, điện môi ở giữa.",
+            "“Mô hình đơn giản nhất của tụ điện gồm hai vật dẫn đặt gần nhau và ngăn cách bởi môi trường cách điện, gọi là điện môi. Mỗi vật dẫn là một bản tụ.”",
+            "V2-Q1"
+          ],
+          [
+            "1:10–2:20",
+            "Nối hai bản vào hai cực nguồn; hiển thị điện tích trái dấu.",
+            "“Khi nối với nguồn, điện tích được phân bố trên hai bản: một bản mang điện dương, bản kia mang điện âm; độ lớn điện tích trên hai bản bằng nhau.”",
+            "V2-Q2"
+          ],
+          [
+            "2:20–3:20",
+            "Ngắt nguồn, vẫn giữ dấu điện tích trên bản.",
+            "“Sau khi ngắt khỏi nguồn và nếu bỏ qua rò điện, tụ vẫn có thể giữ điện tích trong một khoảng thời gian.”",
+            "V2-Q3"
+          ],
+          [
+            "3:20–4:30",
+            "Nối tụ đã nạp qua tải, dấu điện tích giảm dần.",
+            "“Khi tạo mạch ngoài, tụ phóng điện. Năng lượng dự trữ được truyền sang tải.”",
+            "V2-Q4"
+          ],
+          [
+            "4:30–5:30",
+            "Tóm tắt sơ đồ nạp ↔ giữ ↔ phóng.",
+            "“Ba trạng thái này là nền tảng để hiểu các ứng dụng của tụ điện.”",
+            "V2-Q5"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V2-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Tụ điện cơ bản gồm những thành phần nào?"
+          ],
+          [
+            "Phương án",
+            "A. Một vật dẫn duy nhất. B. Hai vật dẫn đặt gần nhau và ngăn cách bởi điện môi. C. Hai điện trở mắc nối tiếp. D. Một nguồn điện và một bóng đèn."
+          ],
+          [
+            "Đáp án/ý chính",
+            "B"
+          ],
+          [
+            "Gợi ý mức 1",
+            "Hãy quan sát phần nằm giữa hai bản dẫn."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_CAP_STRUCTURE"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V2-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Khi tụ được nối với nguồn và tích điện, điện tích trên hai bản có đặc điểm nào?"
+          ],
+          [
+            "Phương án",
+            "A. Cùng dấu, cùng độ lớn. B. Trái dấu, cùng độ lớn. C. Chỉ một bản có điện tích. D. Hai bản luôn trung hòa điện."
+          ],
+          [
+            "Đáp án/ý chính",
+            "B"
+          ],
+          [
+            "Gợi ý mức 1",
+            "Một bản nối về phía cực dương, bản còn lại về phía cực âm."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_CHARGE_SAME_SIGN"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V2-Q3"
+          ],
+          [
+            "Câu hỏi",
+            "Sau khi tụ đã được nạp rồi ngắt khỏi nguồn, trong mô hình lí tưởng đại lượng nào không biến mất ngay?"
+          ],
+          [
+            "Phương án",
+            "A. Điện tích trên tụ. B. Công suất của nguồn. C. Dòng điện do nguồn cung cấp. D. Điện trở của dây."
+          ],
+          [
+            "Đáp án/ý chính",
+            "A"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_DISCONNECT_Q_ZERO"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V2-Q4"
+          ],
+          [
+            "Câu hỏi",
+            "Vì sao đèn chỉ sáng trong một khoảng thời gian khi nối với tụ đã nạp?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Tụ chỉ có lượng điện tích/năng lượng hữu hạn; khi phóng điện qua tải, điện tích và năng lượng của tụ giảm nên dòng qua đèn không được duy trì như nguồn liên tục."
+          ],
+          [
+            "Gợi ý mức 1",
+            "Hãy nghĩ xem tụ có phải nguồn cấp liên tục hay chỉ có năng lượng đã lưu trữ."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_CAP_CONTINUOUS_SOURCE"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V2-Q5"
+          ],
+          [
+            "Câu hỏi",
+            "Hãy sắp xếp đúng trình tự: (1) nối tải; (2) nạp tụ từ nguồn; (3) ngắt nguồn; (4) tụ phóng qua tải."
+          ],
+          [
+            "Đáp án/ý chính",
+            "2 → 3 → 1 → 4"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_SEQUENCE_CHARGE_DISCHARGE"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "2.3. Video 3 – Điện dung và quan hệ Q–U (5–6 phút)"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Đoạn",
+            "Nội dung",
+            "Lời thuyết minh",
+            "Checkpoint"
+          ],
+          [
+            "0:00–0:55",
+            "Một tụ cố định, hiển thị S, d, điện môi không đổi.",
+            "“Ta giữ nguyên cấu tạo của tụ và chỉ thay đổi hiệu điện thế giữa hai bản.”",
+            "V3-Q1"
+          ],
+          [
+            "0:55–2:10",
+            "Hiển thị bảng một số cặp U–Q minh họa.",
+            "“Khi U tăng, độ lớn điện tích Q mà tụ tích được cũng tăng. Điều quan trọng là tìm quy luật giữa hai đại lượng.”",
+            "V3-Q2"
+          ],
+          [
+            "2:10–3:20",
+            "Hiển thị bốn dạng đồ thị, chưa chỉ đáp án.",
+            "“Em hãy dự đoán dạng đồ thị Q theo U. Kết quả sẽ được kiểm chứng trong phòng thí nghiệm ảo.”",
+            "V3-Q3"
+          ],
+          [
+            "3:20–4:40",
+            "Giới thiệu khái niệm điện dung nhưng chưa khai triển các yếu tố.",
+            "“Tỉ số Q/U đối với cùng một tụ là đại lượng đặc trưng cho khả năng tích điện của tụ, gọi là điện dung.”",
+            "V3-Q4"
+          ],
+          [
+            "4:40–5:30",
+            "Hiện C=Q/U, Q=CU.",
+            "“Điện dung có đơn vị fara (F). Trong thực tế thường dùng μF, nF, pF.”",
+            "V3-Q5"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V3-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Trong video này, để khảo sát ảnh hưởng của U lên Q, những yếu tố nào phải được giữ không đổi?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Diện tích phần đối diện S, khoảng cách d, điện môi/cấu tạo của tụ."
+          ],
+          [
+            "Gợi ý mức 1",
+            "Hãy phân biệt biến đang thay đổi với đặc điểm của bản thân tụ."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_CONTROL_VARIABLES"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V3-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Khi U tăng đối với cùng một tụ, Q có xu hướng thế nào?"
+          ],
+          [
+            "Phương án",
+            "A. Tăng. B. Giảm. C. Không đổi. D. Luôn bằng 0."
+          ],
+          [
+            "Đáp án/ý chính",
+            "A"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_Q_INDEPENDENT_OF_U"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V3-Q3"
+          ],
+          [
+            "Câu hỏi",
+            "Chọn dạng đồ thị dự đoán cho Q=f(U)."
+          ],
+          [
+            "Phương án",
+            "A. Đường thẳng tăng gần qua gốc. B. Đường thẳng ngang. C. Đường cong giảm. D. Parabol bất kì."
+          ],
+          [
+            "Đáp án/ý chính",
+            "A sẽ được kiểm chứng bằng dữ liệu; ở lần dự đoán không báo đúng ngay."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_GRAPH_Q_U"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V3-Q4"
+          ],
+          [
+            "Câu hỏi",
+            "Nếu đồ thị Q=f(U) là đường thẳng qua gốc, hệ số góc Q/U biểu thị đại lượng nào?"
+          ],
+          [
+            "Phương án",
+            "A. Điện dung C. B. Năng lượng W. C. Điện trở R. D. Cường độ dòng I."
+          ],
+          [
+            "Đáp án/ý chính",
+            "A"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_SLOPE_CONFUSION"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V3-Q5"
+          ],
+          [
+            "Câu hỏi",
+            "Đơn vị SI của điện dung là gì?"
+          ],
+          [
+            "Phương án",
+            "A. Vôn. B. Culông. C. Fara. D. Jun."
+          ],
+          [
+            "Đáp án/ý chính",
+            "C"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_UNIT_CAPACITANCE"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "2.4. Video 4 – Các yếu tố ảnh hưởng, ghép tụ, năng lượng và ứng dụng (5–6 phút)"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Đoạn",
+            "Nội dung",
+            "Lời thuyết minh",
+            "Checkpoint"
+          ],
+          [
+            "0:00–1:10",
+            "Thay S, d, điện môi trên mô hình.",
+            "“Điện dung không do U quyết định đối với một tụ lí tưởng cố định; nó phụ thuộc hình học và môi trường điện môi.”",
+            "V4-Q1"
+          ],
+          [
+            "1:10–2:20",
+            "Hai sơ đồ ghép nối tiếp/song song.",
+            "“Khi cần điện dung hoặc giới hạn điện áp khác, nhiều tụ có thể được ghép thành bộ.”",
+            "V4-Q2"
+          ],
+          [
+            "2:20–3:40",
+            "Đồ thị U theo Q, tô diện tích tam giác.",
+            "“Quá trình nạp tụ đòi hỏi công. Năng lượng tích trữ liên quan đến diện tích dưới đường U(Q).”",
+            "V4-Q3"
+          ],
+          [
+            "3:40–4:50",
+            "Ảnh tụ có ghi thông số điện dung và điện áp định mức.",
+            "“Không chỉ cần biết C; phải tôn trọng điện áp làm việc cho phép của tụ.”",
+            "V4-Q4"
+          ],
+          [
+            "4:50–5:40",
+            "Ứng dụng: flash máy ảnh, nguồn xung, lọc/ghép tín hiệu ở mức giới thiệu.",
+            "“Các chức năng của tụ thay đổi theo mạch; không nên đồng nhất mọi ứng dụng với ‘phóng điện nhanh’.”",
+            "V4-Q5"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V4-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Yếu tố nào sau đây có thể làm thay đổi điện dung của một tụ điện phẳng lí tưởng?"
+          ],
+          [
+            "Phương án",
+            "A. Chỉ tăng U nguồn. B. Thay đổi diện tích phần đối diện của hai bản. C. Chỉ đổi dấu điện tích. D. Chỉ đổi thời điểm đo."
+          ],
+          [
+            "Đáp án/ý chính",
+            "B"
+          ],
+          [
+            "Gợi ý mức 1",
+            "Ở cùng cấu tạo, U làm thay đổi Q nhưng không phải là tham số hình học của C."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_C_DEPENDS_U"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V4-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Mục đích của ghép tụ có thể là gì?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Tạo điện dung tương đương và/hoặc phân bố điện áp phù hợp với yêu cầu mạch; chưa yêu cầu công thức ở bước này."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_SERIES_PARALLEL_PURPOSE"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V4-Q3"
+          ],
+          [
+            "Câu hỏi",
+            "Trên đồ thị U=f(Q), phần diện tích dưới đường từ 0 đến Q liên quan đến đại lượng nào?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Công để tích điện/năng lượng tích trữ trong tụ."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_GRAPH_AREA_ENERGY"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V4-Q4"
+          ],
+          [
+            "Câu hỏi",
+            "Nếu trên tụ có ghi 100 μF – 25 V, con số 25 V nên được hiểu thế nào?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Điện áp làm việc/giới hạn định mức cần tuân thủ theo loại tụ và thông số nhà sản xuất; không được vận hành tùy ý vượt giá trị này."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_RATED_VOLTAGE"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "V4-Q5"
+          ],
+          [
+            "Câu hỏi",
+            "Nêu một ứng dụng của tụ điện và mô tả đúng vai trò của tụ trong ứng dụng đó."
+          ],
+          [
+            "Đáp án/ý chính",
+            "Chấp nhận ví dụ phù hợp; AI phải kiểm tra tránh giải thích sai kiểu “tụ đề quạt phóng điện nhanh tạo mômen”. Với tụ động cơ AC, vai trò liên quan lệch pha; với flash phóng điện của máy ảnh, có thể nói tích trữ và giải phóng năng lượng nhanh."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_APPLICATION_OVERSIMPLIFIED"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "sourceSections": [
+      "HOẠT ĐỘNG 3. ĐỀ XUẤT DỰ ĐOÁN/GIẢ THUYẾT"
+    ],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "HOẠT ĐỘNG 3. ĐỀ XUẤT DỰ ĐOÁN/GIẢ THUYẾT"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Pha",
+            "Mã",
+            "Thời lượng",
+            "Sản phẩm bắt buộc"
+          ],
+          [
+            "Trước lớp",
+            "PRE03",
+            "10–12 phút",
+            "Xem chi tiết dưới đây"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Nguyên tắc Hệ thống không công bố đáp án ở HĐ3. Tất cả dự đoán đầu tiên được snapshot bất biến để so sánh với bằng chứng ở HĐ4 và thảo luận trên lớp."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "HYP-Q-U"
+          ],
+          [
+            "Câu hỏi",
+            "Giữ nguyên cùng một tụ. Nếu tăng U, em dự đoán Q thay đổi thế nào? Hãy chọn xu hướng, chọn dạng đồ thị Q=f(U) và giải thích."
+          ],
+          [
+            "Phương án",
+            "Tăng Giảm Không đổi Chưa chắc chắn"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Dự kiến khoa học: Q tăng tỉ lệ thuận U; đồ thị đường thẳng qua gốc trong mô hình lí tưởng."
+          ],
+          [
+            "Gợi ý mức 1",
+            "Hãy xác định đại lượng nào đang được thay đổi và đại lượng nào được giữ cố định."
+          ],
+          [
+            "Gợi ý mức 2",
+            "Nếu cần, xem lại microvideo nhưng hệ thống vẫn giữ dự đoán đầu tiên."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_Q_U_NONLINEAR"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "HYP-C-S"
+          ],
+          [
+            "Câu hỏi",
+            "Giữ d và điện môi. Nếu tăng diện tích phần đối diện S, em dự đoán C thay đổi thế nào? Giải thích."
+          ],
+          [
+            "Phương án",
+            "Tăng Giảm Không đổi Chưa chắc chắn"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Dự kiến: C tăng theo S."
+          ],
+          [
+            "Gợi ý mức 1",
+            "Hãy xác định đại lượng nào đang được thay đổi và đại lượng nào được giữ cố định."
+          ],
+          [
+            "Gợi ý mức 2",
+            "Nếu cần, xem lại microvideo nhưng hệ thống vẫn giữ dự đoán đầu tiên."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_C_S_INVERSE"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "HYP-C-D"
+          ],
+          [
+            "Câu hỏi",
+            "Giữ S và điện môi. Nếu tăng khoảng cách d, em dự đoán C thay đổi thế nào? Giải thích."
+          ],
+          [
+            "Phương án",
+            "Tăng Giảm Không đổi Chưa chắc chắn"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Dự kiến: C giảm khi d tăng."
+          ],
+          [
+            "Gợi ý mức 1",
+            "Hãy xác định đại lượng nào đang được thay đổi và đại lượng nào được giữ cố định."
+          ],
+          [
+            "Gợi ý mức 2",
+            "Nếu cần, xem lại microvideo nhưng hệ thống vẫn giữ dự đoán đầu tiên."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_C_D_DIRECT"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "HYP-C-EPS"
+          ],
+          [
+            "Câu hỏi",
+            "Giữ S và d. Nếu thay không khí bằng điện môi có εr lớn hơn, em dự đoán C thay đổi thế nào? Giải thích."
+          ],
+          [
+            "Phương án",
+            "Tăng Giảm Không đổi Chưa chắc chắn"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Dự kiến: C tăng theo εr."
+          ],
+          [
+            "Gợi ý mức 1",
+            "Hãy xác định đại lượng nào đang được thay đổi và đại lượng nào được giữ cố định."
+          ],
+          [
+            "Gợi ý mức 2",
+            "Nếu cần, xem lại microvideo nhưng hệ thống vẫn giữ dự đoán đầu tiên."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_DIELECTRIC_NO_EFFECT"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "sourceSections": [
+      "HOẠT ĐỘNG 4. KHÁM PHÁ BẰNG PHÒNG THÍ NGHIỆM ẢO TỤ ĐIỆN"
+    ],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "HOẠT ĐỘNG 4. KHÁM PHÁ BẰNG PHÒNG THÍ NGHIỆM ẢO TỤ ĐIỆN"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Pha",
+            "Mã",
+            "Thời lượng",
+            "Sản phẩm bắt buộc"
+          ],
+          [
+            "Trước lớp",
+            "PRE04",
+            "30–40 phút",
+            "Xem chi tiết dưới đây"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "4.1. Giao diện chung và tham số mặc định"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Khu vực",
+            "Nội dung lập trình cụ thể"
+          ],
+          [
+            "Thanh nhiệm vụ",
+            "Tên thí nghiệm; câu hỏi nghiên cứu; bước hiện tại; nút “Xem dự đoán ban đầu”; tiến độ 1/5..."
+          ],
+          [
+            "Bàn thí nghiệm",
+            "Tụ phẳng 2 bản; nguồn DC; khóa; dây; tải LED + R; vôn kế; vật liệu điện môi; circuit builder tùy mode."
+          ],
+          [
+            "Bảng điều khiển",
+            "U: 0–12 V; S: 100–600 cm²; d: 1–10 mm; εr cấu hình từ admin; nút Nối nguồn/Ngắt nguồn. Các miền là mặc định đề xuất và có thể cấu hình."
+          ],
+          [
+            "Đồng hồ",
+            "U (V), C (pF/nF/μF tự đổi đơn vị), Q (pC/nC/μC), W (J/mJ/μJ tự đổi đơn vị)."
+          ],
+          [
+            "Sổ tay nhà vật lí",
+            "Tab: Vấn đề → Dự đoán → Biến → Phương án → Dữ liệu → Đồ thị → Kết luận → Phản hồi AI."
+          ],
+          [
+            "Chat AI",
+            "Nút “Tôi cần gợi ý”; AI biết thí nghiệm, bước và dữ liệu hiện tại; không đưa đáp án hoàn chỉnh trước khi HS nộp kết luận."
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "C = ε₀ εᵣ S / d"
+      },
+      {
+        "type": "paragraph",
+        "text": "Q = C U"
+      },
+      {
+        "type": "paragraph",
+        "text": "W = 1/2 QU = 1/2 CU² = Q²/(2C)"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Quy tắc trạng thái vật lí Nếu source_connected = TRUE thì U = U_source. Khi S, d hoặc εr đổi, C đổi và Q được tính lại theo Q=CU. Nếu tụ đã được nạp rồi source_connected = FALSE và cô lập, giữ Q tại giá trị lúc ngắt; khi C đổi thì U=Q/C và W=Q²/(2C)."
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "4.2. Thí nghiệm ảo 1 – Cấu tạo, tích điện và phóng điện"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Bước",
+            "Giao diện/trạng thái",
+            "Thao tác HS",
+            "Phản ứng hệ thống",
+            "Câu hỏi/đầu ra"
+          ],
+          [
+            "1. Nhận diện",
+            "Q=0; khóa mở; nguồn chưa nối. Các nhãn kéo-thả ở bên trái.",
+            "Kéo nhãn “nguồn”, “bản tụ”, “điện môi”, “khóa”, “tải” vào đúng vị trí.",
+            "Highlight xanh khi đúng; nếu sai trả nhãn về vị trí cũ.",
+            "LAB1-Q1: Vai trò của điện môi?"
+          ],
+          [
+            "2. Dự đoán nạp",
+            "Dây nối và khóa còn disabled.",
+            "Chọn dấu điện tích dự kiến trên hai bản; viết 1 câu giải thích.",
+            "Lưu prediction_charge; mở chức năng kéo dây.",
+            "LAB1-Q2."
+          ],
+          [
+            "3. Nối nguồn",
+            "Nguồn 5 V mặc định; S,d cố định.",
+            "Kéo dây để nối hai bản với hai cực nguồn; đóng K_charge.",
+            "source_connected=TRUE; U_tụ=5V; dấu +/− xuất hiện; Q tăng đến CU.",
+            "LAB1-Q3: Q hai bản có quan hệ gì?"
+          ],
+          [
+            "4. Ngắt nguồn",
+            "Tụ đã nạp.",
+            "Nhấn “Ngắt nguồn”.",
+            "source_connected=FALSE; giữ Q; biểu tượng nguồn xám.",
+            "LAB1-Q4: Sau ngắt nguồn, Q có bằng 0 ngay không?"
+          ],
+          [
+            "5. Dự đoán phóng",
+            "Tải chưa nối.",
+            "Chọn dự đoán LED + giải thích.",
+            "Lưu prediction_discharge; sau đó mở dây tải.",
+            "LAB1-Q5."
+          ],
+          [
+            "6. Phóng",
+            "Tụ nối LED + điện trở.",
+            "Đóng K_load.",
+            "LED sáng rồi mờ; Q,W giảm theo animation định tính; cuối cùng Q≈0.",
+            "LAB1-Q6: Evidence–Revision."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB1-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Điện môi nằm giữa hai bản tụ có vai trò nào phù hợp nhất?"
+          ],
+          [
+            "Phương án",
+            "A. Tạo đường dẫn kim loại nối trực tiếp hai bản. B. Cách điện giữa hai bản và ảnh hưởng đến điện dung. C. Cung cấp năng lượng cho tụ. D. Làm hai bản luôn trung hòa."
+          ],
+          [
+            "Đáp án/ý chính",
+            "B"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_DIELECTRIC_CONDUCTOR"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB1-Q3"
+          ],
+          [
+            "Câu hỏi",
+            "Sau khi nạp, độ lớn điện tích trên hai bản tụ có quan hệ thế nào?"
+          ],
+          [
+            "Phương án",
+            "A. Bằng nhau và trái dấu. B. Bằng nhau và cùng dấu. C. Chỉ bản dương có điện tích. D. Không xác định."
+          ],
+          [
+            "Đáp án/ý chính",
+            "A"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_CHARGE_PLATES"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB1-Q4"
+          ],
+          [
+            "Câu hỏi",
+            "Ngay sau khi ngắt nguồn nhưng chưa nối tải, trong mô hình lí tưởng Q của tụ thay đổi thế nào?"
+          ],
+          [
+            "Phương án",
+            "A. Về 0 ngay. B. Giữ gần như không đổi. C. Tăng vô hạn. D. Đổi dấu."
+          ],
+          [
+            "Đáp án/ý chính",
+            "B"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_DISCONNECT_Q_ZERO"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB1-Q6"
+          ],
+          [
+            "Câu hỏi",
+            "So sánh dự đoán trước thí nghiệm với quan sát khi phóng điện. Bằng chứng nào khiến em giữ nguyên hoặc sửa dự đoán?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Rubric 0–6: nêu quan sát; so sánh dự đoán; giải thích dựa trên điện tích/năng lượng hữu hạn."
+          ],
+          [
+            "Gợi ý mức 1",
+            "Hãy nhắc lại dự đoán ban đầu và chỉ ra chi tiết quan sát trực tiếp."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_EVIDENCE_NOT_USED"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "4.3. Thí nghiệm ảo 2 – Điều tra quan hệ Q–U"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Câu hỏi nghiên cứu Với cùng một tụ điện, điện tích Q phụ thuộc vào hiệu điện thế U theo quy luật nào?"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Bước",
+            "Yêu cầu hiển thị",
+            "Thao tác HS",
+            "Điều kiện qua bước"
+          ],
+          [
+            "1. Xác định biến",
+            "Form 3 ô: biến độc lập; biến phụ thuộc; biến kiểm soát.",
+            "Điền U; Q; S,d,εr.",
+            "Rule check đúng vai trò biến."
+          ],
+          [
+            "2. Đo lần 1–5",
+            "Slider U mở; S,d,εr khóa. Nút “Ghi phép đo”.",
+            "Chọn ít nhất 5 giá trị U khác nhau; mỗi lần nhấn Ghi.",
+            "≥5 U khác nhau và trải trên ≥60% miền slider."
+          ],
+          [
+            "3. Bảng dữ liệu",
+            "Tự điền U,Q; cột Q/U có nút “Tính”.",
+            "Quan sát và tính/kiểm tra Q/U.",
+            "Không thiếu dữ liệu."
+          ],
+          [
+            "4. Đồ thị",
+            "Nút “Vẽ Q=f(U)”.",
+            "Bấm vẽ; đọc slope.",
+            "Graph x=U,y=Q; fit tuyến tính."
+          ],
+          [
+            "5. Kết luận",
+            "4 câu định hướng + ô tự luận.",
+            "Nộp kết luận.",
+            "AI rubric ≥ mức tối thiểu hoặc đánh dấu cần GV."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB2-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Dạng đồ thị Q=f(U) thu được gần nhất là gì?"
+          ],
+          [
+            "Phương án",
+            "A. Đường thẳng tăng gần qua gốc. B. Đường ngang. C. Đường cong giảm. D. Không có quy luật."
+          ],
+          [
+            "Đáp án/ý chính",
+            "A"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_GRAPH_Q_U"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB2-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Tỉ số Q/U qua các phép đo có đặc điểm gì?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Gần như không đổi trong sai số/độ làm tròn của mô phỏng."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_RATIO_NOT_CONSTANT"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB2-Q3"
+          ],
+          [
+            "Câu hỏi",
+            "Hệ số góc của đồ thị Q=f(U) có ý nghĩa gì?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Bằng điện dung C của tụ vì Q=CU khi x=U, y=Q."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_SLOPE_C_VS_INV_C"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB2-Q4"
+          ],
+          [
+            "Câu hỏi",
+            "Viết kết luận về quan hệ giữa Q và U đối với cùng một tụ."
+          ],
+          [
+            "Đáp án/ý chính",
+            "Q tỉ lệ thuận U; Q=CU; C là hệ số tỉ lệ và đặc trưng khả năng tích điện của tụ."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_C_DEPENDS_U"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "4.4. Thí nghiệm ảo 3 – Các yếu tố ảnh hưởng đến điện dung"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Mode",
+            "Biến thay đổi",
+            "Biến khóa",
+            "Dữ liệu tối thiểu",
+            "Đồ thị",
+            "Kết luận mong đợi"
+          ],
+          [
+            "A – Diện tích S",
+            "S",
+            "d, εr, U",
+            "4 điểm",
+            "C=f(S)",
+            "C tăng theo S; với mô hình phẳng C∝S."
+          ],
+          [
+            "B – Khoảng cách d",
+            "d",
+            "S, εr, U",
+            "4 điểm",
+            "C=f(d) và tùy chọn C=f(1/d)",
+            "C giảm khi d tăng; C∝1/d."
+          ],
+          [
+            "C – Điện môi",
+            "εr/loại vật liệu",
+            "S,d,U",
+            "≥3 vật liệu",
+            "Biểu đồ cột C",
+            "C tăng khi εr tăng."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Logic bắt buộc Trước mỗi mode, hệ thống bắt buộc HS dự đoán. Khi mode chạy, các biến kiểm soát phải thực sự immutable. Nếu HS cố thay đổi qua thao tác giao diện, đó là bug blocking."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB3-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Trong khảo sát ảnh hưởng của S lên C, vì sao cần giữ d và điện môi không đổi?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Để cô lập ảnh hưởng của S; nếu nhiều biến cùng đổi không thể quy kết sự thay đổi C cho riêng S."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_VARIABLE_CONTROL"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB3-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Từ dữ liệu C=f(d), kết luận nào phù hợp?"
+          ],
+          [
+            "Phương án",
+            "A. C tăng khi d tăng. B. C giảm khi d tăng. C. C không phụ thuộc d. D. Chỉ U quyết định C."
+          ],
+          [
+            "Đáp án/ý chính",
+            "B"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_C_D_DIRECT"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB3-Q3"
+          ],
+          [
+            "Câu hỏi",
+            "Tổng hợp ba khảo sát, điện dung của tụ phẳng lí tưởng phụ thuộc vào những yếu tố nào?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "S, d và môi trường điện môi; công thức chuẩn hóa C=ε0εrS/d."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_C_FACTORS"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "4.5. Thí nghiệm ảo 4 – So sánh “còn nối nguồn” và “đã ngắt nguồn”"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Nội dung",
+            "Panel A: còn nối nguồn",
+            "Panel B: đã ngắt nguồn"
+          ],
+          [
+            "Thiết lập",
+            "Tụ nối nguồn; U=U_source cố định.",
+            "Nạp tụ cùng trạng thái ban đầu rồi ngắt; Q cố định."
+          ],
+          [
+            "Thao tác",
+            "Tăng d từ d1 lên 2d1.",
+            "Tăng d từ d1 lên 2d1."
+          ],
+          [
+            "C",
+            "Giảm.",
+            "Giảm."
+          ],
+          [
+            "Q",
+            "Giảm vì Q=CU, U không đổi.",
+            "Không đổi vì tụ cô lập."
+          ],
+          [
+            "U",
+            "Không đổi.",
+            "Tăng vì U=Q/C."
+          ],
+          [
+            "W",
+            "Giảm theo 1/2CU².",
+            "Tăng theo Q²/(2C)."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB4-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Vì sao cùng tăng d nhưng Q ở hai panel thay đổi khác nhau?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Panel A có nguồn giữ U; Q phải thay đổi cùng C. Panel B cô lập nên Q được bảo toàn trong mô hình lí tưởng, vì vậy U thay đổi."
+          ],
+          [
+            "Gợi ý mức 1",
+            "Trước tiên xác định đại lượng nào bị nguồn “giữ cố định” ở mỗi trường hợp."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_CONNECTED_DISCONNECTED"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB4-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Nếu thay đổi S thay vì d, nguyên tắc phân tích có thay đổi không?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Không: trước tiên xác định trạng thái nối/ngắt nguồn, sau đó dùng đại lượng bảo toàn/được giữ cố định để suy ra Q,U,W."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_STATE_FIRST"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "4.6. Thí nghiệm ảo 5 – Ghép tụ bằng Circuit Builder"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Bước",
+            "UI/Thao tác",
+            "Hệ thống",
+            "Câu hỏi"
+          ],
+          [
+            "1. Chọn linh kiện",
+            "Kéo C1, C2, nguồn và dây vào vùng lắp.",
+            "Nhận node và topology; cảnh báo hở/chập.",
+            "“Mạch đã kín chưa?”"
+          ],
+          [
+            "2. Ghép nối tiếp",
+            "Nối C1–C2 chung một node trung gian; hai đầu ngoài vào nguồn.",
+            "Nếu đúng: topology=SERIES; hiển thị U1,U2,Q1,Q2,Ceq.",
+            "SER-Q1 đến Q3."
+          ],
+          [
+            "3. Ghép song song",
+            "Hai đầu tương ứng C1,C2 nối chung hai node nguồn.",
+            "topology=PARALLEL; hiển thị U1,U2,Q1,Q2,Qtotal,Ceq.",
+            "PAR-Q1 đến Q3."
+          ],
+          [
+            "4. So sánh",
+            "Hiện hai kết quả cạnh nhau.",
+            "Khóa mạch; mở bảng tổng hợp.",
+            "TRANSFER-Q."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "SER-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Trong ghép nối tiếp lí tưởng, độ lớn điện tích trên các tụ thành phần có quan hệ thế nào?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Q1=Q2=...=Q."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_SERIES_CHARGE"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "SER-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Hiệu điện thế của bộ tụ nối tiếp liên hệ thế nào với các hiệu điện thế thành phần?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "U=U1+U2+..."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_SERIES_VOLTAGE"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "SER-Q3"
+          ],
+          [
+            "Câu hỏi",
+            "Viết biểu thức điện dung tương đương cho hai tụ nối tiếp."
+          ],
+          [
+            "Đáp án/ý chính",
+            "1/Ceq=1/C1+1/C2."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_SERIES_CAP_FORMULA"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "PAR-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Trong ghép song song, hiệu điện thế trên các tụ có quan hệ thế nào?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "U=U1=U2=..."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_PARALLEL_VOLTAGE"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "PAR-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Điện tích của bộ tụ song song liên hệ thế nào với điện tích các tụ?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Q=Q1+Q2+..."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_PARALLEL_CHARGE"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "PAR-Q3"
+          ],
+          [
+            "Câu hỏi",
+            "Viết biểu thức điện dung tương đương cho hai tụ song song."
+          ],
+          [
+            "Đáp án/ý chính",
+            "Ceq=C1+C2."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_PARALLEL_CAP_FORMULA"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "4.7. Thí nghiệm ảo 6 – Năng lượng qua đồ thị U=f(Q)"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Quy tắc đồ thị Ở thí nghiệm này cố ý dùng x=Q, y=U. Vì U=Q/C nên slope = 1/C. Không được diễn giải slope là C."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Bước",
+            "Hiển thị",
+            "Thao tác HS",
+            "Ý nghĩa"
+          ],
+          [
+            "1. Thiết lập",
+            "Tụ cố định, Q=0, U=0.",
+            "Xác định x=Q, y=U.",
+            "Chuẩn bị đọc đồ thị."
+          ],
+          [
+            "2. Tích điện từng bước",
+            "Slider/nút “Thêm ΔQ”; đồ thị U(Q) cập nhật điểm.",
+            "Tạo 5–8 bước tăng Q.",
+            "Quan sát U tăng tuyến tính."
+          ],
+          [
+            "3. Công vi phân",
+            "Tô một dải hẹp dưới đường tại Q hiện tại.",
+            "Chọn biểu thức gần đúng ΔA≈UΔQ.",
+            "Liên hệ diện tích dải với công."
+          ],
+          [
+            "4. Tổng công",
+            "Tô toàn bộ tam giác dưới đường từ 0 đến Q.",
+            "Tính diện tích.",
+            "W=A=1/2QU."
+          ],
+          [
+            "5. Biến đổi",
+            "Hiện Q=CU.",
+            "Tự biến đổi hai biểu thức còn lại.",
+            "W=1/2CU²=Q²/(2C)."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB6-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Trên đồ thị U=f(Q), hệ số góc bằng gì?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "1/C."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_SLOPE_ENERGY_GRAPH"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB6-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Diện tích dưới đường U(Q) từ 0 đến Q biểu thị gì?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Công cần thực hiện để tích điện cho tụ và bằng năng lượng điện trường tích trữ trong mô hình lí tưởng."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_AREA_GRAPH"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "LAB6-Q3"
+          ],
+          [
+            "Câu hỏi",
+            "Từ W=1/2QU và Q=CU, hãy suy ra hai biểu thức khác của W."
+          ],
+          [
+            "Đáp án/ý chính",
+            "W=1/2CU² và W=Q²/(2C)."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_ENERGY_FORMULA"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "sourceSections": [
+      "HOẠT ĐỘNG 5. QUAN SÁT VÀ PHÂN TÍCH THÍ NGHIỆM THẬT"
+    ],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "HOẠT ĐỘNG 5. QUAN SÁT VÀ PHÂN TÍCH THÍ NGHIỆM THẬT"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Pha",
+            "Mã",
+            "Thời lượng",
+            "Sản phẩm bắt buộc"
+          ],
+          [
+            "Trước lớp",
+            "PRE05",
+            "8–10 phút",
+            "Xem chi tiết dưới đây"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "5.1. Cấu hình thí nghiệm video đề xuất"
+      },
+      {
+        "type": "paragraph",
+        "text": "Nguồn DC thấp 3–5 V; tụ điện phân 1000–4700 μF có điện áp định mức phù hợp; LED + điện trở hạn dòng 220–330 Ω; khóa; dây. Giá trị cuối cùng do GV/kĩ thuật viên phòng thí nghiệm duyệt."
+      },
+      {
+        "type": "paragraph",
+        "text": "Không yêu cầu HS thao tác điện áp cao ở nhà. Video phải cho thấy rõ nạp, ngắt nguồn và phóng qua LED."
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Shot",
+            "Nội dung quay",
+            "Lời dẫn",
+            "Tương tác"
+          ],
+          [
+            "1",
+            "Cận cảnh mạch chưa nối nguồn.",
+            "“Tụ chưa được nạp. Hãy quan sát trạng thái LED.”",
+            "—"
+          ],
+          [
+            "2",
+            "Nối tụ với nguồn trong thời gian ngắn.",
+            "“Tụ đang được nạp.”",
+            "—"
+          ],
+          [
+            "3",
+            "Ngắt hoàn toàn nguồn.",
+            "“Nguồn đã được tháo khỏi mạch.”",
+            "Pause; PRE05-Q1 dự đoán."
+          ],
+          [
+            "4",
+            "Nối tụ qua LED + R.",
+            "Không thuyết minh kết quả trước.",
+            "HS quan sát."
+          ],
+          [
+            "5",
+            "LED sáng rồi giảm/tắt.",
+            "“Hãy dùng bằng chứng quan sát để sửa hoặc bảo vệ dự đoán.”",
+            "PRE05-Q2 tự luận."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "PRE05-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Trước khi xem kết quả, dự đoán trạng thái LED khi nối với tụ đã nạp nhưng nguồn đã tháo."
+          ],
+          [
+            "Phương án",
+            "A. Không sáng. B. Sáng ngắn rồi tắt. C. Sáng liên tục. D. Chưa chắc."
+          ],
+          [
+            "Đáp án/ý chính",
+            "Không công bố ở bước dự đoán."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_REAL_EXP_PREDICTION"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "PRE05-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Kết quả quan sát có phù hợp với dự đoán không? Hãy dùng ít nhất một bằng chứng từ video để giải thích."
+          ],
+          [
+            "Đáp án/ý chính",
+            "Rubric: nêu kết quả; đối chiếu dự đoán; sử dụng bằng chứng; liên hệ phóng điện/năng lượng hữu hạn."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_NO_EVIDENCE"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "sourceSections": [
+      "HOẠT ĐỘNG 6. KIỂM TRA MỨC SẴN SÀNG TRƯỚC GIỜ HỌC"
+    ],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "HOẠT ĐỘNG 6. KIỂM TRA MỨC SẴN SÀNG TRƯỚC GIỜ HỌC"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Pha",
+            "Mã",
+            "Thời lượng",
+            "Sản phẩm bắt buộc"
+          ],
+          [
+            "Trước lớp",
+            "PRE06",
+            "10 phút",
+            "Xem chi tiết dưới đây"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "6.1. Bộ câu hỏi readiness – 10 câu"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "R1"
+          ],
+          [
+            "Câu hỏi",
+            "Tụ điện cơ bản gồm gì?"
+          ],
+          [
+            "Phương án",
+            "A. Một vật dẫn. B. Hai vật dẫn ngăn cách bởi điện môi. C. Một nguồn và tải. D. Một cuộn dây."
+          ],
+          [
+            "Đáp án/ý chính",
+            "B"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "DIAG_CẤU_TẠO"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "R2"
+          ],
+          [
+            "Câu hỏi",
+            "Sau khi tụ lí tưởng đã nạp rồi ngắt nguồn, ngay lập tức Q của tụ sẽ:"
+          ],
+          [
+            "Phương án",
+            "A. Về 0. B. Giữ gần như không đổi. C. Tăng vô hạn. D. Đổi dấu."
+          ],
+          [
+            "Đáp án/ý chính",
+            "B"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "DIAG_NGẮT_NGUỒN"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "R3"
+          ],
+          [
+            "Câu hỏi",
+            "Với cùng một tụ, nếu U tăng 2 lần thì Q:"
+          ],
+          [
+            "Phương án",
+            "A. Tăng 2 lần. B. Giảm 2 lần. C. Không đổi. D. Không xác định."
+          ],
+          [
+            "Đáp án/ý chính",
+            "A"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "DIAG_Q_U"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "R4"
+          ],
+          [
+            "Câu hỏi",
+            "Trên đồ thị Q=f(U), hệ số góc biểu thị:"
+          ],
+          [
+            "Phương án",
+            "A. C. B. 1/C. C. W. D. R."
+          ],
+          [
+            "Đáp án/ý chính",
+            "A"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "DIAG_ĐỒ_THỊ"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "R5"
+          ],
+          [
+            "Câu hỏi",
+            "Tăng diện tích phần đối diện S, giữ d và điện môi, C sẽ:"
+          ],
+          [
+            "Phương án",
+            "A. Tăng. B. Giảm. C. Không đổi. D. Về 0."
+          ],
+          [
+            "Đáp án/ý chính",
+            "A"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "DIAG_S"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "R6"
+          ],
+          [
+            "Câu hỏi",
+            "Tăng khoảng cách d, giữ S và điện môi, C sẽ:"
+          ],
+          [
+            "Phương án",
+            "A. Tăng. B. Giảm. C. Không đổi. D. Tăng rồi giảm."
+          ],
+          [
+            "Đáp án/ý chính",
+            "B"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "DIAG_D"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "R7"
+          ],
+          [
+            "Câu hỏi",
+            "Hai tụ nối tiếp lí tưởng có đại lượng nào bằng nhau về độ lớn?"
+          ],
+          [
+            "Phương án",
+            "A. Hiệu điện thế. B. Điện tích. C. Điện dung. D. Năng lượng."
+          ],
+          [
+            "Đáp án/ý chính",
+            "B"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "DIAG_GHÉP_NỐI_TIẾP"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "R8"
+          ],
+          [
+            "Câu hỏi",
+            "Hai tụ song song có:"
+          ],
+          [
+            "Phương án",
+            "A. Cùng hiệu điện thế. B. Cùng điện tích bắt buộc. C. Ceq nhỏ hơn cả hai. D. Không có quan hệ."
+          ],
+          [
+            "Đáp án/ý chính",
+            "A"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "DIAG_GHÉP_SONG_SONG"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "R9"
+          ],
+          [
+            "Câu hỏi",
+            "Đơn vị SI của C là:"
+          ],
+          [
+            "Phương án",
+            "A. J. B. C. C. F. D. V."
+          ],
+          [
+            "Đáp án/ý chính",
+            "C"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "DIAG_ĐƠN_VỊ"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "R10"
+          ],
+          [
+            "Câu hỏi",
+            "Điền công thức năng lượng phù hợp nhất: W = ..."
+          ],
+          [
+            "Phương án",
+            "A. 1/2 CU². B. CU. C. Q/U. D. U/Q."
+          ],
+          [
+            "Đáp án/ý chính",
+            "A"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "DIAG_NĂNG_LƯỢNG"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "R11-MUDDY"
+          ],
+          [
+            "Câu hỏi",
+            "Điều em vẫn chưa hiểu hoặc chưa chắc chắn nhất sau phần chuẩn bị là gì?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Không chấm đúng/sai. AI phân loại chủ đề: cấu tạo; nạp/phóng; Q–U; yếu tố C; ghép tụ; năng lượng; ứng dụng; khác."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MUDDY_POINT"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "sourceSections": [
+      "HOẠT ĐỘNG 7. KÍCH HOẠT KIẾN THỨC VÀ ĐỐI CHIẾU DỰ ĐOÁN"
+    ],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "HOẠT ĐỘNG 7. KÍCH HOẠT KIẾN THỨC VÀ ĐỐI CHIẾU DỰ ĐOÁN"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Pha",
+            "Mã",
+            "Thời lượng",
+            "Sản phẩm bắt buộc"
+          ],
+          [
+            "Trên lớp",
+            "IN01",
+            "10–12 phút",
+            "Xem chi tiết dưới đây"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Cơ chế Mỗi câu: trả lời cá nhân → hiển thị phân bố ẩn danh → thảo luận cặp 2 phút → bình chọn lại → GV khai thác lí do, chưa chỉ đọc đáp án."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "PI1"
+          ],
+          [
+            "Câu hỏi",
+            "Cùng một tụ điện, tăng U gấp đôi thì C sẽ:"
+          ],
+          [
+            "Phương án",
+            "A. Tăng gấp đôi. B. Giảm một nửa. C. Không đổi. D. Không xác định."
+          ],
+          [
+            "Đáp án/ý chính",
+            "C"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_C_DEPENDS_U"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "PI2"
+          ],
+          [
+            "Câu hỏi",
+            "Tụ đã nạp rồi ngắt nguồn. Nếu tăng d thì đại lượng nào chắc chắn giữ không đổi trong mô hình lí tưởng?"
+          ],
+          [
+            "Phương án",
+            "A. U. B. Q. C. C. D. W."
+          ],
+          [
+            "Đáp án/ý chính",
+            "B"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_CONNECTED_DISCONNECTED"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "PI3"
+          ],
+          [
+            "Câu hỏi",
+            "Hai đường thẳng Q=f(U) của hai tụ C1 và C2. Đường của C1 dốc hơn. Kết luận?"
+          ],
+          [
+            "Phương án",
+            "A. C1>C2. B. C1<C2. C. C1=C2. D. Không liên quan C."
+          ],
+          [
+            "Đáp án/ý chính",
+            "A"
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_SLOPE_C_VS_INV_C"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "sourceSections": [
+      "HOẠT ĐỘNG 8. TÌM HIỂU KIẾN THỨC QUA THỰC NGHIỆM: CẤU TẠO – TÍCH ĐIỆN – PHÓNG ĐIỆN",
+      "HOẠT ĐỘNG 9. TÌM HIỂU KIẾN THỨC QUA THỰC NGHIỆM: ĐIỆN DUNG VÀ CÁC YẾU TỐ ẢNH HƯỞNG",
+      "HOẠT ĐỘNG 10. TÌM HIỂU GHÉP TỤ ĐIỆN QUA THỰC NGHIỆM/MÔ HÌNH HÓA",
+      "HOẠT ĐỘNG 11. TÌM HIỂU NĂNG LƯỢNG TỤ ĐIỆN QUA MÔ HÌNH HÓA"
+    ],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "HOẠT ĐỘNG 8. TÌM HIỂU KIẾN THỨC QUA THỰC NGHIỆM: CẤU TẠO – TÍCH ĐIỆN – PHÓNG ĐIỆN"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Pha",
+            "Mã",
+            "Thời lượng",
+            "Sản phẩm bắt buộc"
+          ],
+          [
+            "Trên lớp",
+            "IN02",
+            "20–25 phút",
+            "Xem chi tiết dưới đây"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "8.1. PHIẾU HỌC TẬP NHÓM SỐ 1 – bản hiển thị trên website"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Mục",
+            "Nội dung HS phải hoàn thành",
+            "Dữ liệu/đáp án GV"
+          ],
+          [
+            "A. Vấn đề",
+            "“Tụ điện có cấu tạo như thế nào và bằng cách nào tụ có thể tích trữ rồi giải phóng điện tích/năng lượng?”",
+            "Không chấm đáp án cố định."
+          ],
+          [
+            "B. Cấu tạo",
+            "Điền: “Tụ điện gồm hai ___ đặt gần nhau và ngăn cách bởi ___. Mỗi vật dẫn gọi là ___.”",
+            "vật dẫn; điện môi/môi trường cách điện; bản tụ."
+          ],
+          [
+            "C. Dự đoán",
+            "Dự đoán dấu điện tích hai bản khi nối nguồn; giải thích.",
+            "Trái dấu, cùng độ lớn."
+          ],
+          [
+            "D. Thí nghiệm",
+            "Ghi trạng thái ở 4 giai đoạn: chưa nạp; đang nối nguồn; sau ngắt nguồn; khi phóng qua tải.",
+            "Bảng dưới."
+          ],
+          [
+            "E. Bằng chứng",
+            "Chọn ít nhất 2 bằng chứng quan sát hỗ trợ kết luận về tích/phóng.",
+            "Ví dụ dấu điện tích xuất hiện; LED sáng khi phóng; Q giảm."
+          ],
+          [
+            "F. Kết luận",
+            "Viết 3–5 câu: cấu tạo; nạp; ngắt nguồn; phóng.",
+            "AI rubric 8 điểm."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Giai đoạn",
+            "Nguồn nối?",
+            "Q trên tụ",
+            "LED/tải",
+            "Nhận xét nhóm"
+          ],
+          [
+            "1. Chưa nạp",
+            "Không",
+            "≈0",
+            "Không sáng",
+            ""
+          ],
+          [
+            "2. Đang nạp",
+            "Có",
+            "Tăng đến giá trị theo C,U",
+            "Không phải tải chính",
+            ""
+          ],
+          [
+            "3. Sau ngắt nguồn",
+            "Không",
+            "Giữ gần giá trị lúc ngắt trong mô hình lí tưởng",
+            "Chưa nối",
+            ""
+          ],
+          [
+            "4. Phóng qua tải",
+            "Không",
+            "Giảm dần",
+            "Sáng ngắn rồi giảm/tắt",
+            ""
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "8.2. Câu hỏi định hướng của phiếu 1"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "WS1-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Vì sao hai bản tụ không được nối trực tiếp với nhau bằng vật dẫn?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Cần có điện môi/cách điện để duy trì sự phân bố điện tích trên hai bản; nối dẫn trực tiếp sẽ làm mất cấu trúc tụ theo mô hình này."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_DIELECTRIC_CONDUCTOR"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "WS1-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Sau khi ngắt nguồn, điều gì cho thấy tụ vẫn còn ở trạng thái đã tích điện?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Điện tích vẫn còn trên hai bản trong mô hình lí tưởng; khi nối tải tụ có thể phóng điện."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_DISCONNECT_Q_ZERO"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "WS1-Q3"
+          ],
+          [
+            "Câu hỏi",
+            "Hiện tượng nào là bằng chứng trực tiếp cho quá trình phóng điện qua tải?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "LED/tải nhận năng lượng trong thời gian ngắn đồng thời Q/W của tụ giảm."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_DISCHARGE_EVIDENCE"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "HOẠT ĐỘNG 9. TÌM HIỂU KIẾN THỨC QUA THỰC NGHIỆM: ĐIỆN DUNG VÀ CÁC YẾU TỐ ẢNH HƯỞNG"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Pha",
+            "Mã",
+            "Thời lượng",
+            "Sản phẩm bắt buộc"
+          ],
+          [
+            "Trên lớp",
+            "IN03",
+            "30–35 phút",
+            "Xem chi tiết dưới đây"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "9.1. PHIẾU 2A – Điều tra quan hệ Q–U"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Bước",
+            "Câu lệnh trên website",
+            "Sản phẩm nhóm",
+            "Đáp án/tiêu chí GV"
+          ],
+          [
+            "1",
+            "Viết câu hỏi nghiên cứu bằng một câu.",
+            "Câu hỏi Q phụ thuộc U thế nào?",
+            "Đúng trọng tâm."
+          ],
+          [
+            "2",
+            "Xem lại dự đoán PRE03, không sửa bản gốc.",
+            "Chọn “giữ nguyên” hoặc “muốn thay đổi sau khi thảo luận”, nêu lí do.",
+            "Lưu cả hai."
+          ],
+          [
+            "3",
+            "Xác định biến độc lập, phụ thuộc, kiểm soát.",
+            "U; Q; S,d,εr.",
+            "Đúng biến."
+          ],
+          [
+            "4",
+            "Thu ít nhất 5 điểm U–Q.",
+            "Bảng dữ liệu.",
+            "Dữ liệu trải đủ miền."
+          ],
+          [
+            "5",
+            "Dựng Q=f(U), đọc slope.",
+            "Đồ thị và slope.",
+            "x=U,y=Q; slope=C."
+          ],
+          [
+            "6",
+            "Viết kết luận 3–5 câu.",
+            "Kết luận nhóm.",
+            "Q∝U; C=Q/U; C là hệ số tỉ lệ."
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "9.2. PHIẾU 2B – Jigsaw: điều gì quyết định C?"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Nhóm chuyên gia",
+            "Nhiệm vụ",
+            "Bảng dữ liệu",
+            "Kết luận"
+          ],
+          [
+            "A – S",
+            "Giữ d,εr; thay S.",
+            "S | C, ≥4 điểm",
+            "C∝S."
+          ],
+          [
+            "B – d",
+            "Giữ S,εr; thay d.",
+            "d | C, ≥4 điểm",
+            "C∝1/d."
+          ],
+          [
+            "C – điện môi",
+            "Giữ S,d; đổi εr/vật liệu.",
+            "vật liệu | εr | C, ≥3 loại",
+            "C tăng theo εr."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "WS2-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Sau Jigsaw, hãy viết một công thức tổng hợp biểu diễn sự phụ thuộc của C vào S, d và điện môi đối với tụ phẳng."
+          ],
+          [
+            "Đáp án/ý chính",
+            "C=ε0εrS/d."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_C_FACTORS"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "WS2-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Vì sao nói C là đặc trưng của tụ chứ không phải “do U tạo ra”?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Trong mô hình tụ lí tưởng cố định, C do hình học và điện môi quyết định; U thay đổi làm Q thay đổi theo Q=CU nhưng không phải là tham số cấu tạo của C."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_C_DEPENDS_U"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "HOẠT ĐỘNG 10. TÌM HIỂU GHÉP TỤ ĐIỆN QUA THỰC NGHIỆM/MÔ HÌNH HÓA"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Pha",
+            "Mã",
+            "Thời lượng",
+            "Sản phẩm bắt buộc"
+          ],
+          [
+            "Trên lớp",
+            "IN04",
+            "20–25 phút",
+            "Xem chi tiết dưới đây"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "10.1. PHIẾU HỌC TẬP NHÓM SỐ 3 – Ghép tụ"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Phần",
+            "Nhiệm vụ",
+            "Điền vào phiếu",
+            "Kết luận GV"
+          ],
+          [
+            "A. Nối tiếp",
+            "Lắp C1,C2 nối tiếp; đọc Q1,Q2,U1,U2,U.",
+            "Q1___Q2; U___U1+U2; đề xuất Ceq.",
+            "Q1=Q2; U=U1+U2; 1/Ceq=1/C1+1/C2."
+          ],
+          [
+            "B. Song song",
+            "Lắp C1,C2 song song; đọc các đại lượng.",
+            "U1___U2; Q___Q1+Q2; đề xuất Ceq.",
+            "U1=U2=U; Q=Q1+Q2; Ceq=C1+C2."
+          ],
+          [
+            "C. So sánh",
+            "Chọn C1=4 μF, C2=6 μF (giá trị mô phỏng), tính Ceq hai trường hợp.",
+            "Nối tiếp: 2.4 μF; song song: 10 μF.",
+            "Đối chiếu số đo mô phỏng."
+          ],
+          [
+            "D. Vận dụng",
+            "Muốn tăng điện dung tương đương so với từng tụ thành phần, chọn cách ghép nào?",
+            "Giải thích.",
+            "Song song."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "WS3-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Vì sao Ceq của hai tụ nối tiếp nhỏ hơn từng tụ thành phần?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "Có thể giải thích qua công thức nghịch đảo hoặc qua ý nghĩa bộ tụ tương đương; chấp nhận lập luận đúng."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_SERIES_CEQ_GREATER"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "WS3-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Một bạn nói: “Ghép song song thì điện tích trên mỗi tụ bằng nhau.” Nhận xét."
+          ],
+          [
+            "Đáp án/ý chính",
+            "Sai nói chung; các tụ song song có cùng U, nên Qi=CiU và chỉ bằng nhau nếu Ci bằng nhau."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_PARALLEL_CHARGE_EQUAL"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "HOẠT ĐỘNG 11. TÌM HIỂU NĂNG LƯỢNG TỤ ĐIỆN QUA MÔ HÌNH HÓA"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Pha",
+            "Mã",
+            "Thời lượng",
+            "Sản phẩm bắt buộc"
+          ],
+          [
+            "Trên lớp",
+            "IN05",
+            "20–25 phút",
+            "Xem chi tiết dưới đây"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "11.1. PHIẾU HỌC TẬP NHÓM SỐ 4 – Năng lượng"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Bước",
+            "Nhiệm vụ HS",
+            "Kết quả/đáp án GV"
+          ],
+          [
+            "1",
+            "Xác định trục của đồ thị U=f(Q).",
+            "x=Q, y=U."
+          ],
+          [
+            "2",
+            "Đọc slope.",
+            "slope=ΔU/ΔQ≈1/C."
+          ],
+          [
+            "3",
+            "Một bước nhỏ ΔQ tại điện thế U có công gần đúng bao nhiêu?",
+            "ΔA≈UΔQ."
+          ],
+          [
+            "4",
+            "Tổng công từ 0 đến Q biểu diễn bởi phần nào?",
+            "Diện tích dưới đường U(Q)."
+          ],
+          [
+            "5",
+            "Với đường thẳng qua gốc, tính diện tích tam giác.",
+            "W=A=1/2QU."
+          ],
+          [
+            "6",
+            "Dùng Q=CU biến đổi.",
+            "W=1/2CU²=Q²/(2C)."
+          ],
+          [
+            "7",
+            "Giải thích vật lí.",
+            "Năng lượng của tụ là năng lượng điện trường tích trữ trong hệ tụ."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "WS4-Q1"
+          ],
+          [
+            "Câu hỏi",
+            "Một tụ có C=100 μF được nạp đến U=10 V. Tính năng lượng tích trữ."
+          ],
+          [
+            "Đáp án/ý chính",
+            "W=1/2CU²=0.5×100×10^-6×100=0.005 J."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_ENERGY_NUMERIC"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "WS4-Q2"
+          ],
+          [
+            "Câu hỏi",
+            "Tụ đã ngắt nguồn, Q giữ không đổi. Nếu C giảm một nửa thì W thay đổi thế nào?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "W=Q²/(2C) nên W tăng gấp đôi."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "MC_ENERGY_DISCONNECTED"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "sourceSections": [
+      "HOẠT ĐỘNG 12. LUYỆN TẬP – CỦNG CỐ – VẬN DỤNG GẦN"
+    ],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "HOẠT ĐỘNG 12. LUYỆN TẬP – CỦNG CỐ – VẬN DỤNG GẦN"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Pha",
+            "Mã",
+            "Thời lượng",
+            "Sản phẩm bắt buộc"
+          ],
+          [
+            "Trên lớp",
+            "IN06",
+            "20 phút",
+            "Xem chi tiết dưới đây"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "12.1. Game “Capacitor Challenge” – ngân hàng 16 câu"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Mã",
+            "Câu hỏi",
+            "Đáp án chuẩn"
+          ],
+          [
+            "G1",
+            "Tụ điện gồm hai vật dẫn ngăn cách bởi gì?",
+            "Điện môi."
+          ],
+          [
+            "G2",
+            "Đơn vị SI của điện dung?",
+            "Fara (F)."
+          ],
+          [
+            "G3",
+            "Công thức liên hệ Q,U,C?",
+            "Q=CU."
+          ],
+          [
+            "G4",
+            "Đồ thị Q=f(U) có slope bằng?",
+            "C."
+          ],
+          [
+            "G5",
+            "Đồ thị U=f(Q) có slope bằng?",
+            "1/C."
+          ],
+          [
+            "G6",
+            "Tăng S thì C?",
+            "Tăng."
+          ],
+          [
+            "G7",
+            "Tăng d thì C?",
+            "Giảm."
+          ],
+          [
+            "G8",
+            "Tăng εr thì C?",
+            "Tăng."
+          ],
+          [
+            "G9",
+            "Tụ ngắt nguồn: Q?",
+            "Không đổi trong mô hình lí tưởng."
+          ],
+          [
+            "G10",
+            "Tụ còn nối nguồn: U?",
+            "Bằng U nguồn, giữ không đổi nếu nguồn lí tưởng."
+          ],
+          [
+            "G11",
+            "Nối tiếp: đại lượng bằng nhau?",
+            "Độ lớn điện tích."
+          ],
+          [
+            "G12",
+            "Song song: đại lượng bằng nhau?",
+            "Hiệu điện thế."
+          ],
+          [
+            "G13",
+            "Ceq song song?",
+            "Tổng các C."
+          ],
+          [
+            "G14",
+            "Ceq nối tiếp 4 μF và 6 μF?",
+            "2.4 μF."
+          ],
+          [
+            "G15",
+            "W của tụ có thể viết thế nào?",
+            "1/2QU; 1/2CU²; Q²/(2C)."
+          ],
+          [
+            "G16",
+            "Tụ trong flash máy ảnh kiểu phóng điện có vai trò gì?",
+            "Tích trữ rồi giải phóng năng lượng nhanh cho đèn flash."
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "12.2. Bài tập phân hóa"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Mức",
+            "Nhiệm vụ mẫu",
+            "Đáp án/tiêu chí"
+          ],
+          [
+            "Level 1",
+            "Tụ C=20 μF, U=12 V. Tính Q.",
+            "Q=240 μC."
+          ],
+          [
+            "Level 2",
+            "Cùng tụ trên, tăng U từ 6 V lên 12 V. Nhận xét Q và C.",
+            "Q tăng 2 lần; C không đổi."
+          ],
+          [
+            "Level 3",
+            "Tụ đã ngắt nguồn; tăng d 2 lần. Nhận xét C,U,W.",
+            "C giảm 2; U tăng 2; W tăng 2; Q không đổi."
+          ],
+          [
+            "Level 4",
+            "Hai tụ 4 μF, 6 μF; thiết kế cách ghép để được 10 μF hoặc 2.4 μF.",
+            "Song song 10; nối tiếp 2.4."
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "sourceSections": [
+      "HOẠT ĐỘNG 13. VẬN DỤNG XA VÀ THIẾT KẾ DỰ ÁN"
+    ],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "HOẠT ĐỘNG 13. VẬN DỤNG XA VÀ THIẾT KẾ DỰ ÁN"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Pha",
+            "Mã",
+            "Thời lượng",
+            "Sản phẩm bắt buộc"
+          ],
+          [
+            "Sau lớp",
+            "POST01",
+            "1–2 tuần",
+            "Xem chi tiết dưới đây"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "13.1. Đề bài dự án – hiển thị nguyên văn"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "DỰ ÁN: THIẾT KẾ GIẢI PHÁP TÍCH TRỮ NĂNG LƯỢNG BẰNG TỤ ĐIỆN Một thiết bị cần một nguồn năng lượng dự phòng trong thời gian  rất ngắn để duy trì một chức năng quan trọng khi nguồn chính bị gián đoạn. Nhóm em được cung cấp một catalogue tụ điện giả lập. Hãy đề xuất cách chọn và/hoặc ghép tụ để đáp ứng yêu cầu điện áp và năng lượng, đồng thời giải thích cơ sở vật lí của phương án."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Tụ",
+            "C",
+            "Umax",
+            "Giá giả lập",
+            "Kích thước tương đối"
+          ],
+          [
+            "A",
+            "1000 μF",
+            "16 V",
+            "10 điểm",
+            "1"
+          ],
+          [
+            "B",
+            "2200 μF",
+            "10 V",
+            "15 điểm",
+            "1.5"
+          ],
+          [
+            "C",
+            "4700 μF",
+            "6.3 V",
+            "20 điểm",
+            "2"
+          ],
+          [
+            "D",
+            "680 μF",
+            "25 V",
+            "12 điểm",
+            "1"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Yêu cầu kĩ thuật giả lập Thiết bị cần làm việc ở 12 V và cần tối thiểu 0.10 J năng lượng dự trữ hữu dụng theo mô hình lí tưởng. Nhóm phải kiểm tra Umax của từng tụ và giải thích cách ghép nếu cần. Đây là bài toán thiết kế học tập, không phải hướng dẫn lắp thiết bị điện thực tế."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Sản phẩm",
+            "Yêu cầu"
+          ],
+          [
+            "1. Phân tích yêu cầu",
+            "Nêu U làm việc, W tối thiểu, các ràng buộc."
+          ],
+          [
+            "2. Phương án",
+            "Chọn tụ/ghép tụ; vẽ sơ đồ."
+          ],
+          [
+            "3. Tính toán",
+            "Tính Ceq, kiểm tra điện áp, tính W."
+          ],
+          [
+            "4. Lập luận",
+            "Giải thích vì sao phương án phù hợp; so sánh ít nhất 1 phương án khác."
+          ],
+          [
+            "5. Hạn chế",
+            "Nêu ít nhất 2 yếu tố thực tế mà mô hình lí tưởng chưa xét."
+          ],
+          [
+            "6. Trình bày",
+            "PDF 2–4 trang hoặc poster + video tối đa 3 phút."
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "13.2. Rubric dự án"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Tiêu chí",
+            "Trọng số",
+            "Mô tả mức đạt tốt"
+          ],
+          [
+            "Đúng kiến thức vật lí",
+            "25%",
+            "Công thức, đơn vị, trạng thái ghép và giới hạn điện áp chính xác."
+          ],
+          [
+            "Tính toán",
+            "20%",
+            "Ceq, W và kiểm tra Umax đúng, có bước tính rõ."
+          ],
+          [
+            "Lập luận thiết kế",
+            "20%",
+            "Lựa chọn có căn cứ, so sánh phương án."
+          ],
+          [
+            "Tính khả thi trong mô hình",
+            "15%",
+            "Đáp ứng ràng buộc đề bài."
+          ],
+          [
+            "Nhận diện giới hạn",
+            "10%",
+            "Phân biệt mô hình lí tưởng với thực tế: ESR, rò, dung sai, hiệu suất... ở mức phù hợp."
+          ],
+          [
+            "Trình bày",
+            "10%",
+            "Rõ ràng, sơ đồ đọc được, trích nguồn nếu dùng hình ngoài."
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "sourceSections": [
+      "HOẠT ĐỘNG 14. PHẢN TƯ – LUYỆN TẬP GIÃN CÁCH – CHUYỂN GIAO"
+    ],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "HOẠT ĐỘNG 14. PHẢN TƯ – LUYỆN TẬP GIÃN CÁCH – CHUYỂN GIAO"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Pha",
+            "Mã",
+            "Thời lượng",
+            "Sản phẩm bắt buộc"
+          ],
+          [
+            "Sau lớp",
+            "POST02",
+            "15–20 phút + mở trễ",
+            "Xem chi tiết dưới đây"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "14.1. Reflection"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "REF1"
+          ],
+          [
+            "Câu hỏi",
+            "Dự đoán nào của em ở đầu bài đã thay đổi nhiều nhất? Vì sao?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "AI rubric phản tư: cụ thể, có bằng chứng, mô tả thay đổi nhận thức; không chấm theo việc “đồng ý với đáp án”."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "REFLECTION"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "REF2"
+          ],
+          [
+            "Câu hỏi",
+            "Bằng chứng thực nghiệm/đồ thị nào thuyết phục em nhất?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "AI rubric phản tư: cụ thể, có bằng chứng, mô tả thay đổi nhận thức; không chấm theo việc “đồng ý với đáp án”."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "REFLECTION"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "REF3"
+          ],
+          [
+            "Câu hỏi",
+            "Một lỗi em từng mắc khi phân biệt Q, U và C là gì? Em sửa nó như thế nào?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "AI rubric phản tư: cụ thể, có bằng chứng, mô tả thay đổi nhận thức; không chấm theo việc “đồng ý với đáp án”."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "REFLECTION"
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Trường",
+            "Nội dung"
+          ],
+          [
+            "Mã câu",
+            "REF4"
+          ],
+          [
+            "Câu hỏi",
+            "Nếu được làm lại một thí nghiệm, em sẽ thay đổi cách thu dữ liệu nào để kết luận chắc chắn hơn?"
+          ],
+          [
+            "Đáp án/ý chính",
+            "AI rubric phản tư: cụ thể, có bằng chứng, mô tả thay đổi nhận thức; không chấm theo việc “đồng ý với đáp án”."
+          ],
+          [
+            "Lỗi/quan niệm cần gắn tag",
+            "REFLECTION"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "14.2. Delayed practice – 8 câu chuyển giao"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Mã",
+            "Câu",
+            "Đáp án"
+          ],
+          [
+            "D1",
+            "Tụ C=50 μF ở U=20 V. Tính Q.",
+            "1.0 mC."
+          ],
+          [
+            "D2",
+            "Tụ trên có W bằng bao nhiêu?",
+            "0.01 J."
+          ],
+          [
+            "D3",
+            "Một tụ vẫn nối nguồn. Tăng S 2 lần. Nhận xét C,Q,U.",
+            "C×2; Q×2; U không đổi."
+          ],
+          [
+            "D4",
+            "Tụ đã ngắt nguồn. Tăng S 2 lần. Nhận xét C,Q,U,W.",
+            "C×2; Q không đổi; U/2; W/2."
+          ],
+          [
+            "D5",
+            "Đồ thị Q=f(U) của A dốc gấp 2 B. So sánh C.",
+            "CA=2CB."
+          ],
+          [
+            "D6",
+            "Đồ thị U=f(Q) của A dốc gấp 2 B. So sánh C.",
+            "CA=CB/2."
+          ],
+          [
+            "D7",
+            "Hai tụ 3 μF, 6 μF song song. Ceq?",
+            "9 μF."
+          ],
+          [
+            "D8",
+            "Hai tụ 3 μF, 6 μF nối tiếp. Ceq?",
+            "2 μF."
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "15. THƯ VIỆN PHẢN HỒI AI VÀ RUBRIC DÙNG CHUNG"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Tình huống",
+            "Không nên phản hồi",
+            "Phản hồi nên dùng"
+          ],
+          [
+            "HS sai lần đầu",
+            "“Sai. Đáp án đúng là B.”",
+            "“Em đang chọn phương án cho rằng Q biến mất ngay khi ngắt nguồn. Hãy kiểm tra thí nghiệm ảo ở thời điểm ngay sau khi nguồn bị tháo: đồng hồ Q hiển thị gì?”"
+          ],
+          [
+            "HS nêu đúng nhưng thiếu lí do",
+            "“Đúng.”",
+            "“Kết luận của em phù hợp dữ liệu. Hãy bổ sung ít nhất một bằng chứng định lượng hoặc từ đồ thị để làm rõ.”"
+          ],
+          [
+            "HS nhầm C phụ thuộc U",
+            "“C không phụ thuộc U.”",
+            "“Trong thí nghiệm Q–U, khi U thay đổi, S, d và điện môi có đổi không? Hãy so sánh tỉ số Q/U ở các phép đo.”"
+          ],
+          [
+            "HS nhầm trạng thái nối/ngắt",
+            "Cho công thức ngay",
+            "“Trước tiên xác định tụ còn nối nguồn hay đã cô lập. Đại lượng nào được nguồn giữ cố định trong trường hợp này?”"
+          ],
+          [
+            "AI không chắc",
+            "Tự chấm điểm dứt khoát",
+            "“Câu trả lời đã được ghi nhận và chuyển giáo viên xem xét vì hệ thống chưa đủ chắc chắn để chấm tự động.”"
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "16. NỘI DUNG CHATBOX THEO NGỮ CẢNH"
+      },
+      {
+        "type": "table",
+        "rows": [
+          [
+            "Context",
+            "HS hỏi",
+            "Cách chatbot phản hồi"
+          ],
+          [
+            "PRE03 – dự đoán",
+            "“Đáp án là tăng hay giảm?”",
+            "Không cho đáp án; hỏi biến nào đổi, biến nào giữ và đề nghị HS chọn giả thuyết."
+          ],
+          [
+            "LAB2 – Q–U",
+            "“Tại sao C không tăng khi U tăng?”",
+            "Gợi kiểm tra S,d,εr và tỉ số Q/U trong dữ liệu của chính HS."
+          ],
+          [
+            "LAB4 – nguồn/ngắt",
+            "“Tại sao U lại tăng khi d tăng?”",
+            "Hỏi HS xác định Q có được giữ không đổi không; dẫn tới U=Q/C sau khi C giảm."
+          ],
+          [
+            "IN04 – ghép tụ",
+            "“Nối tiếp hay song song cho C lớn hơn?”",
+            "Nếu phiếu đang mở: gợi nhìn công thức/đo Ceq; sau khi nộp: giải thích đầy đủ."
+          ],
+          [
+            "POST – ôn tập",
+            "“Giải câu này giúp em.”",
+            "Có thể giải từng bước, nhưng ưu tiên hỏi HS nêu bước đầu trước."
+          ]
+        ]
+      },
+      {
+        "type": "paragraph",
+        "text": "17. CHECKLIST NGHIỆM THU NỘI DUNG"
+      },
+      {
+        "type": "paragraph",
+        "text": "☐ Video có transcript, subtitle, checkpoint và không cho tua tới đoạn chưa xem."
+      },
+      {
+        "type": "paragraph",
+        "text": "☐ Mọi câu tự luận có rubric, expected concepts và misconception tags."
+      },
+      {
+        "type": "paragraph",
+        "text": "☐ Q=f(U) luôn dùng x=U, y=Q khi diễn giải slope=C."
+      },
+      {
+        "type": "paragraph",
+        "text": "☐ U=f(Q) luôn dùng x=Q, y=U khi diễn giải slope=1/C."
+      },
+      {
+        "type": "paragraph",
+        "text": "☐ Thí nghiệm ảo phân biệt đúng source_connected TRUE/FALSE."
+      },
+      {
+        "type": "paragraph",
+        "text": "☐ Các biến bị khóa trong thí nghiệm kiểm soát biến thực sự không thay đổi được."
+      },
+      {
+        "type": "paragraph",
+        "text": "☐ Không dùng distractor phi lí chỉ để làm câu dễ."
+      },
+      {
+        "type": "paragraph",
+        "text": "☐ Không mô tả electron đi xuyên điện môi trong animation nạp/phóng."
+      },
+      {
+        "type": "paragraph",
+        "text": "☐ Không giải thích tụ động cơ AC đơn giản là “phóng điện nhanh tạo mômen”."
+      },
+      {
+        "type": "paragraph",
+        "text": "☐ Ví dụ flash dùng “máy ảnh/đèn flash phóng điện” thay vì khẳng định chung cho mọi flash điện thoại."
+      },
+      {
+        "type": "paragraph",
+        "text": "☐ AI không công bố đáp án khi HS đang ở bước dự đoán/điều tra chưa nộp."
+      },
+      {
+        "type": "paragraph",
+        "text": "☐ Teacher override và low-confidence review được kích hoạt."
+      },
+      {
+        "type": "paragraph",
+        "text": "☐ Tất cả câu hỏi, thao tác, dữ liệu và phiên bản sửa được log để phục vụ nghiên cứu."
+      }
+    ]
+  }
+]
