@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Download, FileUp, LoaderCircle, Save, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import StudentActivityResult from "@/components/StudentActivityResult";
 
 type Attachment = { path: string; name: string; size: number; type: string };
 type ProjectEvidence = { kind: "project-submission"; responses: Record<string, string>; projectLink: string; attachments: Attachment[] };
@@ -29,6 +30,7 @@ export default function ProjectSubmissionForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [teacherReview, setTeacherReview] = useState<{ score: number; feedback: string | null; gradedAt: string | null } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -38,7 +40,9 @@ export default function ProjectSubmissionForm() {
       if (!response.ok) throw new Error(result.error || "Không tải được bài dự án đã lưu.");
       return result.record;
     }).then((record) => {
-      if (!active || record?.evidence?.kind !== "project-submission") return;
+      if (!active || !record) return;
+      if (typeof record.teacher_score === "number") setTeacherReview({ score: record.teacher_score, feedback: record.teacher_feedback || null, gradedAt: record.graded_at || null });
+      if (record.evidence?.kind !== "project-submission") return;
       setProject({ ...INITIAL, ...record.evidence, responses: record.evidence.responses || {}, attachments: record.evidence.attachments || [] });
       setReadOnly(Boolean(record.completed_at));
     }).catch((loadError: unknown) => { if (active) setError(loadError instanceof Error ? loadError.message : "Không tải được bài dự án."); })
@@ -111,6 +115,7 @@ export default function ProjectSubmissionForm() {
   return <section className="mt-5 space-y-5 rounded-3xl border border-indigo-100 bg-indigo-50/60 p-5 md:p-7">
     <header><p className="text-xs font-extrabold uppercase tracking-widest text-indigo-700">POST01 · 1–2 tuần</p><h3 className="mt-1 text-xl font-extrabold text-slate-950">Nộp dự án và lưu vào hồ sơ lớp</h3><p className="mt-2 text-sm leading-6 text-slate-600">Lưu được bản nháp, tài liệu đính kèm và link sản phẩm. Bản cuối được khóa để giáo viên chấm theo rubric; PDF/poster/video không thay cho phần trình bày lập luận.</p></header>
     {preview && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Bản xem tự do chỉ hiển thị biểu mẫu. Tải tệp và lưu/nộp cần tài khoản học sinh đã được mở.</p>}
+    {teacherReview && <StudentActivityResult score={teacherReview.score} feedback={teacherReview.feedback} gradedAt={teacherReview.gradedAt}/>}
     {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}{notice && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
     <div className="grid gap-3 md:grid-cols-2">{FIELDS.map((field) => <label key={field.key} className="text-xs font-bold text-slate-700">{field.label}<span className="mt-1 block font-normal leading-5 text-slate-600">{field.prompt}</span><textarea value={project.responses[field.key] || ""} disabled={readOnly} maxLength={4000} onChange={(event) => updateResponse(field.key, event.target.value)} className="mt-2 min-h-28 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal leading-6 outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100" placeholder="Viết phần trình bày có công thức, số liệu và đơn vị…" /></label>)}</div>
     <label className="block text-xs font-bold text-slate-700">Link sản phẩm tùy chọn<input type="url" value={project.projectLink} disabled={readOnly} onChange={(event) => setProject((current) => ({ ...current, projectLink: event.target.value }))} placeholder="https://drive.google.com/... hoặc link Canva" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-normal outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100" /></label>

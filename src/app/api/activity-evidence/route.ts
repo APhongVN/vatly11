@@ -178,13 +178,13 @@ export async function GET(request: Request) {
   if (access.profile.role === "student") {
     const { data: student } = await access.supabase.from("students").select("id").eq("auth_user_id", access.user.id).maybeSingle();
     if (!student) return NextResponse.json({ error: "Tài khoản chưa được gắn với hồ sơ học sinh." }, { status: 403 });
-    const { data, error } = await access.supabase.from("activity_evidence").select("activity_id,evidence,score,score_max,completed_at,updated_at").eq("student_id", student.id).eq("activity_id", activityId).maybeSingle();
+    const { data, error } = await access.supabase.from("activity_evidence").select("activity_id,evidence,score,score_max,completed_at,updated_at,teacher_score,teacher_feedback,graded_at").eq("student_id", student.id).eq("activity_id", activityId).maybeSingle();
     if (error) return NextResponse.json({ error: "Không tải được sổ tay hoạt động." }, { status: 503 });
     return NextResponse.json({ record: data });
   }
 
   const { data, error } = await access.supabase.from("activity_evidence")
-    .select("id,activity_id,student_id,evidence,score,score_max,completed_at,updated_at,students(full_name,class_name)")
+    .select("id,activity_id,student_id,evidence,score,score_max,completed_at,updated_at,ai_score,ai_feedback,ai_strengths,ai_weaknesses,ai_model_answer,teacher_score,teacher_feedback,graded_by,graded_at,students(full_name,class_name)")
     .eq("activity_id", activityId).order("updated_at", { ascending: false }).limit(500);
   if (error) return NextResponse.json({ error: "Không tải được hồ sơ hoạt động." }, { status: 503 });
   return NextResponse.json({ records: data || [] });

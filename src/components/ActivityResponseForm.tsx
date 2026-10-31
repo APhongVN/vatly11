@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle2, Loader2, Save } from "lucide-react";
+import StudentActivityResult from "@/components/StudentActivityResult";
 
 type Field = { key: string; label: string; prompt: string };
 type FormDefinition = { title: string; fields: Field[] };
@@ -47,6 +48,7 @@ export default function ActivityResponseForm({ activityId }: { activityId: numbe
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [teacherReview, setTeacherReview] = useState<{ score: number; feedback: string | null; gradedAt: string | null } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,7 +60,9 @@ export default function ActivityResponseForm({ activityId }: { activityId: numbe
         return result.record;
       })
       .then((record) => {
-        if (cancelled || !record || record.evidence?.kind !== "written-response") return;
+        if (cancelled || !record) return;
+        if (typeof record.teacher_score === "number") setTeacherReview({ score: record.teacher_score, feedback: record.teacher_feedback || null, gradedAt: record.graded_at || null });
+        if (record.evidence?.kind !== "written-response") return;
         setResponses(record.evidence.responses || {});
         setReadOnly(Boolean(record.completed_at));
       })
@@ -87,6 +91,7 @@ export default function ActivityResponseForm({ activityId }: { activityId: numbe
   return <section className="mt-5 space-y-4 rounded-2xl border border-blue-100 bg-blue-50/50 p-4 md:p-5" aria-label={definition.title}>
     <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-extrabold text-slate-900">{definition.title}</h3><p className="mt-1 text-xs text-slate-600">Có thể lưu nháp, chỉnh sửa và quay lại; bài sẽ khóa sau khi nộp.</p></div><span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">{readOnly ? "Đã nộp" : previewMode ? "Xem thử" : "Đã trả lời " + definition.fields.filter(({key}) => (responses[key] || "").trim()).length + "/" + definition.fields.length}</span></div>
     {previewMode && <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900">Bản xem tự do: biểu mẫu chỉ để xem, cần tài khoản học sinh để lưu vào lớp.</p>}
+    {teacherReview && <StudentActivityResult score={teacherReview.score} feedback={teacherReview.feedback} gradedAt={teacherReview.gradedAt}/>}
     <div className="grid gap-3 md:grid-cols-2">{definition.fields.map((field) => <label key={field.key} className="text-xs font-bold text-slate-700">{field.label}<span className="mt-1 block font-normal leading-5 text-slate-600">{field.prompt}</span><textarea value={responses[field.key] || ""} disabled={readOnly} maxLength={4000} onChange={(event) => setResponses((current) => ({ ...current, [field.key]: event.target.value }))} className="mt-2 min-h-24 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal leading-6 outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100" placeholder="Nhập câu trả lời của em…"/></label>)}</div>
     {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-xs text-rose-800">{error}</p>}{message && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">{message}</p>}
     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-blue-100 pt-3"><p className="text-xs text-slate-500">{loading ? "Đang tải bài đã lưu…" : readOnly ? "Giáo viên có thể xem trong mục Sổ tay & bằng chứng." : "Câu trả lời được lưu theo tài khoản học sinh."}</p><div className="flex gap-2"><button type="button" disabled={loading || saving || readOnly || previewMode} onClick={() => void save(false)} className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-800 disabled:opacity-50">{saving?<Loader2 className="h-4 w-4 animate-spin"/>:<Save className="h-4 w-4"/>}Lưu nháp</button><button type="button" disabled={loading || saving || readOnly || previewMode || !isComplete} onClick={() => void save(true)} className="inline-flex items-center gap-2 rounded-xl bg-blue-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{saving?<Loader2 className="h-4 w-4 animate-spin"/>:<CheckCircle2 className="h-4 w-4"/>}Nộp cho giáo viên</button></div></div>

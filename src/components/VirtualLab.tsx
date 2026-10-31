@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Download, Loader2, Save, CheckCircle2, Play, Unplug, Lightbulb, AlertCircle } from "lucide-react";
+import StudentActivityResult from "@/components/StudentActivityResult";
 
 const EPSILON_0 = 8.854187817e-12;
 const STATIONS = [
@@ -31,6 +32,7 @@ export default function VirtualLab({ activityId = 4 }: { activityId?: number }) 
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [teacherReview, setTeacherReview] = useState<{ score: number; feedback: string | null; gradedAt: string | null } | null>(null);
 
   const [plateArea, setPlateArea] = useState(0.01);
   const [plateDistance, setPlateDistance] = useState(0.001);
@@ -64,6 +66,7 @@ export default function VirtualLab({ activityId = 4 }: { activityId?: number }) 
       })
       .then((record) => {
         if (cancelled || !record) return;
+        if (typeof record.teacher_score === "number") setTeacherReview({ score: record.teacher_score, feedback: record.teacher_feedback || null, gradedAt: record.graded_at || null });
         const evidence = record.evidence as LabEvidence;
         if (evidence?.kind !== "virtual-lab" || !evidence.stations) return;
         const nextNotes = { ...notes };
@@ -260,6 +263,7 @@ export default function VirtualLab({ activityId = 4 }: { activityId?: number }) 
         <div><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-700">Sổ tay điều tra · 6 thí nghiệm</p><h2 className="mt-1 text-2xl font-black text-slate-900">Phòng thí nghiệm ảo tụ điện</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">Đặt dự đoán trước, thao tác mô hình, lưu bằng chứng và giải thích kết quả. Mô phỏng dùng công thức tụ phẳng lý tưởng, có nêu rõ giả thiết.</p></div>
         <button type="button" onClick={downloadNotebook} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><Download className="h-4 w-4" />Tải sổ tay JSON</button>
       </header>
+      {teacherReview && <StudentActivityResult score={teacherReview.score} feedback={teacherReview.feedback} gradedAt={teacherReview.gradedAt}/>}
 
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {STATIONS.map((station) => <button key={station.id} type="button" onClick={() => { setActiveStation(station.id); setError(""); setMessage(""); }} className={`rounded-xl border p-3 text-left text-sm font-bold transition ${activeStation === station.id ? "border-blue-600 bg-blue-50 text-blue-900" : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"}`}><span className="block">{station.title}</span><span className="mt-1 block text-xs font-normal text-slate-500">{station.question}</span></button>)}

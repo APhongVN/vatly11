@@ -8,10 +8,9 @@ const MODELS = GEMINI_MODELS;
 
 function sanitizeInput(input: string): string {
   if (!input) return "";
-  return input
-    .replace(/[<>]/g, "")
-    .replace(/javascript:/gi, "")
-    .substring(0, 8000);
+  // Preserve physics notation; prompt-injection defense comes from keeping the
+  // submission inside a JSON data field and explicitly treating it as untrusted.
+  return input.replace(/\0/g, "").slice(0, 12_000);
 }
 
 export async function POST(req: Request) {

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ExternalLink, FileVideo2, LoaderCircle, Save } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import StudentActivityResult from "@/components/StudentActivityResult";
 
 type Resource = { id: string; title: string; description: string; resource_type: "file" | "link"; source_url: string | null; storage_path: string | null; mime_type: string | null; category: string; display_order: number };
 type Question = { id: string; prompt: string };
@@ -66,6 +67,7 @@ export default function ActivityMicroteaching() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [teacherReview, setTeacherReview] = useState<{ score: number; feedback: string | null; gradedAt: string | null } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -89,6 +91,7 @@ export default function ActivityMicroteaching() {
         else if (evidenceResult.ok) {
           const payload = await evidenceResult.json();
           const evidence = payload.record?.evidence as Evidence | undefined;
+          if (typeof payload.record?.teacher_score === "number") setTeacherReview({ score: payload.record.teacher_score, feedback: payload.record.teacher_feedback || null, gradedAt: payload.record.graded_at || null });
           if (evidence?.kind === "microteaching") {
             setWatched(evidence.watched || {});
             setAnswers(evidence.answers || {});
@@ -130,6 +133,7 @@ export default function ActivityMicroteaching() {
   return <section className="space-y-5 rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-5 md:p-7">
     <header><p className="text-xs font-extrabold uppercase tracking-widest text-blue-700">PRE02 · 20–25 phút</p><h2 className="mt-1 text-xl font-extrabold text-slate-950">Microteaching · 4 video có checkpoint</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Giáo viên thêm video vào Kho học liệu, chọn hoạt động 2 và danh mục “Video”. Đặt tên “Video 1” đến “Video 4” để tự ghép đúng nội dung. Bài chỉ khóa sau khi nộp checkpoint.</p></header>
     {preview && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Chế độ xem tự do: em có thể xem video và câu hỏi; lưu/nộp cần tài khoản học sinh đã được mở.</p>}
+    {teacherReview && <StudentActivityResult score={teacherReview.score} feedback={teacherReview.feedback} gradedAt={teacherReview.gradedAt}/>}
     {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
     {notice && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
     {resources.length === 0 && <div className="rounded-2xl border border-dashed border-blue-200 bg-white p-4 text-sm text-slate-600"><FileVideo2 className="mb-2 h-5 w-5 text-blue-700" />Chưa có video được giáo viên xuất bản cho hoạt động này. Bốn khung nội dung và checkpoint vẫn hiển thị bên dưới.</div>}
