@@ -79,6 +79,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   // Quản lý bài tập nhóm
   const [groupAssignments, setGroupAssignments] = useState<any[]>([]);
   const [expandedGroupAct, setExpandedGroupAct] = useState<string | null>(null);
+  const [regroupingAssignmentId, setRegroupingAssignmentId] = useState<string | null>(null);
   const [newGroupTitle, setNewGroupTitle] = useState("");
   const [newGroupDesc, setNewGroupDesc] = useState("");
   const [newGroupDeadline, setNewGroupDeadline] = useState("");
@@ -406,10 +407,14 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
 
   const deleteGroupAssignment = async (id: string) => {
-    if(confirm("Xóa bài tập nhóm này và toàn bộ danh sách nhóm/bài nộp?")) {
-      await supabase.from('group_assignments').delete().eq('id', id);
-      fetchData();
+    if (!confirm("Xóa bài tập nhóm này và toàn bộ danh sách nhóm/bài nộp?")) return;
+    const { error } = await supabase.from("group_assignments").delete().eq("id", id);
+    if (error) return alert("Không xóa được bài tập nhóm: " + error.message);
+    if (expandedGroupAct === id) {
+      setExpandedGroupAct(null);
+      setCurrentGroupMembers([]);
     }
+    await fetchData();
   };
 
   const fetchGroupDetails = async (assignId: string) => {
@@ -429,8 +434,10 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     const nextName = groupNameDraft.trim();
     if (!nextName) return alert("Tên nhóm không được để trống.");
     if (nextName.length > 60) return alert("Tên nhóm tối đa 60 ký tự.");
-    const { error } = await supabase.from("group_assignment_groups").update({ group_name: nextName }).eq("id", group.id);
-    if (error) return alert("Không đổi được tên nhóm: " + error.message);
+    const duplicate = currentGroupMembers.some((item) => item.id !== group.id && String(item.group_name || "").trim().toLocaleLowerCase("vi") === nextName.toLocaleLowerCase("vi"));
+    if (duplicate) return alert("Tên này đã được một nhóm khác trong bài tập sử dụng.");
+    const { data, error } = await supabase.from("group_assignment_groups").update({ group_name: nextName }).eq("id", group.id).select("id").single();
+    if (error || !data) return alert("Không đổi được tên nhóm: " + (error?.code === "23505" ? "Tên này đã được sử dụng trong bài tập." : error?.message || "Không tìm thấy nhóm."));
     setRenamingGroupId(null);
     setGroupNameDraft("");
     await fetchGroupDetails(group.assignment_id);
@@ -447,27 +454,30 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
 
   const createGroupsForAssignment = async (assignId: string, isRandom: boolean) => {
-    if(!confirm(`Thiết lập ${numGroups} nhóm (tối đa ${maxStudentsPerGroup} SV/nhóm)? Thao tác này sẽ phân bổ lại học sinh.`)) return;
-    await supabase.from('group_assignment_groups').delete().eq('assignment_id', assignId);
+    if (regroupingAssignmentId) return;
+    if (!students.length) return alert("Hãy nhập danh sách học sinh trước khi chia nhóm.");
+    if (students.length > numGroups * maxStudentsPerGroup) return alert(`Sức chứa hiện tại là ${numGroups * maxStudentsPerGroup} học sinh, chưa đủ cho lớp có ${students.length} em.`);
+    const submittedCount = groupSubmissions.filter((submission) => submission.assignment_id === assignId).length;
+    if (submittedCount > 0) return alert("Bài nhóm đã có bài nộp nên không thể đổi thành viên. Hãy tạo bài nhóm mới nếu cần chia lại để giữ đúng lịch sử và quyền xem bài.");
+    if (!confirm(`Phân ${students.length} học sinh vào ${numGroups} nhóm${isRandom ? " ngẫu nhiên" : " theo danh sách"}?`)) return;
 
-    let pool = [...students];
-    if (isRandom) pool = pool.sort(() => Math.random() - 0.5);
-
-    let studentIndex = 0;
-    for (let i = 1; i <= numGroups; i++) {
-      const { data: groupData } = await supabase.from('group_assignment_groups').insert([{ assignment_id: assignId, group_number: i, group_name: `Nhóm ${i}` }]).select();
-      if (groupData) {
-        const groupId = groupData[0].id;
-        const membersToAdd = pool.slice(studentIndex, studentIndex + maxStudentsPerGroup);
-        if (membersToAdd.length > 0) {
-          const inserts = membersToAdd.map(s => ({ group_id: groupId, student_id: s.id }));
-          await supabase.from('group_assignment_members').insert(inserts);
-        }
-        studentIndex += maxStudentsPerGroup;
-      }
+    setRegroupingAssignmentId(assignId);
+    try {
+      const { data, error } = await supabase.rpc("regroup_assignment_students", {
+        p_assignment_id: assignId,
+        p_group_count: numGroups,
+        p_max_students: maxStudentsPerGroup,
+        p_random: isRandom,
+      });
+      if (error) throw error;
+      if (typeof data !== "number" || data !== students.length) throw new Error("Máy chủ chưa xác nhận đủ số học sinh được chia nhóm.");
+      await Promise.all([fetchGroupDetails(assignId), fetchData()]);
+      alert(`Đã chia ${data} học sinh thành ${numGroups} nhóm.`);
+    } catch (error) {
+      alert("Không chia lại được nhóm; dữ liệu cũ vẫn được giữ. " + (error instanceof Error ? error.message : "Lỗi cơ sở dữ liệu."));
+    } finally {
+      setRegroupingAssignmentId(null);
     }
-    alert("✅ Đã chia nhóm thành công!");
-    fetchGroupDetails(assignId);
   };
 
   const saveGroupRubric = async (assignId: string) => {
@@ -1697,10 +1707,10 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                           <Users className="w-4 h-4 text-orange-600"/> Danh sách thành viên từng nhóm
                         </h4>
                         <div className="flex flex-wrap items-center gap-3 mb-4 bg-slate-50 p-4 rounded-2xl border">
-                          <button onClick={() => createGroupsForAssignment(gAct.id, false)} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm">
-                            Phân nhóm theo danh sách
+                          <button type="button" disabled={regroupingAssignmentId !== null} onClick={() => void createGroupsForAssignment(gAct.id, false)} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm disabled:cursor-wait disabled:opacity-60">
+                            {regroupingAssignmentId === gAct.id ? "Đang chia nhóm…" : "Phân nhóm theo danh sách"}
                           </button>
-                          <button onClick={() => createGroupsForAssignment(gAct.id, true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                          <button type="button" disabled={regroupingAssignmentId !== null} onClick={() => void createGroupsForAssignment(gAct.id, true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm disabled:cursor-wait disabled:opacity-60">
                             <Shuffle className="w-4 h-4"/> Chia nhóm ngẫu nhiên
                           </button>
                         </div>
