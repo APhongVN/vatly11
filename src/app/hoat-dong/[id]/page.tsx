@@ -5,30 +5,22 @@ import { ACTIVITIES } from "@/lib/data/activities";
 import curriculum from "@/lib/data/curriculum.json";
 import ActivityInteractions from "@/components/ActivityInteractions";
 import ActivityResources from "@/components/ActivityResources";
+import { filterStudentTable, isTeacherOnlyText } from "@/lib/curriculum-privacy.mjs";
 
 type CurriculumBlock = { type: "paragraph"; text: string } | { type: "table"; rows: string[][] };
 type CurriculumActivity = { id: number; sourceSections: string[]; blocks: CurriculumBlock[] };
 const curriculumById = new Map((curriculum as CurriculumActivity[]).map((activity) => [activity.id, activity]));
-
-function isTeacherOnlyText(value: string) {
-  return /đáp án|rubric|tiêu chí gv|lỗi\/quan niệm cần gắn tag|phản hồi ai mẫu|đáp án chuẩn/i.test(value);
-}
 
 function StudentSourceBlock({ block }: { block: CurriculumBlock }) {
   if (block.type === "paragraph") {
     if (isTeacherOnlyText(block.text) || /^HOẠT ĐỘNG\s+\d+\./.test(block.text)) return null;
     return <p className="whitespace-pre-line text-sm leading-7 text-slate-700">{block.text}</p>;
   }
-  if (!block.rows.length) return null;
-  const header = block.rows[0];
-  if (header.some((cell) => /rubric|tiêu chí gv/i.test(cell))) return null;
-  const allowedColumns = header.map((cell, index) => isTeacherOnlyText(cell) ? -1 : index).filter((index) => index >= 0);
-  const safeRows = block.rows.slice(1).map((row) => row.filter((_, index) => allowedColumns.includes(index)))
-    .filter((row) => row.length && !isTeacherOnlyText(row[0] || "") && row.some(Boolean));
-  if (!safeRows.length) return null;
-  return <div className="overflow-x-auto rounded-xl border border-slate-200"><table className="w-full min-w-[480px] border-collapse text-left text-sm"><thead className="bg-slate-50"><tr>{allowedColumns.map((index) => <th key={index} className="border-b px-3 py-2.5 font-bold text-slate-700">{header[index]}</th>)}</tr></thead><tbody>{safeRows.map((row, rowIndex) => <tr key={rowIndex} className="align-top even:bg-slate-50/60">{row.map((cell, cellIndex) => <td key={cellIndex} className="border-b border-slate-100 px-3 py-2.5 leading-6 text-slate-700">{cell}</td>)}</tr>)}</tbody></table></div>;
+  const safeTable = filterStudentTable(block);
+  if (!safeTable) return null;
+  const [header, ...safeRows] = safeTable.rows;
+  return <div className="overflow-x-auto rounded-xl border border-slate-200"><table className="w-full min-w-[480px] border-collapse text-left text-sm"><thead className="bg-slate-50"><tr>{header.map((cell, index) => <th key={index} className="border-b px-3 py-2.5 font-bold text-slate-700">{cell}</th>)}</tr></thead><tbody>{safeRows.map((row, rowIndex) => <tr key={rowIndex} className="align-top even:bg-slate-50/60">{row.map((cell, cellIndex) => <td key={cellIndex} className="border-b border-slate-100 px-3 py-2.5 leading-6 text-slate-700">{cell}</td>)}</tr>)}</tbody></table></div>;
 }
-
 function SourceLesson({ id }: { id: number }) {
   const source = curriculumById.get(id);
   if (!source) return null;

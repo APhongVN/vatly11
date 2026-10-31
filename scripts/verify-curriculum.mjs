@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { filterStudentTable, isTeacherOnlyText } from "../src/lib/curriculum-privacy.mjs";
 import { readFile } from "node:fs/promises";
 
 const curriculum = JSON.parse(await readFile(new URL("../src/lib/data/curriculum.json", import.meta.url), "utf8"));
@@ -37,4 +38,39 @@ assert.doesNotMatch(quizPage, /correct_option|explanation/, "Student quiz pages 
 assert.match(quizSubmitApi, /createSupabaseAdminClient/);
 assert.doesNotMatch(quizSubmitApi, /return NextResponse\.json\(\{ score,.*correct/i, "Quiz API must not return the answer key.");
 
-console.log("Curriculum and answer privacy verified: 14 source sections, 11 web activities, 8–11 merged, 10 readiness questions, 16 practice questions, named groups, and server-only answer keys.");
+
+const sourceQuestionTable = curriculum.flatMap(({ blocks }) => blocks).find((block) => block.type === "table" && block.rows.some((row) => row[0] === "Mã câu" && row[1] === "PRE01-Q1"));
+assert.ok(sourceQuestionTable, "The student source question table must exist.");
+const safeQuestionTable = filterStudentTable(sourceQuestionTable);
+assert.ok(safeQuestionTable, "Student question tables must stay visible.");
+assert.ok(safeQuestionTable.rows.some((row) => row[0] === "Câu hỏi"), "Student prompts must remain visible.");
+assert.ok(!safeQuestionTable.rows.some((row) => row[0] === "Đáp án/ý chính"), "Teacher answers must be removed from student source tables.");
+assert.equal(isTeacherOnlyText("Đáp án/ý chính"), true, "Teacher answer labels must be hidden.");
+assert.equal(isTeacherOnlyText("Tiêu chí"), false, "A generic word must not hide unrelated student content.");
+
+const rubricTable = curriculum.flatMap(({ blocks }) => blocks).find((block) => block.type === "table" && block.rows[0]?.includes("Trọng số"));
+assert.ok(rubricTable, "The source document must include the expected rubric table.");
+assert.equal(filterStudentTable(rubricTable), null, "A teacher scoring rubric must be hidden in full.");
+const keyedQuestionTable = curriculum.flatMap(({ blocks }) => blocks).find((block) => block.type === "table" && block.rows[0]?.includes("Đáp án chuẩn"));
+assert.ok(keyedQuestionTable, "A keyed review table must exist in the source document.");
+const safeKeyedQuestionTable = filterStudentTable(keyedQuestionTable);
+assert.ok(safeKeyedQuestionTable, "Review questions should remain available to students.");
+assert.ok(!safeKeyedQuestionTable.rows[0].some((cell) => /đáp án/i.test(cell)), "Answer columns must be removed.");
+
+const sampleTaskTable = curriculum.flatMap(({ blocks }) => blocks).find((block) => block.type === "table" && block.rows[0]?.includes("Nhiệm vụ mẫu"));
+assert.ok(sampleTaskTable, "The source document must include sample student tasks.");
+const safeSampleTaskTable = filterStudentTable(sampleTaskTable);
+assert.ok(safeSampleTaskTable, "Sample student tasks must remain visible.");
+assert.ok(safeSampleTaskTable.rows[0].includes("Nhiệm vụ mẫu"), "Student task column must remain visible after answer filtering.");
+assert.ok(!safeSampleTaskTable.rows[0].some((cell) => /đáp án|tiêu chí/i.test(cell)), "Sample answer/rubric columns must be removed.");
+const privateParagraphs = curriculum.flatMap(({ blocks }) => blocks).filter((block) => block.type === "paragraph" && isTeacherOnlyText(block.text));
+assert.ok(privateParagraphs.length > 0, "Teacher-only rubric headings must be detected.");
+let privateTableCount = 0;
+for (const block of curriculum.flatMap(({ blocks }) => blocks).filter((item) => item.type === "table")) {
+  const safe = filterStudentTable(block);
+  if (!safe) { privateTableCount += 1; continue; }
+  assert.ok(!safe.rows[0].some((cell) => /đáp án|rubric|trọng số|thang điểm|mức đạt|điểm tối đa|lỗi\/quan niệm cần gắn tag|phản hồi ai mẫu/i.test(cell)), "Answer and scoring columns must not reach student pages.");
+  assert.ok(safe.rows.slice(1).every((row) => !isTeacherOnlyText(row[0] || "")), "Teacher-only answer/rubric rows must not reach student pages.");
+}
+assert.ok(privateTableCount > 0, "Teacher-only tables must be excluded from student content.");
+console.log("Curriculum and answer privacy verified: 14 source sections, 11 web activities, 8–11 merged, student prompts preserved, and answer keys/rubrics hidden.");
