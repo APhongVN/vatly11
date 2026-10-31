@@ -25,7 +25,7 @@ BEGIN
     ALTER TABLE public.quiz_questions DROP COLUMN correct_option;
   END IF;
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='quiz_questions' AND column_name='explanation') THEN
-    EXECUTE 'INSERT INTO public.quiz_question_keys(question_id, correct_option, explanation) SELECT q.id, COALESCE(k.correct_option,0), q.explanation FROM public.quiz_questions q LEFT JOIN public.quiz_question_keys k ON k.question_id=q.id ON CONFLICT(question_id) DO UPDATE SET explanation=EXCLUDED.explanation';
+    EXECUTE 'INSERT INTO public.quiz_question_keys(question_id, correct_option, explanation) SELECT q.id, COALESCE(k.correct_option,0), q.explanation FROM public.quiz_questions q LEFT JOIN public.quiz_question_keys k ON k.question_id=q.id WHERE true ON CONFLICT(question_id) DO UPDATE SET explanation=EXCLUDED.explanation';
     ALTER TABLE public.quiz_questions DROP COLUMN explanation;
   END IF;
 END $$;

@@ -29,6 +29,7 @@ assert.match(groupMigration, /sync_group_submission_name/);
 assert.match(privateDataMigration, /REVOKE SELECT ON public\.activities FROM anon/);
 assert.match(answerPrivacyMigration, /DROP COLUMN grading_rubric/);
 assert.match(answerPrivacyMigration, /DROP COLUMN correct_option/);
+assert.match(answerPrivacyMigration, /LEFT JOIN public\.quiz_question_keys[\s\S]*WHERE true ON CONFLICT/);
 assert.match(answerPrivacyMigration, /REVOKE INSERT, UPDATE, DELETE ON public\.quiz_submissions FROM authenticated/);
 assert.match(schema, /CREATE TABLE IF NOT EXISTS public\.activity_grading_guides/);
 assert.match(schema, /CREATE TABLE IF NOT EXISTS public\.quiz_question_keys/);
