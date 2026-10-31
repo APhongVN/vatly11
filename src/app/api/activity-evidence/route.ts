@@ -12,6 +12,13 @@ const FORM_RESPONSE_FIELDS: Record<number, string[]> = {
   5: ["prediction", "evidence", "revision"],
   14: ["ref1", "ref2", "ref3", "ref4", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8"],
 };
+const PROJECT_RESPONSE_FIELDS = ["constraints", "proposal", "calculations", "comparison", "limits", "sources"];
+const MICROTEACHING_QUESTION_IDS = [
+  "v1_q1", "v1_q2", "v1_q3",
+  "v2_q1", "v2_q2", "v2_q3", "v2_q4", "v2_q5",
+  "v3_q1", "v3_q2", "v3_q3", "v3_q4", "v3_q5",
+  "v4_q1", "v4_q2", "v4_q3", "v4_q4", "v4_q5",
+];
 const LAB_STATION_IDS = ["charge-discharge", "charge-voltage", "capacitance-factors", "source-state", "circuit-builder", "energy-graph"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -23,6 +30,22 @@ function isText(value: unknown, max = 2000): value is string {
 }
 
 const EPSILON_0 = 8.854187817e-12;
+async function projectFilesExist(admin: ReturnType<typeof createSupabaseAdminClient>, evidence: Record<string, unknown>) {
+  const attachments = evidence.attachments;
+  if (!Array.isArray(attachments)) return false;
+  for (const item of attachments) {
+    if (!isRecord(item) || typeof item.path !== "string") return false;
+    const separator = item.path.lastIndexOf("/");
+    const folder = item.path.slice(0, separator);
+    const filename = item.path.slice(separator + 1);
+    const { data, error } = await admin.storage.from("class-work").list(folder, { search: filename, limit: 20 });
+    if (error) return false;
+    const uploaded = data?.find((file) => file.name === filename);
+    if (!uploaded || Number(uploaded.metadata?.size) !== item.size || Number(uploaded.metadata?.size) > 25 * 1024 * 1024) return false;
+  }
+  return true;
+}
+
 function isValidWrittenEvidence(activityId: number, evidence: unknown, complete: boolean) {
   if (!isRecord(evidence) || evidence.kind !== "written-response" || !isRecord(evidence.responses)) return false;
   const allowed = FORM_RESPONSE_FIELDS[activityId];
@@ -34,6 +57,48 @@ function isValidWrittenEvidence(activityId: number, evidence: unknown, complete:
     if (answer === undefined && !complete) return true;
     return isText(answer, 4000) && (!complete || answer.trim().length >= 3);
   });
+}
+
+function isValidMicroteachingEvidence(evidence: unknown, complete: boolean) {
+  if (!isRecord(evidence) || evidence.kind !== "microteaching") return false;
+  const watched = evidence.watched;
+  const answers = evidence.answers;
+  if (!isRecord(watched) || !isRecord(answers)) return false;
+  const videos = ["v1", "v2", "v3", "v4"];
+  if (Object.keys(watched).some((id) => !videos.includes(id)) || Object.values(watched).some((value) => typeof value !== "boolean")) return false;
+  if (Object.keys(answers).some((id) => !MICROTEACHING_QUESTION_IDS.includes(id))) return false;
+  if (Object.values(answers).some((answer) => !isText(answer, 2000))) return false;
+  if (!complete) return true;
+  return videos.every((id) => watched[id] === true)
+    && MICROTEACHING_QUESTION_IDS.every((id) => isText(answers[id], 2000) && answers[id].trim().length >= 3);
+}
+
+const PROJECT_FILE_EXTENSIONS = new Set(["pdf", "doc", "docx", "ppt", "pptx", "png", "jpg", "jpeg", "webp", "mp4", "webm"]);
+function isValidProjectEvidence(evidence: unknown, complete: boolean, userId: string) {
+  if (!isRecord(evidence) || evidence.kind !== "project-submission" || !isRecord(evidence.responses) || !Array.isArray(evidence.attachments)) return false;
+  const responses = evidence.responses;
+  if (Object.keys(responses).some((key) => !PROJECT_RESPONSE_FIELDS.includes(key))) return false;
+  if (Object.values(responses).some((answer) => !isText(answer, 4000))) return false;
+  const link = evidence.projectLink;
+  if (link !== undefined && !isText(link, 1500)) return false;
+  if (typeof link === "string" && link.trim()) {
+    try { const parsed = new URL(link); if (!["https:", "http:"].includes(parsed.protocol)) return false; }
+    catch { return false; }
+  }
+  if (evidence.attachments.length > 10) return false;
+  let totalBytes = 0;
+  const seen = new Set<string>();
+  for (const item of evidence.attachments) {
+    if (!isRecord(item) || !isText(item.path, 500) || !isText(item.name, 180) || !finiteNumber(item.size, 1, 25 * 1024 * 1024) || !isText(item.type, 120)) return false;
+    const extension = item.path.split(".").pop()?.toLowerCase() || "";
+    if (!PROJECT_FILE_EXTENSIONS.has(extension) || !item.path.startsWith(`group-submissions/${userId}/activity-13_`) || !new RegExp(`^group-submissions/${userId}/activity-13_[a-f0-9-]+\\.${extension}$`).test(item.path) || seen.has(item.path)) return false;
+    seen.add(item.path);
+    totalBytes += item.size;
+  }
+  if (totalBytes > 25 * 1024 * 1024) return false;
+  if (!complete) return true;
+  return PROJECT_RESPONSE_FIELDS.every((key) => isText(responses[key], 4000) && responses[key].trim().length >= 10)
+    && (evidence.attachments.length > 0 || (typeof link === "string" && link.trim().length > 0));
 }
 
 function finiteNumber(value: unknown, minimum: number, maximum: number): value is number {
@@ -158,6 +223,10 @@ export async function POST(request: Request) {
       scoreMax = Object.keys(evidence.answers).length;
     } else if (LAB_ACTIVITY_IDS.has(activityId)) {
       if (!isValidLabEvidence(evidence, complete)) return NextResponse.json({ error: "Sổ tay thí nghiệm chưa đúng định dạng." }, { status: 400 });
+    } else if (activityId === 2) {
+      if (!isValidMicroteachingEvidence(evidence, complete)) return NextResponse.json({ error: "Hãy xem đủ 4 video và trả lời các checkpoint trước khi nộp." }, { status: 400 });
+    } else if (activityId === 13) {
+      if (!isValidProjectEvidence(evidence, complete, access.user.id)) return NextResponse.json({ error: "Hồ sơ dự án chưa đủ nội dung hoặc tệp đính kèm không hợp lệ." }, { status: 400 });
     } else if (FORM_RESPONSE_FIELDS[activityId]) {
       if (!isValidWrittenEvidence(activityId, evidence, complete)) return NextResponse.json({ error: "Câu trả lời chưa đúng định dạng hoặc chưa đầy đủ." }, { status: 400 });
     } else {
@@ -174,6 +243,9 @@ export async function POST(request: Request) {
     }
 
     const admin = createSupabaseAdminClient();
+    if (activityId === 13 && !await projectFilesExist(admin, evidence)) {
+      return NextResponse.json({ error: "Tệp dự án chưa tải lên đầy đủ hoặc thông tin dung lượng không khớp. Hãy tải lại tệp." }, { status: 400 });
+    }
     const { data: existing, error: existingError } = await admin.from("activity_evidence")
       .select("id,completed_at").eq("student_id", student.id).eq("activity_id", activityId).maybeSingle();
     if (existingError) return NextResponse.json({ error: "Không kiểm tra được hồ sơ đã lưu." }, { status: 503 });

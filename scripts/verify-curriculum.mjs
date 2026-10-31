@@ -167,3 +167,24 @@ const evidencePanel = await readFile(new URL("../src/components/ActivityEvidence
 assert.match(evidencePanel, /Xuất JSON/);
 assert.match(evidencePanel, /deleteRecord/);
 console.log("Six virtual experiments, server-scored quiz keys and persistent teacher-visible activity evidence verified.");
+
+const microteaching = await readFile(new URL("../src/components/ActivityMicroteaching.tsx", import.meta.url), "utf8");
+const projectSubmission = await readFile(new URL("../src/components/ProjectSubmissionForm.tsx", import.meta.url), "utf8");
+const publishedResourceMigration = await readFile(new URL("../supabase/migrations/20261031001700_published_resources_public_read.sql", import.meta.url), "utf8");
+assert.match(interactions, /ActivityMicroteaching/);
+assert.match(interactions, /ProjectSubmissionForm/);
+assert.match(microteaching, /v1_q1/);
+assert.match(microteaching, /v4_q5/);
+assert.match(microteaching, /learning_resources/);
+assert.match(microteaching, /const save = async \(complete: boolean\)/);
+assert.match(projectSubmission, /group-submissions\//);
+assert.match(projectSubmission, /25 \* 1024 \* 1024/);
+assert.match(projectSubmission, /Nộp dự án/);
+assert.match(projectSubmission, /api\/activity-evidence/);
+assert.match(activityEvidenceApi, /isValidMicroteachingEvidence/);
+assert.match(activityEvidenceApi, /isValidProjectEvidence/);
+assert.match(activityEvidenceApi, /projectFilesExist/);
+assert.match(publishedResourceMigration, /FOR SELECT TO anon, authenticated/);
+assert.match(publishedResourceMigration, /r\.is_published/);
+assert.doesNotMatch(publishedResourceMigration, /FOR INSERT TO anon|FOR UPDATE TO anon|FOR DELETE TO anon/);
+console.log("Four published microteaching videos, 18 persisted checkpoints, rubric-based project uploads and public read-only published resources verified.");
