@@ -4,7 +4,7 @@ import JSZip from "jszip";
 import { filterStudentTable, isTeacherOnlyText } from "../src/lib/curriculum-privacy.mjs";
 import { normalizeGeneratedQuiz } from "../src/lib/ai-quiz-validation.mjs";
 import { readBoundedRequestText } from "../src/lib/read-bounded-request.mjs";
-import { filterSubmissionsForStudentGroups } from "../src/lib/group-submissions.mjs";
+import { filterSubmissionsForStudentGroups, renameGroupInSubmissions } from "../src/lib/group-submissions.mjs";
 import { extractStudentNamesFromText } from "../src/lib/student-import.mjs";
 import { filterStudentRoster, getStudentClassNames, hasStudentInClass } from "../src/lib/student-roster.mjs";
 import { getResourceDownloadName } from "../src/lib/resource-download.mjs";
@@ -262,6 +262,7 @@ const renamedGroupMembership = [{ group_id: "group-uuid-1", group_assignment_gro
 const renamedGroupSubmission = { id: "submission-1", assignment_id: "assignment-1", group_id: "group-uuid-1", group_name: "Nhóm Thí nghiệm A" };
 const otherGroupSubmission = { id: "submission-2", assignment_id: "assignment-1", group_id: "group-uuid-2", group_name: "Nhóm 2" };
 assert.deepEqual(filterSubmissionsForStudentGroups(renamedGroupMembership, [renamedGroupSubmission, otherGroupSubmission]), [renamedGroupSubmission], "Renaming a group must not hide its submission from its members.");
+assert.deepEqual(renameGroupInSubmissions([renamedGroupSubmission, otherGroupSubmission], "group-uuid-1", "Nhóm Tụ điện"), [{ ...renamedGroupSubmission, group_name: "Nhóm Tụ điện" }, otherGroupSubmission], "A renamed group label must update immediately on its existing submissions.");
 assert.match(await readFile(new URL("../src/app/hoc-sinh/page.tsx", import.meta.url), "utf8"), /filterSubmissionsForStudentGroups\(memberOf, gSubs\)/);
 console.log("Named group result lookup verified by stable group_id, including renamed groups.");
 

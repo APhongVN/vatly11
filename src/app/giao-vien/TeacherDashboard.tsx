@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import ExcelJS from "exceljs";
 import { countAwaitingTeacherReview } from "@/lib/report-metrics.mjs";
+import { renameGroupInSubmissions } from "@/lib/group-submissions.mjs";
 import { buildClassReportMetrics } from "@/lib/class-report-metrics.mjs";
 import {
   LogOut, Home, Video, Users, FileText, Bot, Upload, MessageSquare,
@@ -846,12 +847,14 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       const updateGroup = (item: any) => item.id === group.id ? { ...item, group_name: nextName } : item;
       setCurrentGroupMembers((current) => current.map(updateGroup));
       setGroupAssignments((current) => current.map((assignment) => assignment.id === group.assignment_id ? { ...assignment, group_assignment_groups: (assignment.group_assignment_groups || []).map(updateGroup) } : assignment));
+      setGroupSubmissions((current) => renameGroupInSubmissions(current, group.id, nextName));
       setRenamingGroupId(null); setGroupNameDraft("");
       setPreviewNotice(`Đã đổi thử tên nhóm thành “${nextName}”.`);
       return;
     }
     const { data, error } = await supabase.from("group_assignment_groups").update({ group_name: nextName }).eq("id", group.id).select("id").single();
     if (error || !data) return alert("Không đổi được tên nhóm: " + (error?.code === "23505" ? "Tên này đã được sử dụng trong bài tập." : error?.message || "Không tìm thấy nhóm."));
+    setGroupSubmissions((current) => renameGroupInSubmissions(current, group.id, nextName));
     setRenamingGroupId(null);
     setGroupNameDraft("");
     await fetchGroupDetails(group.assignment_id);
