@@ -16,6 +16,8 @@ Migration nằm trong `supabase/migrations`. Trước khi áp dụng lên projec
 
 Có thể áp dụng migration qua Supabase CLI sau khi liên kết đúng project bằng `npx supabase link`, rồi chạy `npx supabase db push`. Render chỉ triển khai mã ứng dụng; việc cập nhật schema Supabase là bước riêng. Sau khi chạy migration, kiểm tra Auth, RLS, Storage buckets và luồng tải tài liệu.
 
+Bản hiện tại có thêm các migration bắt buộc `20261031002700_rubric_document_import.sql`, `20261031002800_teacher_final_feedback.sql` và `20261031002900_submission_api_rate_limit.sql`. Chúng lần lượt lưu tệp gốc của ma trận chấm điểm, tách nhận xét cuối của giáo viên và bảo vệ các route nộp bài qua giới hạn tần suất phía server. Áp dụng toàn bộ theo thứ tự số trước khi mở tài khoản/lớp học thật.
+
 ### Cấp tài khoản
 
 - Giáo viên: tạo người dùng trong Supabase Auth, xác minh email rồi chạy script `supabase/sql-editor/set_teacher_role.sql` trong SQL Editor sau khi thay placeholder bằng email đã xác minh. Ứng dụng không cho phép người dùng tự đăng ký vai trò giáo viên.
@@ -52,7 +54,7 @@ npm run build
 npm audit --omit=dev
 ```
 
-Sau đó thử với hai tài khoản học sinh và một giáo viên: phân quyền, nhập danh sách, tải lên/tải xuống tài liệu, gửi/xóa chat có tệp đính kèm, mở/đóng nhận bài, nộp bài, duyệt điểm và xuất dữ liệu. Kiểm tra quyền truy cập bằng tài khoản ngoài lớp và cửa sổ ẩn danh.
+Sau đó thử với hai tài khoản học sinh và một giáo viên: phân quyền, nhập danh sách, tải lên/tải xuống tài liệu, gửi/xóa chat có tệp đính kèm, mở/đóng nhận bài, nộp bài cá nhân/nhóm, duyệt điểm và xuất dữ liệu. Kiểm tra quyền truy cập bằng tài khoản ngoài lớp và cửa sổ ẩn danh.
 
 Mọi điểm AI chỉ là gợi ý; giáo viên duyệt hoặc ghi đè điểm cuối. Khi AI lỗi, bài nộp phải ở trạng thái chờ chấm.
 

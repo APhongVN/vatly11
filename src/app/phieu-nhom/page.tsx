@@ -86,20 +86,17 @@ function GroupWorksheet() {
       uploadedUrl = fileName;
     }
 
-    const groupName = myGroup.group_name || `Nhóm ${myGroup.group_number}`;
-
-    const { error } = await supabase.from('group_submissions').upsert({
-      assignment_id: assignmentId,
-      group_name: groupName,
-      group_id: myGroup.id,
-      answer: textAnswer,
-      file_url: uploadedUrl,
-      status: 'pending',
-      submitted_at: new Date().toISOString()
-    }, { onConflict: "group_id" });
-
-    if (!error) setSuccess(true);
-    else alert("Lỗi nộp bài: " + error.message);
+    const response = await fetch('/api/group-submissions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignmentId, groupId: myGroup.id, answer: textAnswer, fileUrl: uploadedUrl }),
+    });
+    const result = await response.json();
+    if (response.ok) setSuccess(true);
+    else {
+      if (uploadedUrl) await supabase.storage.from('class-work').remove([uploadedUrl]);
+      alert("Lỗi nộp bài: " + (result.error || "Không thể lưu bài nộp nhóm."));
+    }
 
     setSubmitting(false);
   };

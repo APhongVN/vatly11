@@ -54,3 +54,6 @@ Desktop.ini
 .supabase/temp
 # local worktrees and credentials
 .kilo/
+
+# local Codex preview process output
+.codex-preview-logs/

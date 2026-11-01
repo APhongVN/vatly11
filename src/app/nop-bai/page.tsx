@@ -7,6 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import RichTextEditor from "@/components/RichTextEditor";
+import { normalizeSubmissionFileUrl } from "@/lib/submission-validation";
 import {
   CheckCircle2, ArrowLeft, UploadCloud, FileText, Microscope,
   Loader2, AlertCircle, Edit3, Send, Sparkles, User, Camera,
@@ -200,30 +201,27 @@ function NopBaiContent() {
       }
     }
 
-    const finalFileUrl = uploadedUrl || externalLink;
+    const finalFileUrl = uploadedUrl || externalLink.trim();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || (finalFileUrl && !normalizeSubmissionFileUrl(finalFileUrl, user.id))) {
+      if (uploadedUrl) await supabase.storage.from("class-work").remove([uploadedUrl]);
+      alert("Liên kết/tệp nộp bài không hợp lệ. Chỉ nhận đường dẫn tệp của em hoặc link http(s).");
+      setLoading(false);
+      return;
+    }
 
-    const { error } = await supabase.from("submissions").insert([
-      {
-        student_name: finalStudentName,
-        student_id: studentId,
-        activity_id: parseInt(selectedActivity),
-        answer: textAnswer,
-        ai_score: gradingResult?.score ?? null,
-        ai_feedback: gradingResult?.feedback || null,
-        ai_model_answer: gradingResult?.model_answer || null,
-        ai_strengths: gradingResult?.strengths || null,
-        ai_weaknesses: gradingResult?.weaknesses || null,
-        file_url: finalFileUrl,
-        status: gradingResult?.score !== null && gradingResult?.score !== undefined ? "graded" : "pending",
-        submitted_at: new Date().toISOString(),
-      },
-    ]);
-
-    if (!error) {
+    const response = await fetch("/api/submissions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activityId: parseInt(selectedActivity), answer: textAnswer, fileUrl: finalFileUrl }),
+    });
+    const result = await response.json();
+    if (response.ok) {
       setGrading(gradingResult ?? null);
       setSuccess(true);
     } else {
-      alert("Lỗi nộp bài: " + error.message);
+      if (uploadedUrl) await supabase.storage.from("class-work").remove([uploadedUrl]);
+      alert("Lỗi nộp bài: " + (result.error || "Không thể lưu bài làm."));
     }
     setLoading(false);
   };
