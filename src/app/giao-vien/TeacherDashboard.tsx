@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import Image from "next/image";
@@ -23,7 +23,16 @@ import { formatVietnameseName, getFirstName, sortVietnameseNames, isHeaderOrInva
 import { ACTIVITIES } from "@/lib/data/activities";
 import { extractStudentNamesFromText } from "@/lib/student-import.mjs";
 
-const privateFileHref = (value: string) => value.startsWith("http") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
+const privateFileHref = (value: string) => value.startsWith("http") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") || value.startsWith("group-rubrics/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
+const rubricUploadMimeType = (file: File) => {
+  const extension = file.name.split(".").pop()?.toLocaleLowerCase() || "";
+  const allowed: Record<string, string> = {
+    txt: "text/plain", md: "text/plain", csv: "text/csv", pdf: "application/pdf",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  };
+  return allowed[extension] || "application/octet-stream";
+};
 const loadTeacherStudentRoster = async () => {
   const withAccountFields = await supabase.from("students")
     .select("id,full_name,class_name,auth_user_id,login_email").order("full_name").limit(1000);
@@ -162,6 +171,14 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
   const [groupNameDraft, setGroupNameDraft] = useState("");
   const [groupRubricText, setGroupRubricText] = useState("");
+  const [groupRubricFile, setGroupRubricFile] = useState<File | null>(null);
+  const [groupRubricFileName, setGroupRubricFileName] = useState("");
+  const [groupRubricImportError, setGroupRubricImportError] = useState("");
+  const [isImportingGroupRubric, setIsImportingGroupRubric] = useState(false);
+  const [groupRubricDocumentSchemaReady, setGroupRubricDocumentSchemaReady] = useState(false);
+  const [groupRubricAssignmentId, setGroupRubricAssignmentId] = useState<string | null>(null);
+  const [loadingGroupDetailsId, setLoadingGroupDetailsId] = useState<string | null>(null);
+  const groupDetailsRequestRef = useRef(0);
   const [savingGroupRubricId, setSavingGroupRubricId] = useState<string | null>(null);
   const [groupSubmissions, setGroupSubmissions] = useState<any[]>([]);
 
@@ -587,6 +604,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     if (!confirm("Xóa bài tập nhóm này và toàn bộ danh sách nhóm/bài nộp?")) return;
     const { error } = await supabase.from("group_assignments").delete().eq("id", id);
     if (error) return alert("Không xóa được bài tập nhóm: " + error.message);
+    const rubricPath = groupAssignments.find((assignment) => assignment.id === id)?.rubric_document_path;
+    if (rubricPath) {
+      const { error: fileError } = await supabase.storage.from("class-work").remove([rubricPath]);
+      if (fileError) alert("Bài nhóm đã xóa, nhưng file ma trận chưa được dọn: " + fileError.message);
+    }
     if (expandedGroupAct === id) {
       setExpandedGroupAct(null);
       setCurrentGroupMembers([]);
@@ -595,17 +617,47 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
 
   const fetchGroupDetails = async (assignId: string) => {
-    if (previewMode) {
-      const assignment = groupAssignments.find((item) => item.id === assignId);
-      setCurrentGroupMembers(assignment?.group_assignment_groups || []);
-      setGroupRubricText(assignment?.rubric || "");
-      return;
-    }
-    const { data: groups } = await supabase.from('group_assignment_groups').select('*, group_assignment_members(*, students(*))').eq('assignment_id', assignId).order('group_number');
-    if (groups) setCurrentGroupMembers(groups);
+    const requestId = ++groupDetailsRequestRef.current;
+    setLoadingGroupDetailsId(assignId);
+    setGroupRubricAssignmentId(assignId);
+    setGroupRubricText("");
+    setGroupRubricFile(null);
+    setGroupRubricFileName("");
+    setGroupRubricImportError("");
+    setGroupRubricDocumentSchemaReady(false);
+    setCurrentGroupMembers([]);
+    try {
+      if (previewMode) {
+        const assignment = groupAssignments.find((item) => item.id === assignId);
+        setCurrentGroupMembers(assignment?.group_assignment_groups || []);
+        setGroupRubricText(assignment?.rubric || "");
+        setGroupRubricFileName(assignment?.rubric_document_name || "");
+        return;
+      }
+      const [groupsResult, rubricResult] = await Promise.all([
+        supabase.from('group_assignment_groups').select('*, group_assignment_members(*, students(*))').eq('assignment_id', assignId).order('group_number'),
+        supabase.from('group_assignments').select('id,rubric,rubric_document_path,rubric_document_name').eq('id', assignId).maybeSingle(),
+      ]);
+      if (requestId !== groupDetailsRequestRef.current) return;
+      if (groupsResult.data) setCurrentGroupMembers(groupsResult.data);
 
-    const { data: act } = await supabase.from('group_assignments').select('*').eq('id', assignId).single();
-    if (act) setGroupRubricText(act.rubric || "");
+      let rubricData = rubricResult.data as any;
+      let documentSchemaReady = !rubricResult.error;
+      if (rubricResult.error?.code === "42703" || rubricResult.error?.code === "PGRST204") {
+        const legacyResult = await supabase.from('group_assignments').select('id,rubric').eq('id', assignId).maybeSingle();
+        if (requestId !== groupDetailsRequestRef.current) return;
+        rubricData = legacyResult.data;
+        documentSchemaReady = false;
+        if (legacyResult.error) alert("Không tải được ma trận điểm nhóm: " + legacyResult.error.message);
+      } else if (rubricResult.error) {
+        alert("Không tải được ma trận điểm nhóm: " + rubricResult.error.message);
+      }
+      setGroupRubricDocumentSchemaReady(documentSchemaReady);
+      setGroupRubricText(rubricData?.rubric || "");
+      setGroupRubricFileName(rubricData?.rubric_document_name || "");
+    } finally {
+      if (requestId === groupDetailsRequestRef.current) setLoadingGroupDetailsId(null);
+    }
   };
 
   const beginRenameGroup = (group: any) => {
@@ -635,7 +687,10 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
 
   const toggleExpandGroupAct = (id: string) => {
+    if (isImportingGroupRubric || savingGroupRubricId !== null) return;
     if (expandedGroupAct === id) {
+      groupDetailsRequestRef.current += 1;
+      setLoadingGroupDetailsId(null);
       setExpandedGroupAct(null);
       setCurrentGroupMembers([]);
     } else {
@@ -682,22 +737,141 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
 
   const saveGroupRubric = async (assignId: string) => {
-    if (savingGroupRubricId) return;
+    if (savingGroupRubricId || loadingGroupDetailsId === assignId || groupRubricAssignmentId !== assignId) return;
     if (groupRubricText.length > 20000) return alert("Ma trận điểm tối đa 20.000 ký tự.");
+    if (groupRubricFile && !groupRubricDocumentSchemaReady) {
+      return alert("Chưa thể lưu file gốc vì thiếu migration 20261101000100_group_rubric_documents.sql. Nội dung đã trích vẫn có thể lưu; áp dụng migration rồi tải lại trước khi lưu file.");
+    }
     if (previewMode) {
       setGroupAssignments((current) => current.map((assignment) => assignment.id === assignId ? { ...assignment, rubric: groupRubricText } : assignment));
       setPreviewNotice("Đã lưu thử ma trận điểm của bài nhóm.");
       return;
     }
     setSavingGroupRubricId(assignId);
+    let uploadedPath: string | null = null;
+    const assignment = groupAssignments.find((item) => item.id === assignId);
+    const oldPath = assignment?.rubric_document_path || null;
     try {
+      if (groupRubricFile) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Phiên đăng nhập hết hạn. Hãy đăng nhập lại.");
+        const safeName = groupRubricFile.name.normalize("NFKC").replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120) || "rubric";
+        uploadedPath = `group-rubrics/${user.id}/${assignId}-${Date.now()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage.from("class-work").upload(uploadedPath, groupRubricFile, {
+          contentType: rubricUploadMimeType(groupRubricFile), upsert: false,
+        });
+        if (uploadError) throw new Error("Không tải được file ma trận: " + uploadError.message);
+      }
+      const rubricDocumentPath = uploadedPath || oldPath;
+      const rubricDocumentName = groupRubricFile?.name || assignment?.rubric_document_name || null;
+      const updatePayload: Record<string, string | null> = { rubric: groupRubricText.trim() };
+      if (groupRubricDocumentSchemaReady) {
+        updatePayload.rubric_document_path = rubricDocumentPath;
+        updatePayload.rubric_document_name = rubricDocumentName;
+      }
       const { data, error } = await supabase.from("group_assignments")
-        .update({ rubric: groupRubricText }).eq("id", assignId).select("id").maybeSingle();
-      if (error || !data) return alert("Không lưu được ma trận điểm: " + (error?.message || "Không tìm thấy bài tập nhóm."));
-      alert("Đã lưu ma trận điểm bài nhóm.");
+        .update(updatePayload).eq("id", assignId).select("id").maybeSingle();
+      if (error || !data) throw new Error(error?.message || "Không tìm thấy bài tập nhóm.");
+      if (uploadedPath && oldPath && oldPath !== uploadedPath) {
+        const { error: removeError } = await supabase.storage.from("class-work").remove([oldPath]);
+        if (removeError) console.warn("Không xóa được file ma trận nhóm cũ:", removeError.message);
+      }
+      setGroupAssignments((current) => current.map((item) => item.id === assignId ? {
+        ...item, rubric: groupRubricText.trim(), rubric_document_path: rubricDocumentPath, rubric_document_name: rubricDocumentName,
+      } : item));
+      setGroupRubricFile(null);
+      setGroupRubricFileName(rubricDocumentName || "");
+      alert("Đã lưu ma trận và file gốc cho bài nhóm.");
+    } catch (error) {
+      if (uploadedPath) await supabase.storage.from("class-work").remove([uploadedPath]);
+      alert("Không lưu được ma trận điểm: " + (error instanceof Error ? error.message : "Lỗi cơ sở dữ liệu."));
     } finally {
       setSavingGroupRubricId(null);
     }
+  };
+
+  const extractRubricFile = async (file: File) => {
+    const extension = file.name.split(".").pop()?.toLocaleLowerCase() || "";
+    if (!["txt", "md", "csv", "docx", "xlsx", "pdf"].includes(extension)) throw new Error("Chỉ nhận TXT, Markdown, CSV, Word (.docx), Excel (.xlsx) hoặc PDF.");
+    if (file.size <= 0 || file.size > 10 * 1024 * 1024) throw new Error("File ma trận phải lớn hơn 0 byte và tối đa 10 MB.");
+    if (file.name.length > 255) throw new Error("Tên file ma trận tối đa 255 ký tự.");
+    const buffer = await file.arrayBuffer();
+    let text = "";
+    let warning = "";
+    if (["txt", "md", "csv"].includes(extension)) {
+      text = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
+    } else if (extension === "docx") {
+      const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+      text = result.value;
+    } else if (extension === "xlsx") {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
+      const fragments: string[] = [];
+      workbook.worksheets.slice(0, 10).forEach((sheet) => {
+        fragments.push(`# ${sheet.name}`);
+        sheet.eachRow((row) => {
+          const cells: string[] = [];
+          row.eachCell({ includeEmpty: false }, (cell) => {
+            const value = cell.text.trim();
+            if (value) cells.push(value);
+          });
+          if (cells.length) fragments.push(cells.join(" | "));
+        });
+      });
+      text = fragments.join("\n");
+    } else {
+      const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+      const pdf = await pdfjs.getDocument({ data: new Uint8Array(buffer) }).promise;
+      const pages: string[] = [];
+      for (let index = 1; index <= Math.min(pdf.numPages, 30); index += 1) {
+        const content = await (await pdf.getPage(index)).getTextContent();
+        const pageText = content.items.map((item) => "str" in item ? item.str : "").join(" ").trim();
+        if (pageText) pages.push(pageText);
+      }
+      text = pages.join("\n\n");
+      if (pdf.numPages > 30) warning = "Đã trích 30 trang đầu của PDF; file gốc vẫn được lưu đầy đủ.";
+    }
+    const normalized = text.replace(/\0/g, "").trim();
+    if (!normalized) throw new Error("Không trích được lớp chữ. PDF scan ảnh cần OCR hoặc dùng bản có thể chọn văn bản.");
+    const clipped = normalized.slice(0, 20_000);
+    return {
+      text: clipped,
+      warning: [warning, normalized.length > clipped.length ? "Đã cắt nội dung ở 20.000 ký tự; file gốc vẫn được lưu đầy đủ." : ""].filter(Boolean).join(" "),
+    };
+  };
+
+  const handleGroupRubricFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, assignId: string) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (loadingGroupDetailsId || groupRubricAssignmentId !== assignId) return;
+    setGroupRubricFileName(file.name);
+    setGroupRubricFile(file);
+    setGroupRubricImportError("");
+    setIsImportingGroupRubric(true);
+    try {
+      const extracted = await extractRubricFile(file);
+      setGroupRubricText(extracted.text);
+      setGroupRubricImportError(extracted.warning);
+    } catch (error) {
+      setGroupRubricFile(null);
+      setGroupRubricFileName("");
+      setGroupRubricImportError(error instanceof Error ? error.message : "Không đọc được file ma trận.");
+    } finally {
+      setIsImportingGroupRubric(false);
+      event.target.value = "";
+    }
+  };
+
+  const downloadGroupRubricDocument = async (assignment: any) => {
+    if (!assignment?.rubric_document_path) return;
+    const { data, error } = await supabase.storage.from("class-work").download(assignment.rubric_document_path);
+    if (error || !data) return alert("Không tải được file ma trận: " + (error?.message || "File không tồn tại."));
+    const url = URL.createObjectURL(data);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = assignment.rubric_document_name || "ma-tran-nhom";
+    document.body.appendChild(anchor); anchor.click(); anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const gradeGroupWithAI = async (subId: string, answer: string) => {
@@ -754,7 +928,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     if (rubricFile) {
       const safeName = rubricFile.name.normalize("NFKC").replace(/[^\p{L}\p{N}._-]+/gu, "_").slice(0, 150) || "rubric";
       uploadedPath = `rubrics/activity-${selectedGradingAct.id}/${Date.now()}-${safeName}`;
-      const { error: uploadError } = await supabase.storage.from("learning-resources").upload(uploadedPath, rubricFile, { contentType: rubricFile.type || "application/octet-stream", upsert: false });
+      const { error: uploadError } = await supabase.storage.from("learning-resources").upload(uploadedPath, rubricFile, { contentType: rubricUploadMimeType(rubricFile), upsert: false });
       if (uploadError) { alert("Không tải được tệp ma trận: " + uploadError.message); return; }
     }
     const guidePayload: GradingGuide = {
@@ -780,63 +954,17 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const handleRubricFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const extension = file.name.split(".").pop()?.toLocaleLowerCase() || "";
-    if (!["txt", "md", "csv", "docx", "xlsx", "pdf"].includes(extension)) {
-      setRubricImportError("Chỉ nhận TXT, Markdown, CSV, Word (.docx), Excel (.xlsx) hoặc PDF.");
-      e.target.value = "";
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setRubricImportError("Tệp ma trận tối đa 10 MB.");
-      e.target.value = "";
-      return;
-    }
     setRubricFileName(file.name);
     setRubricFile(file);
     setRubricImportError("");
     setIsImportingRubric(true);
     try {
-      const buffer = await file.arrayBuffer();
-      let text = "";
-      if (["txt", "md", "csv"].includes(extension)) {
-        text = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
-      } else if (extension === "docx") {
-        const result = await mammoth.extractRawText({ arrayBuffer: buffer });
-        text = result.value;
-      } else if (extension === "xlsx") {
-        const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.load(buffer);
-        const fragments: string[] = [];
-        workbook.worksheets.slice(0, 10).forEach((sheet) => {
-          fragments.push(`# ${sheet.name}`);
-          sheet.eachRow((row) => {
-            const cells: string[] = [];
-            row.eachCell({ includeEmpty: false }, (cell) => {
-              const value = cell.text.trim();
-              if (value) cells.push(value);
-            });
-            if (cells.length) fragments.push(cells.join(" | "));
-          });
-        });
-        text = fragments.join("\n");
-      } else {
-        const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-        const pdf = await pdfjs.getDocument({ data: new Uint8Array(buffer) }).promise;
-        const pages: string[] = [];
-        for (let index = 1; index <= Math.min(pdf.numPages, 30); index += 1) {
-          const content = await (await pdf.getPage(index)).getTextContent();
-          const pageText = content.items.map((item) => "str" in item ? item.str : "").join(" ").trim();
-          if (pageText) pages.push(pageText);
-        }
-        text = pages.join("\n\n");
-        if (pdf.numPages > 30) setRubricImportError("Đã trích tối đa 30 trang đầu của PDF; tệp gốc vẫn được lưu khi bấm Lưu ma trận.");
-      }
-      const normalized = text.replace(/\0/g, "").trim();
-      if (!normalized) throw new Error("Không tìm thấy lớp văn bản. Với PDF quét ảnh, hãy dùng bản PDF có thể chọn chữ hoặc dán nội dung sau OCR.");
-      const clipped = normalized.slice(0, 20_000);
-      setRubricText(clipped);
-      if (normalized.length > clipped.length) setRubricImportError("Nội dung đã được cắt ở 20.000 ký tự để bảo đảm chấm AI ổn định. Tệp gốc vẫn được lưu đầy đủ.");
+      const extracted = await extractRubricFile(file);
+      setRubricText(extracted.text);
+      setRubricImportError(extracted.warning);
     } catch (error) {
+      setRubricFile(null);
+      setRubricFileName("");
       setRubricImportError(error instanceof Error ? error.message : "Không đọc được tệp ma trận này.");
     } finally {
       setIsImportingRubric(false);
@@ -2342,7 +2470,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
               )}
               {groupAssignments.map(gAct => (
                 <div key={gAct.id} className={`bg-white rounded-2xl shadow-sm border transition-all ${expandedGroupAct === gAct.id ? 'border-orange-400 ring-1 ring-orange-200' : 'border-slate-200'}`}>
-                  <div onClick={() => toggleExpandGroupAct(gAct.id)} className="p-5 flex items-center justify-between cursor-pointer bg-slate-50/50 rounded-t-2xl">
+                  <div onClick={() => toggleExpandGroupAct(gAct.id)} aria-disabled={isImportingGroupRubric || savingGroupRubricId !== null} className={`p-5 flex items-center justify-between bg-slate-50/50 rounded-t-2xl ${isImportingGroupRubric || savingGroupRubricId !== null ? "cursor-wait" : "cursor-pointer"}`}>
                     <div>
                       <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
                         <Layers className="w-5 h-5 text-orange-600" /> {gAct.title}
@@ -2357,7 +2485,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={(e) => { e.stopPropagation(); deleteGroupAssignment(gAct.id); }} className="text-slate-400 hover:text-rose-600 p-2" title="Xóa bài nhóm">
+                      <button disabled={savingGroupRubricId === gAct.id} onClick={(e) => { e.stopPropagation(); deleteGroupAssignment(gAct.id); }} className="text-slate-400 hover:text-rose-600 p-2 disabled:opacity-40" title="Xóa bài nhóm">
                         <Trash2 className="w-4 h-4"/>
                       </button>
                       <button className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-xl text-xs font-bold">
@@ -2408,18 +2536,32 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                         </h4>
                         <div className="mb-4">
                           <label className="font-bold text-xs text-slate-700 block mb-1">Ma trận chấm điểm nhóm:</label>
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-orange-200 bg-white px-3 py-2 text-[11px] font-bold text-orange-800 hover:bg-orange-50">
+                              <Upload className="h-3.5 w-3.5" />
+                              {isImportingGroupRubric ? "Đang đọc file…" : "Nhập Word / Excel / PDF"}
+                              <input type="file" accept=".txt,.md,.csv,.docx,.xlsx,.pdf" disabled={isImportingGroupRubric || savingGroupRubricId !== null || loadingGroupDetailsId === gAct.id} onChange={(event) => void handleGroupRubricFileUpload(event, gAct.id)} className="hidden" />
+                            </label>
+                            {gAct.rubric_document_path && <button type="button" onClick={() => void downloadGroupRubricDocument(gAct)} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-[11px] font-bold text-emerald-800 hover:bg-emerald-50"><Download className="h-3.5 w-3.5" /> Tải file gốc</button>}
+                            {groupRubricFileName && <span className="min-w-0 truncate text-[11px] text-slate-600">{isImportingGroupRubric ? "Đang trích xuất: " : "Ma trận từ file: "}{groupRubricFileName}</span>}
+                          </div>
+                          {loadingGroupDetailsId === gAct.id && <p role="status" className="mb-2 rounded-lg bg-blue-50 px-3 py-2 text-[11px] text-blue-900">Đang tải ma trận đã lưu…</p>}
+                          {groupRubricFile && !groupRubricDocumentSchemaReady && <p role="status" className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-900">File gốc sẽ được lưu sau khi áp dụng migration 20261101000100_group_rubric_documents.sql.</p>}
+                          {groupRubricImportError && <p role="alert" className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-900">{groupRubricImportError}</p>}
                           <div className="flex gap-2">
                             <textarea
                               value={groupRubricText}
-maxLength={20000}
+                              maxLength={20000}
+                              disabled={isImportingGroupRubric || savingGroupRubricId !== null || loadingGroupDetailsId === gAct.id || groupRubricAssignmentId !== gAct.id}
                               onChange={e => setGroupRubricText(e.target.value)}
-                              className="flex-1 p-2.5 border rounded-xl text-xs h-16 outline-none bg-slate-50/50"
-                              placeholder="Nhập tiêu chí chấm điểm nhóm..."
+                              className="min-h-28 flex-1 resize-y rounded-xl border bg-slate-50/50 p-3 text-xs leading-5 outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-60"
+                              placeholder="Nội dung được trích từ file sẽ hiện ở đây để cô rà lại trước khi lưu. Có thể chỉnh sửa nếu cần."
                             />
-                            <button type="button" disabled={savingGroupRubricId !== null} onClick={() => void saveGroupRubric(gAct.id)} className="bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white px-4 rounded-xl text-xs font-bold">
-                              {savingGroupRubricId === gAct.id ? "Đang lưu…" : "Lưu"}
+                            <button type="button" disabled={savingGroupRubricId !== null || isImportingGroupRubric || loadingGroupDetailsId === gAct.id || groupRubricAssignmentId !== gAct.id} onClick={() => void saveGroupRubric(gAct.id)} className="self-start rounded-xl bg-slate-800 px-4 py-3 text-xs font-bold text-white hover:bg-slate-900 disabled:opacity-50">
+                              {savingGroupRubricId === gAct.id ? "Đang lưu…" : "Lưu ma trận"}
                             </button>
                           </div>
+                          <p className="mt-2 text-[10px] leading-4 text-slate-500">Hỗ trợ TXT, Markdown, CSV, Word (.docx), Excel (.xlsx) và PDF có lớp chữ. Nội dung trích được giữ nguyên để AI dùng; file gốc được lưu riêng và nhóm được giao có thể tải xuống.</p>
                         </div>
 
                         <div className="space-y-3">

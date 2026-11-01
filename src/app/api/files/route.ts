@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const path = search.get("path") || "";
   const bucket = search.get("bucket") || "class-work";
   const validPath = bucket === "class-work"
-    ? /^(chat|submissions|group-submissions)\/[\w-]+\/[\w. -]+$/.test(path)
+    ? /^(chat|submissions|group-submissions)\/[\w-]+\/[\w. -]+$/.test(path) || /^group-rubrics\/[0-9a-f-]{36}\/[\w. -]+$/i.test(path)
     : bucket === "videos" && /^[\w./ -]+$/.test(path);
   if (!validPath || !path || path.length > 700 || path.startsWith("/") || path.includes("..")) {
     return NextResponse.json({ error: "Đường dẫn tệp không hợp lệ." }, { status: 400 });

@@ -14,7 +14,7 @@ import VirtualLab from "@/components/VirtualLab";
 import { filterSubmissionsForStudentGroups } from "@/lib/group-submissions.mjs";
 import ActivityResources from "@/components/ActivityResources";
 
-const attachmentHref = (value: string) => value.startsWith("http") || value.startsWith("blob:") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
+const attachmentHref = (value: string) => value.startsWith("http") || value.startsWith("blob:") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") || value.startsWith("group-rubrics/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
 
 export default function HocSinhPage() {
   const [student, setStudent] = useState<any>(null);
@@ -460,6 +460,11 @@ export default function HocSinhPage() {
                         <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
                           {gAct.description || "Nhiệm vụ nghiên cứu và thuyết trình nhóm"}
                         </p>
+                        {gAct.rubric_document_path && (
+                          <a href={attachmentHref(gAct.rubric_document_path)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-bold text-orange-800 hover:bg-orange-100">
+                            <Download className="h-4 w-4" /> Tải file ma trận chấm điểm
+                          </a>
+                        )}
                       </div>
 
                       <div className="p-4 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between">
