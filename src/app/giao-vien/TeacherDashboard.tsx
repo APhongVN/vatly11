@@ -261,9 +261,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [reportExportError, setReportExportError] = useState("");
   const [reportExportSuccess, setReportExportSuccess] = useState("");
   const [previewNotice, setPreviewNotice] = useState("");
+  const [dataLoadIssues, setDataLoadIssues] = useState<string[]>([]);
 
   const fetchData = useCallback(async () => {
     if (previewMode) {
+      setDataLoadIssues([]);
       setCanProvisionStudentAccounts(false);
       setStudentAccountSchemaMissing(false);
       setActivities(ACTIVITIES);
@@ -291,17 +293,17 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     }
     try {
       const [
-        { data: acts },
-        { data: studs, accountFieldsReady, accountSchemaMissing },
-        { data: subs },
-        { data: msgs },
-        { data: qzs },
-        { data: setting },
-        { data: gActs },
-        { data: gSubs },
+        { data: acts, error: activitiesError },
+        { data: studs, error: studentsError, accountFieldsReady, accountSchemaMissing },
+        { data: subs, error: submissionsError },
+        { data: msgs, error: messagesError },
+        { data: qzs, error: quizzesError },
+        { data: setting, error: chatSettingsError },
+        { data: gActs, error: groupAssignmentsError },
+        { data: gSubs, error: groupSubmissionsError },
         guideResult,
-        { data: courseRows },
-        { data: chapterRows },
+        { data: courseRows, error: coursesError },
+        { data: chapterRows, error: chaptersError },
       ] = await Promise.all([
         supabase.from('activities').select('*').order('id').limit(300),
         loadTeacherStudentRoster(),
@@ -315,6 +317,19 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         supabase.from('courses').select('id,title,subject,grade_level').order('grade_level').order('title').limit(200),
         supabase.from('chapters').select('id,course_id,title').order('created_at').limit(500),
       ]);
+
+      const failedSections: string[] = [];
+      if (activitiesError) failedSections.push("bài học");
+      if (studentsError) failedSections.push("danh sách học sinh");
+      if (submissionsError) failedSections.push("bài nộp");
+      if (messagesError) failedSections.push("kênh chat");
+      if (quizzesError) failedSections.push("bộ câu hỏi");
+      if (chatSettingsError) failedSections.push("cài đặt chat");
+      if (groupAssignmentsError) failedSections.push("bài tập nhóm");
+      if (groupSubmissionsError) failedSections.push("bài nộp nhóm");
+      if (coursesError) failedSections.push("môn học");
+      if (chaptersError) failedSections.push("chương học");
+      setDataLoadIssues(failedSections);
 
       setCanProvisionStudentAccounts(accountFieldsReady === true);
       setStudentAccountSchemaMissing(accountSchemaMissing === true);
@@ -343,6 +358,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       if (chapterRows) setCurriculumChapters(chapterRows);
     } catch (err) {
       console.warn("Lỗi tải dữ liệu giáo viên:", err);
+      setDataLoadIssues(["kết nối Supabase"]);
     }
   }, [previewMode, selectedGradingAct]);
 
@@ -2399,6 +2415,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
       {/* CONTENT AREA CHÍNH */}
       <div className="min-w-0 flex-1 p-4 pt-20 md:p-8 md:pt-20 lg:p-10 lg:pt-10 h-screen overflow-y-auto relative">
+        {!previewMode && dataLoadIssues.length > 0 && <div role="alert" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm"><div><p className="font-bold">Chưa tải được đầy đủ dữ liệu lớp.</p><p className="mt-1 text-xs">Mục lỗi: {dataLoadIssues.join(", ")}. Danh sách trống lúc này có thể do kết nối hoặc quyền Supabase, không có nghĩa là dữ liệu đã bị xóa.</p></div><button type="button" onClick={() => void fetchData()} className="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs font-bold hover:bg-amber-100"><RefreshCw className="h-4 w-4" />Tải lại dữ liệu</button></div>}
         <Link href="/" className="absolute top-6 right-8 hidden bg-white text-slate-600 p-3 rounded-full shadow-md border hover:bg-slate-50 transition-all z-10 lg:inline-flex" title="Về trang chủ">
           <ArrowLeft className="w-5 h-5" />
         </Link>
