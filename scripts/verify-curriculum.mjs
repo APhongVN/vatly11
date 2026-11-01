@@ -579,6 +579,7 @@ assert.match(rubricEditor, /accept="\.txt,\.md,\.csv,\.docx,\.xlsx,\.pdf,\.png,\
 assert.match(rubricEditor, /remarkMath/);
 assert.match(rubricEditor, /rehypeKatex/);
 assert.match(teacherDashboardSource, /handleGroupRubricFileUpload\(event, gAct\.id\)/);
+assert.match(teacherDashboardSource, /accept="\.txt,\.md,\.csv,\.docx,\.xlsx,\.pdf,\.png,\.jpg,\.jpeg,\.webp"/);
 assert.match(teacherDashboardSource, /downloadGroupRubricDocument\(gAct\)/);
 assert.match(rubricImport, /mathToLatex/);
 assert.match(zipLimits, /JSZip\.loadAsync/);

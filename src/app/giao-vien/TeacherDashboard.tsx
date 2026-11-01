@@ -3063,8 +3063,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                           <div className="mb-2 flex flex-wrap items-center gap-2">
                             <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-orange-200 bg-white px-3 py-2 text-[11px] font-bold text-orange-800 hover:bg-orange-50">
                               <Upload className="h-3.5 w-3.5" />
-                              {isImportingGroupRubric ? "Đang đọc file…" : "Nhập Word / Excel / PDF"}
-                              <input type="file" accept=".txt,.md,.csv,.docx,.xlsx,.pdf" disabled={isImportingGroupRubric || savingGroupRubricId !== null || loadingGroupDetailsId === gAct.id} onChange={(event) => void handleGroupRubricFileUpload(event, gAct.id)} className="hidden" />
+                              {isImportingGroupRubric ? "Đang đọc file…" : "Nhập tài liệu ma trận"}
+                              <input type="file" accept=".txt,.md,.csv,.docx,.xlsx,.pdf,.png,.jpg,.jpeg,.webp" disabled={isImportingGroupRubric || savingGroupRubricId !== null || loadingGroupDetailsId === gAct.id} onChange={(event) => void handleGroupRubricFileUpload(event, gAct.id)} className="hidden" />
                             </label>
                             {gAct.rubric_document_path && <button type="button" onClick={() => void downloadGroupRubricDocument(gAct)} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-[11px] font-bold text-emerald-800 hover:bg-emerald-50"><Download className="h-3.5 w-3.5" /> Tải file gốc</button>}
                             {groupRubricFileName && <span className="min-w-0 truncate text-[11px] text-slate-600">{isImportingGroupRubric ? "Đang trích xuất: " : "Ma trận từ file: "}{groupRubricFileName}</span>}
@@ -3085,7 +3085,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                               {savingGroupRubricId === gAct.id ? "Đang lưu…" : "Lưu ma trận"}
                             </button>
                           </div>
-                          <p className="mt-2 text-[10px] leading-4 text-slate-500">Hỗ trợ TXT, Markdown, CSV, Word (.docx), Excel (.xlsx) và PDF có lớp chữ. Nội dung trích được giữ nguyên để AI dùng; file gốc được lưu riêng và nhóm được giao có thể tải xuống.</p>
+                          <p className="mt-2 text-[10px] leading-4 text-slate-500">Hỗ trợ TXT, Markdown, CSV, Word (.docx), Excel (.xlsx), PDF có lớp chữ hoặc scan và ảnh PNG/JPG/WebP (OCR). Nội dung trích được giữ để cô rà soát; file gốc được lưu riêng và nhóm được giao có thể tải xuống.</p>
                         </div>
 
                         <div className="space-y-3">
