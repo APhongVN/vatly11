@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import { filterStudentTable, isTeacherOnlyText } from "../src/lib/curriculum-privacy.mjs";
+import { normalizeGeneratedQuiz } from "../src/lib/ai-quiz-validation.mjs";
+import { readBoundedRequestText } from "../src/lib/read-bounded-request.mjs";
 import { filterSubmissionsForStudentGroups } from "../src/lib/group-submissions.mjs";
 import { extractStudentNamesFromText } from "../src/lib/student-import.mjs";
 import { filterStudentRoster, getStudentClassNames, hasStudentInClass } from "../src/lib/student-roster.mjs";
@@ -21,6 +23,19 @@ import { isValidQUVariablePlan } from "../src/lib/virtual-lab-validation.mjs";
 import { splitExcelCellText } from "../src/lib/excel-cell-content.mjs";
 import { extractRubricFile, extractWordDocumentText } from "../src/lib/rubric-import.mjs";
 
+const validGeneratedQuestion = { question: "Tụ điện lưu trữ đại lượng nào?", options: ["Điện tích", "Khối lượng", "Công suất", "Tần số"], correct_option: 0, explanation: "Tụ điện tích trữ điện tích." };
+assert.deepEqual(normalizeGeneratedQuiz([validGeneratedQuestion], 1), [validGeneratedQuestion]);
+assert.equal(normalizeGeneratedQuiz([], 1), null, "Generated question count must match the requested count.");
+assert.equal(normalizeGeneratedQuiz([{ ...validGeneratedQuestion, options: ["A", "B", "C"] }], 1), null, "Each generated question needs four options.");
+assert.equal(normalizeGeneratedQuiz([{ ...validGeneratedQuestion, options: ["A", "B", "C", "a"] }], 1), null, "Duplicate options must be rejected case-insensitively.");
+assert.equal(normalizeGeneratedQuiz([{ ...validGeneratedQuestion, correct_option: 4 }], 1), null, "Answer indices must stay in the 0–3 range.");
+assert.equal(normalizeGeneratedQuiz([{ ...validGeneratedQuestion, question: "x".repeat(1601) }], 1), null, "Question text must be bounded.");
+assert.equal(normalizeGeneratedQuiz([validGeneratedQuestion], 21), null, "Generated question count must be bounded.");
+assert.equal(await readBoundedRequestText(new Request("http://localhost", { method: "POST", body: "tụ điện" }), 32), "tụ điện");
+await assert.rejects(
+  () => readBoundedRequestText(new Request("http://localhost", { method: "POST", body: "12345" }), 4),
+  (error) => error instanceof Error && error.name === "RequestBodyTooLargeError",
+);
 const rosterFixture = [
   { id: "s1", full_name: "Nguyễn Văn An", class_name: "11A1" },
   { id: "s2", full_name: "Nguyễn Văn An", class_name: "11A2" },
@@ -141,6 +156,12 @@ const apiRateLimitMigration = await readFile(new URL("../supabase/migrations/202
 const activityFilePolicyMigration = await readFile(new URL("../supabase/migrations/20261031002500_scope_activity_file_reads.sql", import.meta.url), "utf8" );
 const baselineRlsMigration = await readFile(new URL("../supabase/migrations/20261031000400_rls_policies.sql", import.meta.url), "utf8");
 const apiSecuritySource = await readFile(new URL("../src/lib/api-security.ts", import.meta.url), "utf8");
+const aiGenerateQuizApi = await readFile(new URL("../src/app/api/ai-generate-quiz/route.ts", import.meta.url), "utf8");
+assert.match(aiGenerateQuizApi, /authorizeApi\(\["teacher"\], 10, "quiz"\)/);
+assert.match(aiGenerateQuizApi, /readBoundedRequestText\(request, MAX_REQUEST_BYTES\)/);
+assert.match(aiGenerateQuizApi, /DIFFICULTIES\.has\(difficulty\)/);
+assert.match(aiGenerateQuizApi, /normalizeGeneratedQuiz\(parsed, count as number\)/);
+assert.doesNotMatch(aiGenerateQuizApi, /error:\s*error\.message/);
 const virtualLab = await readFile(new URL("../src/components/VirtualLab.tsx", import.meta.url), "utf8");
 const staticQuiz = await readFile(new URL("../src/components/Quiz.tsx", import.meta.url), "utf8");
 const publicQuizBank = await readFile(new URL("../src/lib/data/questions.ts", import.meta.url), "utf8");
