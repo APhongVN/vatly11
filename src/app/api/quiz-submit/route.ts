@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { authorizeApi } from "@/lib/api-security";
-import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import { createSupabaseAdminClient, hasSupabaseAdminKey } from "@/lib/supabase-admin";
 
 export async function POST(request: Request) {
   const access = await authorizeApi(["student"], 5, "quiz");
   if ("response" in access) return access.response;
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return NextResponse.json({ error: "Dịch vụ chấm chưa được cấu hình đầy đủ trên máy chủ." }, { status: 503 });
+  if (!hasSupabaseAdminKey()) return NextResponse.json({ error: "Dịch vụ chấm chưa được cấu hình đầy đủ trên máy chủ." }, { status: 503 });
 
   try {
     const rawBody = await request.text();

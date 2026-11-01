@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeApi } from "@/lib/api-security";
-import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import { createSupabaseAdminClient, hasSupabaseAdminKey } from "@/lib/supabase-admin";
 import { getPeerDiscussionWindow, isPeerChoiceSet, summarizePeerVotes } from "@/lib/peer-votes.mjs";
 
 const QUESTION_IDS = ["PI1", "PI2", "PI3"] as const;
@@ -19,7 +19,7 @@ async function readVotes(admin: ReturnType<typeof createSupabaseAdminClient>) {
 export async function GET() {
   const access = await authorizeApi(["student", "teacher"], 30, "peer-votes");
   if ("response" in access) return access.response;
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!hasSupabaseAdminKey()) {
     return NextResponse.json({ error: "Dịch vụ bình chọn chưa được cấu hình." }, { status: 503 });
   }
   try {
@@ -50,7 +50,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const access = await authorizeApi(["student"], 20, "peer-votes");
   if ("response" in access) return access.response;
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!hasSupabaseAdminKey()) {
     return NextResponse.json({ error: "Dịch vụ bình chọn chưa được cấu hình." }, { status: 503 });
   }
   try {

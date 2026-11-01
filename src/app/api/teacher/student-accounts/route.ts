@@ -1,14 +1,14 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { authorizeApi } from "@/lib/api-security";
-import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import { createSupabaseAdminClient, hasSupabaseAdminKey } from "@/lib/supabase-admin";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export async function POST(request: Request) {
   const access = await authorizeApi(["teacher"], 5, "student-account");
   if ("response" in access) return access.response;
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!hasSupabaseAdminKey()) {
     return NextResponse.json({ error: "Chưa cấu hình quyền quản lý tài khoản trên máy chủ." }, { status: 503 });
   }
 

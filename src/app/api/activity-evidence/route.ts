@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeApi } from "@/lib/api-security";
-import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import { createSupabaseAdminClient, hasSupabaseAdminKey } from "@/lib/supabase-admin";
 import { scoreActivityQuiz } from "@/lib/activity-quiz.mjs";
 import { isTimelineComplete, MICROTEACHING_MINIMUM_DURATION_SECONDS } from "@/lib/microteaching-progress.mjs";
 import { getDelayedPracticeWindow } from "@/lib/activity-schedule.mjs";
@@ -338,7 +338,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const access = await authorizeApi(["student"], 30, "activity-evidence");
   if ("response" in access) return access.response;
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!hasSupabaseAdminKey()) {
     return NextResponse.json({ error: "Dịch vụ lưu hồ sơ chưa được cấu hình trên máy chủ." }, { status: 503 });
   }
 

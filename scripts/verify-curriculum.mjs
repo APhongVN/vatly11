@@ -798,7 +798,17 @@ const publicCurriculumClient = await readFile(new URL("../src/lib/supabase-publi
 const publicCurriculumRls = await readFile(new URL("../supabase/migrations/20261101000300_public_curriculum_anon_read.sql", import.meta.url), "utf8");
 assert.match(publicCurriculumApi, /createSupabasePublicClient/);
 assert.doesNotMatch(publicCurriculumApi, /createSupabaseAdminClient/);
-assert.match(publicCurriculumClient, /NEXT_PUBLIC_SUPABASE_ANON_KEY/);
+const supabaseConfigSource = await readFile(new URL("../src/lib/supabase-config.ts", import.meta.url), "utf8");
+const supabaseAdminSource = await readFile(new URL("../src/lib/supabase-admin.ts", import.meta.url), "utf8");
+assert.match(publicCurriculumClient, /getSupabasePublicKey/);
+assert.match(supabaseConfigSource, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+assert.match(supabaseConfigSource, /NEXT_PUBLIC_SUPABASE_ANON_KEY/);
+assert.match(supabaseAdminSource, /SUPABASE_SECRET_KEY[\s\S]+SUPABASE_SERVICE_ROLE_KEY/);
+assert.match(supabaseAdminSource, /export function hasSupabaseAdminKey\(\)/);
+for (const routePath of ["activity-evidence", "grade", "teacher/student-accounts", "quiz-submit", "peer-votes"]) {
+  const routeSource = await readFile(new URL(`../src/app/api/${routePath}/route.ts`, import.meta.url), "utf8");
+  assert.match(routeSource, /hasSupabaseAdminKey\(\)/, `${routePath} must accept the configured server secret key.`);
+}
 assert.doesNotMatch(publicCurriculumClient, /SERVICE_ROLE/);
 assert.match(publicCurriculumRls, /ENABLE ROW LEVEL SECURITY/);
 assert.match(publicCurriculumRls, /TO anon[\s\S]+status IN \('available', 'locked', 'done'\)/);

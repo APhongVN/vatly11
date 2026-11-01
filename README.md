@@ -4,11 +4,11 @@
 
 ## Chạy trên máy phát triển
 
-1. Cài Node.js LTS và chạy `npm install`.
-2. Tạo `.env.local` từ `.env.example`, điền URL và anon key của Supabase cùng Gemini API key. Không đưa khóa vào Git; không dùng lại khóa đã từng xuất hiện trong lịch sử repository.
+1. Cài Node.js 22 trở lên và chạy `npm install`.
+2. Tạo `.env.local` từ `.env.example`, điền URL, publishable key và Gemini API key. Không đưa khóa vào Git; không dùng lại khóa đã từng xuất hiện trong lịch sử repository.
 3. Chạy `npm run dev` rồi mở `http://localhost:3000`.
 
-`SUPABASE_SERVICE_ROLE_KEY` chỉ dùng ở server cho giới hạn tần suất, chấm điểm, cấp tài khoản học sinh và một số thao tác quản trị. Chỉ đặt khóa trong secret manager của Render hoặc `.env.local` trên máy phát triển. Không đặt ở biến `NEXT_PUBLIC_*` và không commit khóa thật.
+`SUPABASE_SECRET_KEY` chỉ dùng phía server cho giới hạn tần suất, chấm điểm, cấp tài khoản học sinh và một số thao tác quản trị. `SUPABASE_SERVICE_ROLE_KEY` chỉ còn là tên tương thích legacy. Chỉ đặt secret key trong secret manager của Render hoặc `.env.local` trên máy phát triển; không đặt ở biến `NEXT_PUBLIC_*` và không commit khóa thật.
 
 ## Cơ sở dữ liệu và phân quyền
 
@@ -20,7 +20,7 @@ Bản hiện tại có thêm các migration bắt buộc `20261031002700_rubric_
 
 Migration `20261101000200_group_assignment_classes.sql` bổ sung phạm vi lớp cho bài tập nhóm. Bài mới cần chọn một lớp hoặc tất cả lớp; bài cũ có `class_name` rỗng vẫn áp dụng cho toàn bộ danh sách. Áp dụng migration này trước khi sử dụng chức năng tạo hoặc chia lại nhóm theo lớp.
 
-Migration `20261101000300_public_curriculum_anon_read.sql` cho phép khách đọc metadata hoạt động đã phát hành bằng anon key, giới hạn theo từng cột và RLS. Hai trang danh mục công khai không còn cần `SUPABASE_SERVICE_ROLE_KEY` chỉ để đọc nội dung; hãy áp dụng migration này để đồng bộ hoạt động do giáo viên quản lý.
+Migration `20261101000300_public_curriculum_anon_read.sql` cho phép khách đọc metadata hoạt động đã phát hành bằng publishable key, giới hạn theo từng cột và RLS. Hai trang danh mục công khai không còn cần `SUPABASE_SERVICE_ROLE_KEY` chỉ để đọc nội dung; hãy áp dụng migration này để đồng bộ hoạt động do giáo viên quản lý.
 ### Nhập và xuất ma trận chấm
 
 Giáo viên có thể nhập `.docx`, `.xlsx`, `.pdf`, `.txt`, `.md`, `.csv` hoặc ảnh PNG/JPG/WebP khi tạo bài, sửa bài hay mở chấm điểm. Công thức Word được chuyển sang dạng xem được; PDF scan và ảnh dùng route OCR có xác thực. Mỗi file tối đa 10 MB; PDF đọc tối đa 30 trang và OCR tối đa 5 trang scan; nội dung trích tối đa 20.000 ký tự. Hệ thống giữ file gốc trong Storage riêng tư để giáo viên tải lại, còn báo cáo Excel có sheet **Ma trận chấm điểm** cho bài cá nhân và nhóm. Báo cáo cũng có sheet **Thống kê theo lớp** gồm sĩ số, hoạt động, bài nộp, lượt quiz, bài nhóm, hàng chờ duyệt và điểm giáo viên trung bình tính theo học sinh (mỗi em có trọng số như nhau). Cô cần rà lại nội dung OCR/công thức trước khi chấm.
@@ -28,7 +28,7 @@ Giáo viên có thể nhập `.docx`, `.xlsx`, `.pdf`, `.txt`, `.md`, `.csv` ho�
 ### Cấp tài khoản
 
 - Giáo viên: tạo người dùng trong Supabase Auth, xác minh email rồi chạy script `supabase/sql-editor/set_teacher_role.sql` trong SQL Editor sau khi thay placeholder bằng email đã xác minh. Ứng dụng không cho phép người dùng tự đăng ký vai trò giáo viên.
-- Học sinh: nhập danh sách tên ở trang giáo viên, sau đó chọn **Cấp tài khoản** trên từng hồ sơ. Tính năng yêu cầu migration `20261031002600_student_account_provisioning.sql` và `SUPABASE_SERVICE_ROLE_KEY` chỉ cấu hình phía server. Mật khẩu tạm ngẫu nhiên chỉ hiển thị một lần; học sinh phải đổi sang mật khẩu riêng trước khi vào lớp.
+- Học sinh: nhập danh sách tên ở trang giáo viên, sau đó chọn **Cấp tài khoản** trên từng hồ sơ. Tính năng yêu cầu migration `20261031002600_student_account_provisioning.sql` và `SUPABASE_SECRET_KEY` chỉ cấu hình phía server (legacy `SUPABASE_SERVICE_ROLE_KEY` cũng được hỗ trợ). Mật khẩu tạm ngẫu nhiên chỉ hiển thị một lần; học sinh phải đổi sang mật khẩu riêng trước khi vào lớp.
 - Tài khoản học sinh Auth có sẵn cần được giáo viên xác minh rồi liên kết đúng `students.auth_user_id`; không liên kết chỉ dựa trên tên hiển thị.
 
 Ví dụ liên kết tài khoản đã xác minh trong SQL Editor:

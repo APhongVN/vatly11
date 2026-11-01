@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { authorizeApi } from "@/lib/api-security";
-import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import { createSupabaseAdminClient, hasSupabaseAdminKey } from "@/lib/supabase-admin";
 import { GEMINI_MODELS } from "@/lib/gemini-config";
 
 const MODELS = GEMINI_MODELS;
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   if ("response" in access) return access.response;
   try {
     if (!process.env.GEMINI_API_KEY) return NextResponse.json({ error: "Dịch vụ chấm AI chưa được cấu hình." }, { status: 503 });
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return NextResponse.json({ error: "Dịch vụ chấm chưa được cấu hình đầy đủ trên máy chủ." }, { status: 503 });
+    if (!hasSupabaseAdminKey()) return NextResponse.json({ error: "Dịch vụ chấm chưa được cấu hình đầy đủ trên máy chủ." }, { status: 503 });
     if (Number(req.headers.get("content-length") || 0) > 48_000) {
       return NextResponse.json({ error: "Bài làm vượt quá dung lượng cho phép." }, { status: 413 });
     }
