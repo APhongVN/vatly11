@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import ExcelJS from "exceljs";
+import mammoth from "mammoth";
 import {
   LogOut, Home, Video, Users, FileText, Bot, Upload, MessageSquare,
   Send, Calendar, Download, CheckCircle, Trash2, ArrowLeft, Search,
@@ -14,13 +15,13 @@ import {
   BrainCircuit, Award, Lightbulb, AlertCircle, FileSpreadsheet, ClipboardList, FolderOpen
 } from "lucide-react";
 import TeacherHome from "@/components/TeacherHome";
+import CurriculumManager from "@/components/CurriculumManager";
 import ResourceLibrary from "@/components/ResourceLibrary";
 import ActivityEvidencePanel from "@/components/ActivityEvidencePanel";
 import CapacitanceLabSettings from "@/components/CapacitanceLabSettings";
 import { formatVietnameseName, getFirstName, sortVietnameseNames, isHeaderOrInvalidCell } from "@/lib/vietnameseName";
 import { ACTIVITIES } from "@/lib/data/activities";
 import { extractStudentNamesFromText } from "@/lib/student-import.mjs";
-import { csvSafeCell } from "@/lib/csv-export.mjs";
 
 const privateFileHref = (value: string) => value.startsWith("http") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
 const loadTeacherStudentRoster = async () => {
@@ -33,6 +34,42 @@ const loadTeacherStudentRoster = async () => {
   // Keep the roster readable until the account migration is applied, and disable provisioning meanwhile.
   const legacyRoster = await supabase.from("students").select("id,full_name,class_name").order("full_name").limit(1000);
   return { ...legacyRoster, accountFieldsReady: false, accountSchemaMissing: true };
+};
+
+type GradingGuide = {
+  activity_id: number;
+  model_answer: string | null;
+  grading_rubric: string | null;
+  rubric_document_path?: string | null;
+  rubric_document_name?: string | null;
+};
+
+/**
+ * The dashboard can be deployed a few minutes before a SQL migration is run.
+ * Read the legacy guide shape during that window instead of breaking the whole
+ * teacher screen; file import is then explicitly held until migration 027 is on.
+ */
+const loadTeacherGradingGuides = async (): Promise<{ data: GradingGuide[]; documentFieldsReady: boolean }> => {
+  const extended = await supabase
+    .from("activity_grading_guides")
+    .select("activity_id,model_answer,grading_rubric,rubric_document_path,rubric_document_name");
+  if (!extended.error) {
+    return { data: (extended.data || []) as GradingGuide[], documentFieldsReady: true };
+  }
+
+  if (extended.error.code !== "42703" && extended.error.code !== "PGRST204") {
+    console.warn("Không tải được ma trận chấm điểm:", extended.error.message);
+    return { data: [], documentFieldsReady: false };
+  }
+
+  const legacy = await supabase
+    .from("activity_grading_guides")
+    .select("activity_id,model_answer,grading_rubric");
+  if (legacy.error) {
+    console.warn("Không tải được ma trận chấm điểm cũ:", legacy.error.message);
+    return { data: [], documentFieldsReady: false };
+  }
+  return { data: (legacy.data || []) as GradingGuide[], documentFieldsReady: false };
 };
 
 export default function GiaoVienPage({ previewMode = false }: { previewMode?: boolean }) {
@@ -62,6 +99,10 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [selectedGradingAct, setSelectedGradingAct] = useState<any>(null);
   const [rubricText, setRubricText] = useState("");
   const [rubricFileName, setRubricFileName] = useState("");
+  const [rubricFile, setRubricFile] = useState<File | null>(null);
+  const [rubricImportError, setRubricImportError] = useState("");
+  const [isImportingRubric, setIsImportingRubric] = useState(false);
+  const [rubricDocumentSchemaReady, setRubricDocumentSchemaReady] = useState(previewMode);
   const [gradingId, setGradingId] = useState<string | null>(null);
 
   // Quản lý & Gộp bài tập cá nhân
@@ -79,6 +120,14 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [newActRubric, setNewActRubric] = useState("");
   const [newActFile, setNewActFile] = useState<File | null>(null);
   const [isCreatingAct, setIsCreatingAct] = useState(false);
+  const [newActCourseId, setNewActCourseId] = useState("");
+  const [newActChapterId, setNewActChapterId] = useState("");
+  const [newActPhase, setNewActPhase] = useState("Trước lớp");
+  const [newActType, setNewActType] = useState("Bài tập");
+  const [newActDuration, setNewActDuration] = useState("");
+  const [newActAcceptingSubmissions, setNewActAcceptingSubmissions] = useState(true);
+  const [curriculumCourses, setCurriculumCourses] = useState<any[]>([]);
+  const [curriculumChapters, setCurriculumChapters] = useState<any[]>([]);
 
   // Sinh viên
   const [newStudentName, setNewStudentName] = useState("");
@@ -137,6 +186,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   // AI Analytics & Báo cáo phổ điểm
   const [analyticsReport, setAnalyticsReport] = useState<any>(null);
   const [isAnalyzingClass, setIsAnalyzingClass] = useState(false);
+  const [previewNotice, setPreviewNotice] = useState("");
 
   const fetchData = useCallback(async () => {
     if (previewMode) {
@@ -160,6 +210,9 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       setGroupAssignments([]);
       setGroupSubmissions([]);
       setIsChatMuted(false);
+      setRubricDocumentSchemaReady(true);
+      setCurriculumCourses([{ id: "preview-course-tu-dien", title: "Vật lí 11", subject: "Vật lí", grade_level: 11 }]);
+      setCurriculumChapters([{ id: "preview-chapter-tu-dien", course_id: "preview-course-tu-dien", title: "Chuyên đề Tụ điện" }]);
       return;
     }
     try {
@@ -172,7 +225,9 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         { data: setting },
         { data: gActs },
         { data: gSubs },
-        { data: guides },
+        guideResult,
+        { data: courseRows },
+        { data: chapterRows },
       ] = await Promise.all([
         supabase.from('activities').select('*').order('id').limit(300),
         loadTeacherStudentRoster(),
@@ -182,14 +237,17 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         supabase.from('chat_settings').select('is_muted').eq('id', 1).single(),
         supabase.from('group_assignments').select('*').order('created_at', { ascending: false }).limit(100),
         supabase.from('group_submissions').select('*').order('submitted_at', { ascending: false }).limit(300),
-        supabase.from('activity_grading_guides').select('activity_id,model_answer,grading_rubric'),
+        loadTeacherGradingGuides(),
+        supabase.from('courses').select('id,title,subject,grade_level').order('grade_level').order('title').limit(200),
+        supabase.from('chapters').select('id,course_id,title').order('created_at').limit(500),
       ]);
 
       setCanProvisionStudentAccounts(accountFieldsReady === true);
       setStudentAccountSchemaMissing(accountSchemaMissing === true);
+      setRubricDocumentSchemaReady(guideResult.documentFieldsReady);
 
       if (acts) {
-        const guidesByActivity = new Map((guides || []).map((guide) => [guide.activity_id, guide]));
+        const guidesByActivity = new Map(guideResult.data.map((guide) => [guide.activity_id, guide]));
         const activitiesWithGuides = acts.map((activity) => ({ ...activity, ...(guidesByActivity.get(activity.id) || {}) }));
         setActivities(activitiesWithGuides);
         if (!selectedGradingAct && activitiesWithGuides.length > 0) {
@@ -207,6 +265,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       if (setting) setIsChatMuted(setting.is_muted);
       if (gActs) setGroupAssignments(gActs);
       if (gSubs) setGroupSubmissions(gSubs);
+      if (courseRows) setCurriculumCourses(courseRows);
+      if (chapterRows) setCurriculumChapters(chapterRows);
     } catch (err) {
       console.warn("Lỗi tải dữ liệu giáo viên:", err);
     }
@@ -249,6 +309,16 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     const deadline = (form.elements.namedItem('deadline') as HTMLInputElement).value;
     const rubric = (form.elements.namedItem('rubric') as HTMLTextAreaElement)?.value || "";
     const acceptingSubmissions = (form.elements.namedItem('accepting_submissions') as HTMLInputElement).checked;
+    if (previewMode) {
+      setActivities((current) => current.map((activity) => activity.id === id ? {
+        ...activity, title, description: desc, video_url: video || null,
+        deadline: deadline ? new Date(deadline).toISOString() : null,
+        grading_rubric: rubric || null, accepting_submissions: acceptingSubmissions,
+      } : activity));
+      setExpandedAct(null);
+      setPreviewNotice(`Đã lưu thử thay đổi của bài ${id} trong phiên xem trước.`);
+      return;
+    }
 
     const { error } = await supabase.from('activities').update({
       title,
@@ -272,6 +342,12 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     fetchData();
   };
   const deleteActivity = async (id: number) => {
+    if (previewMode) {
+      setActivities((current) => current.filter((activity) => activity.id !== id));
+      setSelectedActsToMerge((current) => current.filter((activityId) => activityId !== id));
+      setPreviewNotice(`Đã xóa thử bài ${id} khỏi phiên xem trước.`);
+      return;
+    }
     if (!confirm(`Bạn có chắc chắn muốn xóa Bài học số ${id}? Thao tác này không thể hoàn tác.`)) return;
     const { error } = await supabase.from('activities').delete().eq('id', id);
     if (!error) {
@@ -285,6 +361,12 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const handleUploadFile = async (e: React.ChangeEvent<HTMLInputElement>, actId: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (previewMode) {
+      setActivities((current) => current.map((activity) => activity.id === actId ? { ...activity, document_url: `preview/${file.name}` } : activity));
+      setPreviewNotice(`Đã gắn thử “${file.name}” vào bài ${actId}; tệp chưa được tải lên kho thật.`);
+      e.target.value = "";
+      return;
+    }
     const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const fileName = `act-${actId}-${Date.now()}-${cleanName}`;
     if (file.size > 100 * 1024 * 1024) { alert("Tài liệu không được vượt quá 100 MB."); return; }
@@ -322,6 +404,16 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     const mergedDesc = mergeDesc.trim() || actsToMerge.map(a => `[Bài ${a.id}]: ${a.title}`).join(" | ");
     const mergedRubric = actsToMerge.map(a => a.grading_rubric).filter(Boolean).join("\n---\n");
 
+    if (previewMode) {
+      setActivities((current) => current
+        .filter((activity) => !removeIds.includes(activity.id))
+        .map((activity) => activity.id === targetId ? { ...activity, title: mergeTitle.trim(), description: mergedDesc, grading_rubric: mergedRubric || null } : activity));
+      setSubmissions((current) => current.map((submission) => removeIds.includes(submission.activity_id) ? { ...submission, activity_id: targetId } : submission));
+      setSelectedActsToMerge([]); setShowMergeModal(false); setMergeTitle(""); setMergeDesc("");
+      setPreviewNotice(`Đã gộp thử ${selectedActsToMerge.length} bài vào bài ${targetId} trong phiên xem trước.`);
+      return;
+    }
+
     const { error: activityError } = await supabase.from('activities').update({ title: mergeTitle.trim(), description: mergedDesc }).eq('id', targetId);
     if (activityError) { alert("Không gộp được hoạt động: " + activityError.message); return; }
     const target = actsToMerge.find((activity) => activity.id === targetId);
@@ -349,6 +441,21 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       alert("Vui lòng nhập tên bài tập mới!");
       return;
     }
+    if (previewMode) {
+      const nextId = Math.max(0, ...activities.map((activity) => Number(activity.id) || 0)) + 1;
+      setActivities((current) => [...current, {
+        id: nextId, title: newActTitle.trim(), description: newActDesc.trim() || "Bài học mới trong bản xem trước.",
+        video_url: newActVideo.trim() || null, document_url: newActFile ? `preview/${newActFile.name}` : null,
+        deadline: newActDeadline ? new Date(newActDeadline).toISOString() : null, status: "available", phase: newActPhase,
+        type: newActType, duration: newActDuration.trim() || "Theo hướng dẫn giáo viên", accepting_submissions: newActAcceptingSubmissions,
+        course_id: newActCourseId || null, chapter_id: newActChapterId || null, grading_rubric: newActRubric.trim() || null,
+      }]);
+      setNewActTitle(""); setNewActDesc(""); setNewActVideo(""); setNewActDeadline(""); setNewActRubric(""); setNewActFile(null);
+      setNewActCourseId(""); setNewActChapterId(""); setNewActPhase("Trước lớp"); setNewActType("Bài tập"); setNewActDuration(""); setNewActAcceptingSubmissions(true);
+      setActiveTab("activities");
+      setPreviewNotice(`Đã tạo thử bài ${nextId}. Bài này chỉ tồn tại trong phiên xem trước.`);
+      return;
+    }
     setIsCreatingAct(true);
 
     try {
@@ -369,8 +476,17 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         document_url: uploadedDocUrl || null,
         deadline: newActDeadline ? new Date(newActDeadline).toISOString() : null,
         status: "available",
+        phase: newActPhase,
+        type: newActType,
+        duration: newActDuration.trim() || null,
+        accepting_submissions: newActAcceptingSubmissions,
+        course_id: newActCourseId || null,
+        chapter_id: newActChapterId || null,
       }).select('id').single();
-      if (error || !createdActivity) throw new Error(error?.message || "Không tạo được bài học.");
+      if (error || !createdActivity) {
+        if (uploadedDocUrl) await supabase.storage.from('videos').remove([uploadedDocUrl]);
+        throw new Error(error?.message || "Không tạo được bài học.");
+      }
 
       const { error: guideError } = await supabase.from('activity_grading_guides').upsert({
         activity_id: createdActivity.id,
@@ -378,6 +494,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       });
       if (guideError) {
         await supabase.from('activities').delete().eq('id', createdActivity.id);
+        if (uploadedDocUrl) await supabase.storage.from('videos').remove([uploadedDocUrl]);
         throw new Error("Không lưu được tiêu chí chấm: " + guideError.message);
       }
 
@@ -388,6 +505,12 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       setNewActDeadline("");
       setNewActRubric("");
       setNewActFile(null);
+      setNewActCourseId("");
+      setNewActChapterId("");
+      setNewActPhase("Trước lớp");
+      setNewActType("Bài tập");
+      setNewActDuration("");
+      setNewActAcceptingSubmissions(true);
       setActiveTab("activities");
       fetchData();
     } catch (err: unknown) {
@@ -410,6 +533,25 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     let deadline: string | null = null;
     try { deadline = newGroupDeadline ? new Date(newGroupDeadline).toISOString() : null; }
     catch { return alert("Thời hạn chưa hợp lệ."); }
+
+    if (previewMode) {
+      const assignmentId = `preview-group-${Date.now()}`;
+      const groups = Array.from({ length: numGroups }, (_, index) => ({
+        id: `${assignmentId}-${index + 1}`, assignment_id: assignmentId, group_number: index + 1,
+        group_name: `Nhóm ${index + 1}`,
+        group_assignment_members: [] as any[],
+      }));
+      students.forEach((student, index) => {
+        const group = groups[index % groups.length];
+        group.group_assignment_members.push({ id: `${group.id}-${student.id}`, group_id: group.id, student_id: student.id, students: student });
+      });
+      const assignment = { id: assignmentId, title, description: newGroupDesc.trim(), deadline, document_url: newGroupDocUrl.trim() || null, rubric: newGroupRubric.trim(), group_assignment_groups: groups };
+      setGroupAssignments((current) => [assignment, ...current]);
+      setCurrentGroupMembers(groups); setExpandedGroupAct(assignmentId); setGroupRubricText(newGroupRubric.trim());
+      setNewGroupTitle(""); setNewGroupDesc(""); setNewGroupDeadline(""); setNewGroupDocUrl(""); setNewGroupRubric("");
+      setPreviewNotice(`Đã tạo thử “${title}” và phân ${students.length} học sinh vào ${numGroups} nhóm.`);
+      return;
+    }
 
     const { data: assignmentId, error } = await supabase.rpc("create_group_assignment_with_groups", {
       p_title: title,
@@ -435,6 +577,13 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
 
   const deleteGroupAssignment = async (id: string) => {
+    if (previewMode) {
+      setGroupAssignments((current) => current.filter((assignment) => assignment.id !== id));
+      setGroupSubmissions((current) => current.filter((submission) => submission.assignment_id !== id));
+      if (expandedGroupAct === id) { setExpandedGroupAct(null); setCurrentGroupMembers([]); }
+      setPreviewNotice("Đã xóa thử bài tập nhóm khỏi phiên xem trước.");
+      return;
+    }
     if (!confirm("Xóa bài tập nhóm này và toàn bộ danh sách nhóm/bài nộp?")) return;
     const { error } = await supabase.from("group_assignments").delete().eq("id", id);
     if (error) return alert("Không xóa được bài tập nhóm: " + error.message);
@@ -446,6 +595,12 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
 
   const fetchGroupDetails = async (assignId: string) => {
+    if (previewMode) {
+      const assignment = groupAssignments.find((item) => item.id === assignId);
+      setCurrentGroupMembers(assignment?.group_assignment_groups || []);
+      setGroupRubricText(assignment?.rubric || "");
+      return;
+    }
     const { data: groups } = await supabase.from('group_assignment_groups').select('*, group_assignment_members(*, students(*))').eq('assignment_id', assignId).order('group_number');
     if (groups) setCurrentGroupMembers(groups);
 
@@ -464,6 +619,14 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     if (nextName.length > 60) return alert("Tên nhóm tối đa 60 ký tự.");
     const duplicate = currentGroupMembers.some((item) => item.id !== group.id && String(item.group_name || "").trim().toLocaleLowerCase("vi") === nextName.toLocaleLowerCase("vi"));
     if (duplicate) return alert("Tên này đã được một nhóm khác trong bài tập sử dụng.");
+    if (previewMode) {
+      const updateGroup = (item: any) => item.id === group.id ? { ...item, group_name: nextName } : item;
+      setCurrentGroupMembers((current) => current.map(updateGroup));
+      setGroupAssignments((current) => current.map((assignment) => assignment.id === group.assignment_id ? { ...assignment, group_assignment_groups: (assignment.group_assignment_groups || []).map(updateGroup) } : assignment));
+      setRenamingGroupId(null); setGroupNameDraft("");
+      setPreviewNotice(`Đã đổi thử tên nhóm thành “${nextName}”.`);
+      return;
+    }
     const { data, error } = await supabase.from("group_assignment_groups").update({ group_name: nextName }).eq("id", group.id).select("id").single();
     if (error || !data) return alert("Không đổi được tên nhóm: " + (error?.code === "23505" ? "Tên này đã được sử dụng trong bài tập." : error?.message || "Không tìm thấy nhóm."));
     setRenamingGroupId(null);
@@ -489,6 +652,16 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     if (submittedCount > 0) return alert("Bài nhóm đã có bài nộp nên không thể đổi thành viên. Hãy tạo bài nhóm mới nếu cần chia lại để giữ đúng lịch sử và quyền xem bài.");
     if (!confirm(`Phân ${students.length} học sinh vào ${numGroups} nhóm${isRandom ? " ngẫu nhiên" : " theo danh sách"}?`)) return;
 
+    if (previewMode) {
+      const ordered = isRandom ? [...students].sort(() => Math.random() - 0.5) : [...students];
+      const groups = Array.from({ length: numGroups }, (_, index) => ({ id: `${assignId}-${index + 1}`, assignment_id: assignId, group_number: index + 1, group_name: `Nhóm ${index + 1}`, group_assignment_members: [] as any[] }));
+      ordered.forEach((student, index) => groups[index % groups.length].group_assignment_members.push({ id: `${groups[index % groups.length].id}-${student.id}`, group_id: groups[index % groups.length].id, student_id: student.id, students: student }));
+      setCurrentGroupMembers(groups);
+      setGroupAssignments((current) => current.map((assignment) => assignment.id === assignId ? { ...assignment, group_assignment_groups: groups } : assignment));
+      setPreviewNotice(`Đã chia lại thử ${students.length} học sinh vào ${numGroups} nhóm${isRandom ? " ngẫu nhiên" : " theo danh sách"}.`);
+      return;
+    }
+
     setRegroupingAssignmentId(assignId);
     try {
       const { data, error } = await supabase.rpc("regroup_assignment_students", {
@@ -509,8 +682,13 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
 
   const saveGroupRubric = async (assignId: string) => {
-    if (previewMode || savingGroupRubricId) return;
+    if (savingGroupRubricId) return;
     if (groupRubricText.length > 20000) return alert("Ma trận điểm tối đa 20.000 ký tự.");
+    if (previewMode) {
+      setGroupAssignments((current) => current.map((assignment) => assignment.id === assignId ? { ...assignment, rubric: groupRubricText } : assignment));
+      setPreviewNotice("Đã lưu thử ma trận điểm của bài nhóm.");
+      return;
+    }
     setSavingGroupRubricId(assignId);
     try {
       const { data, error } = await supabase.from("group_assignments")
@@ -523,6 +701,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
 
   const gradeGroupWithAI = async (subId: string, answer: string) => {
+    if (previewMode) {
+      setGroupSubmissions((current) => current.map((submission) => submission.id === subId ? { ...submission, ai_score: 8, ai_feedback: "Kết quả AI mô phỏng: lập luận rõ; bổ sung đơn vị và kiểm tra giả thiết mô hình.", ai_strengths: "Có quy trình và kết quả.", ai_weaknesses: "Cần diễn giải số liệu kỹ hơn.", status: "graded" } : submission));
+      setPreviewNotice("Đã chấm thử bài nhóm bằng phản hồi AI mô phỏng.");
+      return;
+    }
     setGradingId(subId);
     try {
       const res = await fetch('/api/grade', {
@@ -556,29 +739,143 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   // --- CHẤM ĐIỂM CÁ NHÂN ---
   const saveRubric = async () => {
     if (!selectedGradingAct) return;
-    const { error } = await supabase.from('activity_grading_guides').upsert({
+    if (previewMode) {
+      setActivities((current) => current.map((activity) => activity.id === selectedGradingAct.id ? { ...activity, grading_rubric: rubricText || null, rubric_document_name: rubricFile?.name || activity.rubric_document_name || null } : activity));
+      setSelectedGradingAct((current: any) => current ? { ...current, grading_rubric: rubricText || null, rubric_document_name: rubricFile?.name || current.rubric_document_name || null } : current);
+      setPreviewNotice("Đã lưu thử rubric và tệp nguồn trong phiên xem trước.");
+      return;
+    }
+    if (rubricFile && !rubricDocumentSchemaReady) {
+      alert("Chưa thể lưu tệp gốc vì migration 20261031002700_rubric_document_import.sql chưa được áp dụng. Nội dung ma trận chưa bị mất; hãy áp dụng migration rồi bấm Lưu ma trận lại.");
+      return;
+    }
+    let uploadedPath = selectedGradingAct.rubric_document_path || null;
+    const oldPath = uploadedPath;
+    if (rubricFile) {
+      const safeName = rubricFile.name.normalize("NFKC").replace(/[^\p{L}\p{N}._-]+/gu, "_").slice(0, 150) || "rubric";
+      uploadedPath = `rubrics/activity-${selectedGradingAct.id}/${Date.now()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage.from("learning-resources").upload(uploadedPath, rubricFile, { contentType: rubricFile.type || "application/octet-stream", upsert: false });
+      if (uploadError) { alert("Không tải được tệp ma trận: " + uploadError.message); return; }
+    }
+    const guidePayload: GradingGuide = {
       activity_id: selectedGradingAct.id,
       model_answer: selectedGradingAct.model_answer || null,
       grading_rubric: rubricText || null,
-    });
-    if (error) { alert("Không lưu được ma trận điểm: " + error.message); return; }
+    };
+    if (rubricDocumentSchemaReady) {
+      guidePayload.rubric_document_path = uploadedPath;
+      guidePayload.rubric_document_name = rubricFile?.name || selectedGradingAct.rubric_document_name || null;
+    }
+    const { error } = await supabase.from('activity_grading_guides').upsert(guidePayload);
+    if (error) {
+      if (rubricFile && uploadedPath) await supabase.storage.from("learning-resources").remove([uploadedPath]);
+      alert("Không lưu được ma trận điểm: " + error.message);
+      return;
+    }
+    if (rubricFile && oldPath && oldPath !== uploadedPath) await supabase.storage.from("learning-resources").remove([oldPath]);
+    setRubricFile(null);
     alert("✅ Đã lưu ma trận điểm cho bài " + selectedGradingAct.id);
     fetchData();
   };
-  const handleRubricFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRubricFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const extension = file.name.split(".").pop()?.toLocaleLowerCase() || "";
+    if (!["txt", "md", "csv", "docx", "xlsx", "pdf"].includes(extension)) {
+      setRubricImportError("Chỉ nhận TXT, Markdown, CSV, Word (.docx), Excel (.xlsx) hoặc PDF.");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setRubricImportError("Tệp ma trận tối đa 10 MB.");
+      e.target.value = "";
+      return;
+    }
     setRubricFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const text = evt.target?.result as string;
-      setRubricText(text);
-    };
-    reader.readAsText(file);
+    setRubricFile(file);
+    setRubricImportError("");
+    setIsImportingRubric(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      let text = "";
+      if (["txt", "md", "csv"].includes(extension)) {
+        text = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
+      } else if (extension === "docx") {
+        const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+        text = result.value;
+      } else if (extension === "xlsx") {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(buffer);
+        const fragments: string[] = [];
+        workbook.worksheets.slice(0, 10).forEach((sheet) => {
+          fragments.push(`# ${sheet.name}`);
+          sheet.eachRow((row) => {
+            const cells: string[] = [];
+            row.eachCell({ includeEmpty: false }, (cell) => {
+              const value = cell.text.trim();
+              if (value) cells.push(value);
+            });
+            if (cells.length) fragments.push(cells.join(" | "));
+          });
+        });
+        text = fragments.join("\n");
+      } else {
+        const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+        const pdf = await pdfjs.getDocument({ data: new Uint8Array(buffer) }).promise;
+        const pages: string[] = [];
+        for (let index = 1; index <= Math.min(pdf.numPages, 30); index += 1) {
+          const content = await (await pdf.getPage(index)).getTextContent();
+          const pageText = content.items.map((item) => "str" in item ? item.str : "").join(" ").trim();
+          if (pageText) pages.push(pageText);
+        }
+        text = pages.join("\n\n");
+        if (pdf.numPages > 30) setRubricImportError("Đã trích tối đa 30 trang đầu của PDF; tệp gốc vẫn được lưu khi bấm Lưu ma trận.");
+      }
+      const normalized = text.replace(/\0/g, "").trim();
+      if (!normalized) throw new Error("Không tìm thấy lớp văn bản. Với PDF quét ảnh, hãy dùng bản PDF có thể chọn chữ hoặc dán nội dung sau OCR.");
+      const clipped = normalized.slice(0, 20_000);
+      setRubricText(clipped);
+      if (normalized.length > clipped.length) setRubricImportError("Nội dung đã được cắt ở 20.000 ký tự để bảo đảm chấm AI ổn định. Tệp gốc vẫn được lưu đầy đủ.");
+    } catch (error) {
+      setRubricImportError(error instanceof Error ? error.message : "Không đọc được tệp ma trận này.");
+    } finally {
+      setIsImportingRubric(false);
+      e.target.value = "";
+    }
+  };
+
+  const downloadRubricDocument = async () => {
+    const path = selectedGradingAct?.rubric_document_path;
+    if (!path) return;
+    const { data, error } = await supabase.storage.from("learning-resources").download(path);
+    if (error || !data) { alert("Không tải được tệp ma trận: " + (error?.message || "tệp không tồn tại")); return; }
+    const url = URL.createObjectURL(data);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = selectedGradingAct.rubric_document_name || "ma-tran-cham-diem";
+    document.body.appendChild(anchor); anchor.click(); anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const gradeWithAI = async (id: string, answer: string) => {
     setGradingId(id);
+    if (previewMode) {
+      window.setTimeout(() => {
+        const answerSize = answer.trim().length;
+        const score = Math.min(9.5, Math.max(5, Math.round((6.5 + Math.min(answerSize, 1000) / 350) * 10) / 10));
+        setSubmissions((current) => current.map((submission) => submission.id === id ? {
+          ...submission,
+          ai_score: score,
+          ai_feedback: "Gợi ý chấm mô phỏng: bài có ý chính, hãy bổ sung phép tính, đơn vị SI và kết luận vật lí.",
+          ai_strengths: "Có trình bày nội dung trả lời.",
+          ai_weaknesses: "Cần kiểm tra công thức và đơn vị.",
+          status: "graded",
+        } : submission));
+        setPreviewNotice("AI đã chấm mô phỏng bài mẫu. Bản xem trước không gửi bài hay tiêu thụ quota Gemini.");
+        setGradingId(null);
+      }, 350);
+      return;
+    }
     try {
       const res = await fetch('/api/grade', {
         method: 'POST',
@@ -609,10 +906,48 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     }
   };
 
+  const saveTeacherGrade = async (submissionId: string, scoreInputId: string, feedbackInputId: string) => {
+    const scoreElement = document.getElementById(scoreInputId) as HTMLInputElement | null;
+    const feedbackElement = document.getElementById(feedbackInputId) as HTMLInputElement | null;
+    const score = Number(scoreElement?.value);
+    if (!Number.isFinite(score) || score < 0 || score > 10) { alert("Điểm giáo viên phải nằm trong khoảng từ 0 đến 10."); return; }
+    const teacher_feedback = feedbackElement?.value.trim() || null;
+    if (previewMode) {
+      setSubmissions((current) => current.map((submission) => submission.id === submissionId ? { ...submission, final_score: score, teacher_feedback, status: "graded" } : submission));
+      setPreviewNotice("Đã lưu điểm giáo viên vào bài nộp mẫu; điểm AI vẫn được giữ riêng để đối chiếu.");
+      return;
+    }
+    const { error } = await supabase.from("submissions").update({ final_score: score, teacher_feedback, status: "graded" }).eq("id", submissionId);
+    if (error) { alert("Không lưu được điểm giáo viên: " + error.message); return; }
+    await fetchData();
+  };
+
+  const saveTeacherGroupGrade = async (submissionId: string, scoreInputId: string, feedbackInputId: string) => {
+    const scoreElement = document.getElementById(scoreInputId) as HTMLInputElement | null;
+    const feedbackElement = document.getElementById(feedbackInputId) as HTMLInputElement | null;
+    const score = Number(scoreElement?.value);
+    if (!Number.isFinite(score) || score < 0 || score > 10) { alert("Điểm giáo viên phải nằm trong khoảng từ 0 đến 10."); return; }
+    const teacher_feedback = feedbackElement?.value.trim() || null;
+    if (previewMode) {
+      setGroupSubmissions((current) => current.map((submission) => submission.id === submissionId ? { ...submission, final_score: score, teacher_feedback, status: "graded" } : submission));
+      setPreviewNotice("Đã lưu điểm giáo viên vào bài nhóm mẫu; gợi ý AI được giữ riêng.");
+      return;
+    }
+    const { error } = await supabase.from("group_submissions").update({ final_score: score, teacher_feedback, status: "graded" }).eq("id", submissionId);
+    if (error) { alert("Không lưu được điểm giáo viên cho nhóm: " + error.message); return; }
+    await fetchData();
+  };
+
   // --- CHẤM ẢNH OCR & LƯU VÀO DATABASE ---
   const handleOcrImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (previewMode) {
+      setOcrText(`[Bản trích xuất mô phỏng từ tệp “${file.name}”]\nNhập hoặc chỉnh sửa nội dung bài làm tại đây để thử chấm AI.`);
+      setPreviewNotice("Tệp ảnh chỉ được đọc cục bộ trong bản xem trước; chưa gửi lên AI hoặc kho dữ liệu.");
+      e.target.value = "";
+      return;
+    }
     setIsOcrProcessing(true);
     setOcrResult(null);
 
@@ -646,6 +981,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       alert("Chưa có nội dung văn bản để chấm điểm.");
       return;
     }
+    if (previewMode) {
+      setOcrResult({ score: 7.5, feedback: "Kết quả mô phỏng: bài có hướng giải hợp lí. Cần kiểm tra đơn vị và nêu rõ kết luận vật lí.", strengths: "Có sử dụng công thức và nêu các bước xử lí.", weaknesses: "Bổ sung đơn vị, điều kiện áp dụng và làm tròn kết quả.", model_answer: "Đây là phản hồi mẫu trong chế độ xem trước." });
+      setPreviewNotice("Đã tạo kết quả OCR/AI mô phỏng; không gửi ảnh hoặc dữ liệu ra ngoài.");
+      return;
+    }
     setIsOcrProcessing(true);
     try {
       const res = await fetch('/api/grade', {
@@ -673,6 +1013,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     }
     if (!ocrResult) {
       alert("Vui lòng chấm điểm bài làm trước khi lưu!");
+      return;
+    }
+    if (previewMode) {
+      setSubmissions((current) => [...current, { id: `preview-ocr-${Date.now()}`, student_name: ocrStudentName.trim(), activity_id: ocrActivityId, answer: `[Bài OCR mô phỏng]:\n${ocrText}`, ai_score: ocrResult.score, ai_feedback: ocrResult.feedback, ai_strengths: ocrResult.strengths, ai_weaknesses: ocrResult.weaknesses, status: "pending", submitted_at: new Date().toISOString() }]);
+      setOcrText(""); setOcrResult(null); setPreviewNotice("Đã lưu bài OCR vào danh sách mẫu để cô tiếp tục thử luồng chấm.");
       return;
     }
 
@@ -712,6 +1057,14 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       alert("Vui lòng nhập chủ đề câu hỏi!");
       return;
     }
+    if (previewMode) {
+      const examples = [
+        { question: `Khi tăng điện áp đặt vào một tụ có điện dung không đổi, đại lượng nào tăng tỉ lệ thuận? (${aiQuizTopic})`, image_url: "", options: ["Điện tích Q", "Điện dung C", "Khoảng cách d", "Hằng số điện môi"], correct_option: 0, explanation: "Q = CU khi C không đổi." },
+        { question: "Đơn vị SI của điện dung là gì?", image_url: "", options: ["Fara (F)", "Vôn (V)", "Culông (C)", "Jun (J)"], correct_option: 0, explanation: "Điện dung có đơn vị fara." },
+      ].slice(0, Math.max(1, Math.min(aiQuizCount, 2)));
+      setNewQs(examples); setPreviewNotice("Đã tạo bộ câu hỏi mẫu tại chỗ để cô chỉnh sửa trước khi lưu.");
+      return;
+    }
     setIsGeneratingQuiz(true);
     try {
       const res = await fetch('/api/ai-generate-quiz', {
@@ -743,6 +1096,12 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const handleRunAIAnalytics = async () => {
     if (submissions.length === 0) {
       alert("Chưa có bài nộp nào để phân tích dữ liệu!");
+      return;
+    }
+    if (previewMode) {
+      const pending = submissions.filter((submission) => submission.status !== "graded").length;
+      setAnalyticsReport({ summary: `Lớp có ${submissions.length} bài nộp mẫu, trong đó ${pending} bài đang chờ giáo viên duyệt.`, topWeaknesses: ["Ghi đơn vị của đại lượng điện", "Phân biệt điện tích Q và điện dung C", "Diễn giải kết quả thí nghiệm từ số liệu"], flippedClassroomAdvice: "Dành 5 phút đầu giờ cho câu hỏi dự đoán Q–U, sau đó ghép cặp để đối chiếu kết quả phòng thí nghiệm ảo.", remedialAction: "Giao lại một phiếu ngắn về đổi đơn vị và dùng phản hồi từng bước thay vì chỉ thông báo đáp án." });
+      setPreviewNotice("Đã tạo báo cáo phân tích mẫu từ dữ liệu xem trước.");
       return;
     }
     setIsAnalyzingClass(true);
@@ -778,6 +1137,13 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     const exists = students.some((student) => student.full_name?.trim().toLocaleLowerCase("vi") === formattedName.toLocaleLowerCase("vi"));
     if (exists) {
       alert(`Học sinh "${formattedName}" đã có trong danh sách!`);
+      return;
+    }
+
+    if (previewMode) {
+      const student = { id: `preview-student-${Date.now()}`, full_name: formattedName, class_name: "11A1" };
+      setStudents((current) => [...current, student].sort(sortVietnameseNames));
+      setNewStudentName(""); setPreviewNotice(`Đã thêm ${formattedName} vào danh sách mẫu.`);
       return;
     }
 
@@ -895,6 +1261,14 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   // Lưu danh sách đã xem trước vào database
   const confirmSaveImportedStudents = async () => {
     if (importPreviewNames.length === 0) return;
+    if (previewMode) {
+      const existingNames = new Set(students.map((student) => String(student.full_name || "").toLocaleLowerCase("vi")));
+      const incoming = importPreviewNames.filter((name) => !existingNames.has(name.toLocaleLowerCase("vi"))).map((full_name, index) => ({ id: `preview-import-${Date.now()}-${index}`, full_name, class_name: "11A1" }));
+      setStudents((current) => [...current, ...incoming].sort(sortVietnameseNames));
+      setShowImportModal(false); setImportPreviewNames([]); setPasteNamesText("");
+      setPreviewNotice(`Đã thêm thử ${incoming.length} học sinh từ danh sách vào lớp mẫu.`);
+      return;
+    }
     setIsSavingStudents(true);
     try {
       // Lọc bỏ những tên đã có trong DB
@@ -943,6 +1317,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
   const deleteStudent = async (id: string) => {
     const student = students.find((item) => item.id === id);
+    if (previewMode) {
+      setStudents((current) => current.filter((item) => item.id !== id));
+      setPreviewNotice(`Đã xóa thử ${student?.full_name || "học sinh"} khỏi danh sách lớp mẫu.`);
+      return;
+    }
     if (!confirm(`Xóa ${student?.full_name || "học sinh này"} khỏi danh sách lớp? Lịch sử bài nộp vẫn được giữ.`)) return;
     const { error } = await supabase.from("students").delete().eq("id", id);
     if (error) { alert("Không xóa được học sinh: " + error.message); return; }
@@ -998,6 +1377,13 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     const validQuestions = newQs.filter((question) => question.question.trim() && question.options.every((option) => option.trim()));
     if (!validQuestions.length) return alert("Cần ít nhất một câu hỏi có đủ bốn lựa chọn.");
 
+    if (previewMode) {
+      setQuizzes((current) => [...current, { id: `preview-quiz-${Date.now()}`, title: quizTitle.trim(), activity_id: quizActivity, time_limit: quizTime, question_count: validQuestions.length }]);
+      setQuizTitle(""); setNewQs([{ question: "", image_url: "", options: ["", "", "", ""], correct_option: 0, explanation: "" }]);
+      setPreviewNotice(`Đã tạo thử bài trắc nghiệm có ${validQuestions.length} câu trong phiên xem trước.`);
+      return;
+    }
+
     const { data: quiz, error: quizError } = await supabase.from('quizzes')
       .insert({ activity_id: quizActivity, title: quizTitle.trim(), time_limit: quizTime })
       .select('id').single();
@@ -1030,6 +1416,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!newMsg.trim() && !chatFile) || isSendingChat) return;
+    if (previewMode) {
+      setMessages((current) => [...current, { id: `preview-message-${Date.now()}`, sender_name: "Cô Hương Xuân (Giáo viên)", content: newMsg.trim(), attachment_name: chatFile?.name || null, attachment_type: chatFile?.type || null, created_at: new Date().toISOString() }]);
+      setNewMsg(""); setChatFile(null); setPreviewNotice("Đã gửi tin nhắn vào kênh chat mẫu. Tệp chỉ hiển thị tên, không được tải lên máy chủ.");
+      return;
+    }
     setIsSendingChat(true);
     try {
       let attachment: Record<string, string> = {};
@@ -1052,6 +1443,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
 
   const deleteMessage = async (message: any) => {
+    if (previewMode) {
+      setMessages((current) => current.filter((item) => item.id !== message.id));
+      setPreviewNotice("Đã xóa tin nhắn khỏi kênh chat mẫu.");
+      return;
+    }
     if (!confirm("Xóa tin nhắn này khỏi kênh chat?")) return;
     if (message.attachment_url && !message.attachment_url.startsWith("http")) {
       const { error: fileError } = await supabase.storage.from("class-work").remove([message.attachment_url]);
@@ -1061,26 +1457,160 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     if (error) alert("Không xóa được tin nhắn: " + error.message);
     else await fetchData();
   };
-  const exportScores = () => {
-    if (submissions.length === 0) return alert("Chưa có bài nộp nào.");
-    const csv = [
-      ["Học sinh", "Bài tập", "Điểm AI", "Nhận xét", "Trạng thái", "Ngày nộp"].map(csvSafeCell).join(","),
-      ...submissions.map((s: any) => {
-        const act = activities.find(a => a.id === s.activity_id);
-        return [s.student_name, act ? act.title : `Bài ${s.activity_id}`, s.ai_score, s.ai_feedback, s.status, new Date(s.submitted_at).toLocaleString("vi-VN")].map(csvSafeCell).join(",");
-      }),
-    ].join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const exportExcelReport = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const generatedAt = new Date();
+    workbook.creator = "Vật lí 11";
+    workbook.created = generatedAt;
+    workbook.modified = generatedAt;
+
+    const navy = "17365D";
+    const blue = "2563EB";
+    const paleBlue = "DBEAFE";
+    const paleGreen = "DCFCE7";
+    const paleAmber = "FEF3C7";
+    const paleRose = "FEE2E2";
+    const white = "FFFFFF";
+    const formulaSafe = (value: unknown) => {
+      if (typeof value !== "string") return value ?? "";
+      return /^[=+\-@]/.test(value) ? `'${value}` : value;
+    };
+    const activityTitle = (activityId: number) => activities.find((activity) => activity.id === activityId)?.title || `Hoạt động ${activityId}`;
+    const approvedScore = (submission: any) => submission.final_score ?? null;
+    const visibleScore = (submission: any) => approvedScore(submission) ?? submission.ai_score ?? null;
+    const scoreText = (score: unknown) => typeof score === "number" && Number.isFinite(score) ? score : null;
+    const formatStatus = (status: unknown) => status === "graded" ? "Đã chấm" : status === "pending" ? "Chờ duyệt" : String(status || "Chưa rõ");
+
+    const styleSheet = (sheet: ExcelJS.Worksheet, title: string, subtitle: string, headers: string[], widths: number[]) => {
+      sheet.views = [{ state: "frozen", ySplit: 4 }];
+      sheet.properties.defaultRowHeight = 19;
+      sheet.mergeCells(1, 1, 1, headers.length);
+      const titleCell = sheet.getCell(1, 1);
+      titleCell.value = title;
+      titleCell.font = { name: "Aptos", size: 16, bold: true, color: { argb: white } };
+      titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: navy } };
+      titleCell.alignment = { horizontal: "left", vertical: "middle" };
+      sheet.getRow(1).height = 28;
+      sheet.mergeCells(2, 1, 2, headers.length);
+      const subtitleCell = sheet.getCell(2, 1);
+      subtitleCell.value = subtitle;
+      subtitleCell.font = { name: "Aptos", size: 10, italic: true, color: { argb: "475569" } };
+      subtitleCell.alignment = { vertical: "middle" };
+      sheet.getRow(2).height = 22;
+      sheet.getRow(4).values = headers;
+      sheet.getRow(4).height = 24;
+      sheet.getRow(4).eachCell((cell) => {
+        cell.font = { name: "Aptos", size: 10, bold: true, color: { argb: white } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: blue } };
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+        cell.border = { bottom: { style: "thin", color: { argb: white } } };
+      });
+      widths.forEach((width, index) => { sheet.getColumn(index + 1).width = width; });
+    };
+    const styleDataRows = (sheet: ExcelJS.Worksheet, scoreColumns: number[] = [], dateColumns: number[] = []) => {
+      const finalRow = sheet.rowCount;
+      if (finalRow >= 5) sheet.autoFilter = { from: { row: 4, column: 1 }, to: { row: finalRow, column: Math.max(1, sheet.columnCount) } };
+      for (let rowNumber = 5; rowNumber <= finalRow; rowNumber += 1) {
+        const row = sheet.getRow(rowNumber);
+        row.eachCell((cell, columnNumber) => {
+          cell.font = { name: "Aptos", size: 10, color: { argb: "0F172A" } };
+          cell.alignment = { vertical: "top", wrapText: columnNumber > 7 };
+          cell.border = { bottom: { style: "hair", color: { argb: "CBD5E1" } } };
+          if (rowNumber % 2 === 0) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "F8FAFC" } };
+        });
+        scoreColumns.forEach((column) => {
+          const score = scoreText(row.getCell(column).value);
+          if (score === null) return;
+          const cell = row.getCell(column);
+          cell.numFmt = "0.0";
+          cell.alignment = { horizontal: "center", vertical: "top" };
+          cell.font = { name: "Aptos", size: 10, bold: true, color: { argb: score >= 8 ? "166534" : score >= 5 ? "92400E" : "B91C1C" } };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: score >= 8 ? paleGreen : score >= 5 ? paleAmber : paleRose } };
+        });
+        dateColumns.forEach((column) => {
+          const cell = row.getCell(column);
+          if (cell.value instanceof Date) cell.numFmt = "dd/mm/yyyy hh:mm";
+        });
+      }
+    };
+
+    const scored = submissions.filter((submission) => scoreText(visibleScore(submission)) !== null);
+    const average = scored.length ? scored.reduce((total, submission) => total + Number(visibleScore(submission)), 0) / scored.length : null;
+    const summary = workbook.addWorksheet("Tổng quan");
+    styleSheet(summary, "Báo cáo lớp học Vật lí 11", `Thời điểm xuất: ${generatedAt.toLocaleString("vi-VN")} · Nguồn: dữ liệu đang hiển thị trên dashboard giáo viên`, ["Chỉ số", "Giá trị", "Ghi chú"], [34, 18, 68]);
+    summary.addRows([
+      ["Tổng số học sinh", students.length, "Danh sách hồ sơ lớp hiện có"],
+      ["Bài học cá nhân", activities.length, "Bao gồm bài mẫu và bài do giáo viên tạo"],
+      ["Bài nộp cá nhân", submissions.length, "Bài đã nộp trong dashboard"],
+      ["Bài đã có điểm", scored.length, "Ưu tiên điểm giáo viên duyệt; nếu chưa có, hiển thị gợi ý AI"],
+      ["Điểm trung bình", average, average === null ? "Chưa có dữ liệu điểm để tính trung bình" : "Trên thang điểm 10"],
+      ["Bài cần duyệt", submissions.filter((submission) => submission.status !== "graded").length, "Cần giáo viên xem và xác nhận"],
+      ["Bài tập nhóm", groupAssignments.length, "Số nhiệm vụ nhóm đã tạo"],
+    ]);
+    summary.getCell("B9").numFmt = "0.0";
+    styleDataRows(summary, [2]);
+    summary.getCell("A13").value = "Phân bố điểm";
+    summary.getCell("A13").font = { name: "Aptos", size: 11, bold: true, color: { argb: navy } };
+    summary.getRow(14).values = ["Mức điểm", "Số bài", "Tỷ lệ"];
+    summary.getRow(14).eachCell((cell: ExcelJS.Cell) => { cell.font = { name: "Aptos", size: 10, bold: true, color: { argb: white } }; cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: blue } }; cell.alignment = { horizontal: "center" }; });
+    const bands = [["Từ 8,0 đến 10", 8, 10], ["Từ 6,5 đến dưới 8,0", 6.5, 8], ["Từ 5,0 đến dưới 6,5", 5, 6.5], ["Dưới 5,0", -Infinity, 5]];
+    bands.forEach(([label, min, max]) => {
+      const count = scored.filter((submission) => Number(visibleScore(submission)) >= Number(min) && Number(visibleScore(submission)) < Number(max)).length;
+      summary.addRow([label, count, scored.length ? count / scored.length : null]);
+    });
+    for (let row = 15; row <= 18; row += 1) { summary.getCell(row, 3).numFmt = "0.0%"; }
+    styleDataRows(summary, [], []);
+
+    const roster = workbook.addWorksheet("Danh sách học sinh");
+    styleSheet(roster, "Danh sách học sinh", "Tình trạng tài khoản, số bài đã nộp và điểm tổng hợp tại thời điểm xuất.", ["STT", "Họ và tên", "Lớp", "Email đăng nhập", "Tài khoản", "Bài đã nộp", "Điểm giáo viên", "Gợi ý AI gần nhất", "Nộp gần nhất"], [8, 28, 13, 30, 16, 13, 17, 19, 21]);
+    students.forEach((student, index) => {
+      const studentSubmissions = submissions.filter((submission) => submission.student_id === student.id || (!submission.student_id && submission.student_name === student.full_name));
+      const lastSubmission = [...studentSubmissions].sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())[0];
+      const finalScores = studentSubmissions.map((submission) => approvedScore(submission)).filter((score) => scoreText(score) !== null) as number[];
+      roster.addRow([index + 1, formulaSafe(student.full_name), formulaSafe(student.class_name || ""), formulaSafe(student.login_email || ""), student.auth_user_id ? "Đã cấp" : "Chưa cấp", studentSubmissions.length, finalScores.length ? finalScores.reduce((sum, score) => sum + score, 0) / finalScores.length : null, lastSubmission?.ai_score ?? null, lastSubmission?.submitted_at ? new Date(lastSubmission.submitted_at) : null]);
+    });
+    styleDataRows(roster, [7, 8], [9]);
+
+    const activitySheet = workbook.addWorksheet("Bài học");
+    styleSheet(activitySheet, "Bài học và tiến độ", "Tổng hợp trạng thái mở bài, nhận bài nộp và kết quả theo từng hoạt động.", ["Mã", "Tên bài học", "Giai đoạn", "Loại", "Thời lượng", "Trạng thái", "Hạn nộp", "Nhận bài", "Số bài nộp", "Điểm TB"], [10, 42, 15, 16, 18, 15, 21, 13, 14, 12]);
+    activities.forEach((activity) => {
+      const activitySubmissions = submissions.filter((submission) => submission.activity_id === activity.id);
+      const activityScores = activitySubmissions.map(visibleScore).filter((score) => scoreText(score) !== null) as number[];
+      activitySheet.addRow([activity.id, formulaSafe(activity.title), formulaSafe(activity.phase || ""), formulaSafe(activity.type || ""), formulaSafe(activity.duration || ""), activity.status === "available" ? "Đang mở" : formulaSafe(activity.status || "Khóa"), activity.deadline ? new Date(activity.deadline) : null, activity.accepting_submissions === false ? "Đã đóng" : "Đang nhận", activitySubmissions.length, activityScores.length ? activityScores.reduce((sum, score) => sum + score, 0) / activityScores.length : null]);
+    });
+    styleDataRows(activitySheet, [10], [7]);
+
+    const submissionSheet = workbook.addWorksheet("Bài nộp");
+    styleSheet(submissionSheet, "Bài nộp và chấm điểm", "Điểm giáo viên là điểm chính thức; điểm AI chỉ là gợi ý khi chưa có điểm giáo viên.", ["STT", "Học sinh", "Mã bài", "Tên bài", "Điểm giáo viên", "Gợi ý AI", "Trạng thái", "Thời điểm nộp", "Bài làm", "Nhận xét AI", "Tệp / liên kết"], [8, 26, 10, 36, 17, 14, 14, 21, 52, 46, 38]);
+    submissions.forEach((submission, index) => submissionSheet.addRow([index + 1, formulaSafe(submission.student_name), submission.activity_id, formulaSafe(activityTitle(submission.activity_id)), approvedScore(submission), submission.ai_score ?? null, formatStatus(submission.status), submission.submitted_at ? new Date(submission.submitted_at) : null, formulaSafe(submission.answer || ""), formulaSafe(submission.ai_feedback || ""), formulaSafe(submission.file_url || "")]));
+    styleDataRows(submissionSheet, [5, 6], [8]);
+
+    const groupSheet = workbook.addWorksheet("Bài tập nhóm");
+    styleSheet(groupSheet, "Bài tập nhóm", "Danh sách nhiệm vụ nhóm và kết quả nộp đang có trong dashboard.", ["STT", "Tên bài tập nhóm", "Hạn nộp", "Số nhóm", "Số bài nộp", "Điểm TB", "Trạng thái", "Mô tả", "Rubric"], [8, 32, 21, 12, 14, 12, 15, 48, 48]);
+    groupAssignments.forEach((assignment, index) => {
+      const assignmentSubmissions = groupSubmissions.filter((submission) => submission.assignment_id === assignment.id);
+      const assignmentScores = assignmentSubmissions.map((submission) => submission.final_score ?? submission.ai_score).filter((score) => scoreText(score) !== null) as number[];
+      groupSheet.addRow([index + 1, formulaSafe(assignment.title), assignment.deadline ? new Date(assignment.deadline) : null, Array.isArray(assignment.group_assignment_groups) ? assignment.group_assignment_groups.length : null, assignmentSubmissions.length, assignmentScores.length ? assignmentScores.reduce((sum, score) => sum + score, 0) / assignmentScores.length : null, assignmentSubmissions.length ? "Có bài nộp" : "Chưa nộp", formulaSafe(assignment.description || ""), formulaSafe(assignment.rubric || "")]);
+    });
+    styleDataRows(groupSheet, [6], [3]);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const bytes = new Uint8Array(buffer as ArrayBufferLike);
+    const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `bang-diem-vatly11-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `bao-cao-lop-vatly11-${generatedAt.toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setPreviewNotice(previewMode ? "Đã xuất báo cáo Excel từ dữ liệu mẫu. File có thể mở bằng Microsoft Excel hoặc Google Sheets." : "Đã xuất báo cáo Excel đầy đủ của lớp.");
   };
 
   const currentSubmissions = selectedGradingAct ? submissions.filter(s => s.activity_id === selectedGradingAct.id) : [];
   const currentGroupSubs = expandedGroupAct ? groupSubmissions.filter(s => s.assignment_id === expandedGroupAct) : [];
+  const newActivityChapters = curriculumChapters.filter((chapter) => chapter.course_id === newActCourseId);
 
   // Thống kê phổ điểm
   const gradedSubs = submissions.filter(s => s.ai_score !== null && s.ai_score !== -1);
@@ -1090,25 +1620,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const weakCount = gradedSubs.filter(s => s.ai_score < 5).length;
 
   return (
-    <main
-      className="min-h-screen flex bg-slate-50"
-      onClickCapture={(event) => {
-        if (!previewMode || (event.target instanceof Element && event.target.closest("aside button"))) return;
-        event.preventDefault();
-        event.stopPropagation();
-      }}
-      onSubmitCapture={(event) => {
-        if (!previewMode) return;
-        event.preventDefault();
-        event.stopPropagation();
-      }}
-      onChangeCapture={(event) => {
-        if (!previewMode || (event.target instanceof Element && event.target.closest("aside"))) return;
-        event.preventDefault();
-        event.stopPropagation();
-      }}
-    >
-      {previewMode && <div className="fixed bottom-4 right-4 z-50 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-950 shadow-lg">Đang xem dashboard thật với dữ liệu mẫu. Các thao tác ghi đang khóa.</div>}
+    <main className="min-h-screen flex bg-slate-50">
+      {previewMode && <div className="fixed bottom-4 right-4 z-50 max-w-sm rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-950 shadow-lg"><p>Đang xem dashboard tương tác với dữ liệu mẫu. Có thể mở tab, thu gọn, lọc và nhập thử; các thao tác ghi/AI sẽ không chạm dữ liệu thật.</p>{previewNotice && <p role="status" className="mt-2 border-t border-amber-200 pt-2 font-normal">{previewNotice}</p>}</div>}
       {/* SIDEBAR ĐỒNG BỘ MÀU SLATE-900 VÀ CÁC PHÂN HỆ RÕ RÀNG */}
       <aside className="w-72 bg-slate-900 text-slate-300 flex flex-col shadow-2xl z-20 shrink-0 border-r border-slate-800">
         <div className="p-6 border-b border-slate-800 bg-gradient-to-r from-blue-900/60 to-slate-900 text-white">
@@ -1156,6 +1669,14 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 }`}
               >
                 <BookOpen className="w-4 h-4 text-blue-400" /> Bài học cá nhân ({activities.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('curriculum')}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
+                  activeTab === 'curriculum' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
+                }`}
+              >
+                <Layers className="w-4 h-4 text-cyan-300" /> Lộ trình môn & chương
               </button>
               <button
                 onClick={() => setActiveTab('resources')}
@@ -1281,6 +1802,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         )}
 
         {activeTab === 'resources' && <ResourceLibrary previewMode={previewMode} activities={activities} />}
+
+        {activeTab === 'curriculum' && <CurriculumManager previewMode={previewMode} />}
 
         {/* 2. TAB AI ANALYTICS & BÁO CÁO PHỔ ĐIỂM */}
         {activeTab === 'analytics' && (
@@ -1623,6 +2146,42 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 </div>
               </div>
 
+              <div className="rounded-2xl border border-cyan-100 bg-cyan-50/50 p-5">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-cyan-950">Vị trí trong lộ trình</h3>
+                    <p className="mt-1 text-xs leading-5 text-cyan-800">Gắn bài này vào môn và chương để học sinh thấy nó trong giao diện tổng thể. Có thể tạo thêm môn/chương ở mục “Lộ trình môn &amp; chương”.</p>
+                  </div>
+                  <button type="button" onClick={() => setActiveTab('curriculum')} className="shrink-0 rounded-lg border border-cyan-200 bg-white px-3 py-2 text-xs font-bold text-cyan-800 hover:bg-cyan-100">Mở lộ trình</button>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="text-xs font-bold text-slate-700">Môn học
+                    <select value={newActCourseId} onChange={(event) => { setNewActCourseId(event.target.value); setNewActChapterId(""); }} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal outline-none focus:ring-2 focus:ring-cyan-500">
+                      <option value="">Chưa gán môn học</option>
+                      {curriculumCourses.map((course) => <option key={course.id} value={course.id}>{course.subject ? `${course.subject} · ` : ""}{course.title} {course.grade_level ? `(Khối ${course.grade_level})` : ""}</option>)}
+                    </select>
+                  </label>
+                  <label className="text-xs font-bold text-slate-700">Chương
+                    <select value={newActChapterId} onChange={(event) => setNewActChapterId(event.target.value)} disabled={!newActCourseId} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-slate-100">
+                      <option value="">Chưa gán chương</option>
+                      {newActivityChapters.map((chapter) => <option key={chapter.id} value={chapter.id}>{chapter.title}</option>)}
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid gap-5 md:grid-cols-3">
+                <label className="text-xs font-bold text-slate-700">Giai đoạn
+                  <select value={newActPhase} onChange={(event) => setNewActPhase(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal outline-none focus:ring-2 focus:ring-blue-500"><option>Trước lớp</option><option>Trên lớp</option><option>Sau lớp</option></select>
+                </label>
+                <label className="text-xs font-bold text-slate-700">Loại hoạt động
+                  <select value={newActType} onChange={(event) => setNewActType(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal outline-none focus:ring-2 focus:ring-blue-500"><option>Bài giảng</option><option>Bài tập</option><option>Thí nghiệm</option><option>Dự án</option><option>Phản tư</option></select>
+                </label>
+                <label className="text-xs font-bold text-slate-700">Thời lượng dự kiến
+                  <input value={newActDuration} onChange={(event) => setNewActDuration(event.target.value)} maxLength={80} placeholder="Ví dụ: 20–25 phút" className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal outline-none focus:ring-2 focus:ring-blue-500" />
+                </label>
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
                   Mô tả / Yêu cầu chi tiết
@@ -1675,6 +2234,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                   className="w-full p-3.5 border border-blue-200 rounded-xl outline-none text-sm focus:ring-2 focus:ring-blue-500 bg-white h-28"
                 />
               </div>
+
+              <label className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 text-sm font-semibold text-emerald-950">
+                <input type="checkbox" checked={newActAcceptingSubmissions} onChange={(event) => setNewActAcceptingSubmissions(event.target.checked)} className="h-4 w-4 accent-emerald-600" />
+                Cho phép học sinh nộp bài ngay sau khi giáo viên tạo hoạt động
+              </label>
 
               <div className="flex justify-end gap-3 pt-2">
                 <button
@@ -1889,19 +2453,12 @@ maxLength={20000}
                                 >
                                   <Bot className="w-3.5 h-3.5"/> {gradingId === sub.id ? "Đang chấm..." : "AI Chấm nhóm"}
                                 </button>
-                                <input type="number" placeholder="Điểm" className="border p-2 rounded-xl w-20 text-xs bg-white" id={`gscore-${sub.id}`} defaultValue={sub.ai_score ?? ""} />
-                                <input type="text" placeholder="Góp ý cho nhóm..." className="border p-2 rounded-xl flex-1 text-xs bg-white" id={`gfb-${sub.id}`} defaultValue={sub.ai_feedback || ""} />
+                                <input type="number" min="0" max="10" step="0.1" placeholder="Điểm cô" className="border p-2 rounded-xl w-20 text-xs bg-white" id={`gscore-${sub.id}`} defaultValue={sub.final_score ?? sub.ai_score ?? ""} />
+                                <input type="text" placeholder="Góp ý của cô cho nhóm..." className="border p-2 rounded-xl flex-1 text-xs bg-white" id={`gfb-${sub.id}`} defaultValue={sub.teacher_feedback || ""} />
                                 <button
-                                  onClick={async () => {
-                                    await supabase.from('group_submissions').update({
-                                      ai_score: Number((document.getElementById(`gscore-${sub.id}`) as HTMLInputElement).value),
-                                      ai_feedback: (document.getElementById(`gfb-${sub.id}`) as HTMLInputElement).value,
-                                      status: 'graded'
-                                    }).eq('id', sub.id);
-                                    fetchData();
-                                  }}
+                                  onClick={() => void saveTeacherGroupGrade(sub.id, `gscore-${sub.id}`, `gfb-${sub.id}`)}
                                   className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-xl"
-                                  title="Lưu điểm"
+                                  title="Lưu điểm giáo viên"
                                 >
                                   <CheckCircle className="w-4 h-4"/>
                                 </button>
@@ -1930,7 +2487,7 @@ maxLength={20000}
                 {activities.map(act => (
                   <button
                     key={act.id}
-                    onClick={() => { setSelectedGradingAct(act); setRubricText(act.grading_rubric || ""); }}
+                    onClick={() => { setSelectedGradingAct(act); setRubricText(act.grading_rubric || ""); setRubricFile(null); setRubricFileName(act.rubric_document_name || ""); setRubricImportError(""); }}
                     className={`w-full text-left p-3 rounded-2xl transition-all ${
                       selectedGradingAct?.id === act.id ? 'bg-blue-600 text-white font-bold shadow-md' : 'hover:bg-slate-100 text-slate-700'
                     }`}
@@ -1953,8 +2510,8 @@ maxLength={20000}
                       <p className="text-xs text-slate-500">Tổng cộng {currentSubmissions.length} bài đã nộp từ học sinh</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={exportScores} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm">
-                        <Download className="w-3.5 h-3.5" /> Xuất bảng điểm Excel
+                      <button onClick={() => void exportExcelReport()} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                        <Download className="w-3.5 h-3.5" /> Xuất báo cáo Excel
                       </button>
                     </div>
                   </div>
@@ -1965,8 +2522,8 @@ maxLength={20000}
                         <Sparkles className="w-4 h-4 text-blue-600" /> Ma trận điểm (Rubric) cho bài này:
                       </label>
                       <label className="bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 px-3 py-1 rounded-xl cursor-pointer text-xs font-semibold flex items-center gap-1">
-                        <Upload className="w-3 h-3"/> Tải tệp ma trận (.txt, .md)
-                        <input type="file" accept=".txt,.md,.csv" onChange={handleRubricFileUpload} className="hidden" />
+                        <Upload className="w-3 h-3"/> Nhập tệp ma trận
+                        <input type="file" accept=".txt,.md,.csv,.docx,.xlsx,.pdf" onChange={(event) => void handleRubricFileUpload(event)} className="hidden" />
                       </label>
                     </div>
                     <div className="flex gap-2">
@@ -1980,7 +2537,12 @@ maxLength={20000}
                         Lưu ma trận
                       </button>
                     </div>
-                    {rubricFileName && <p className="text-[11px] text-blue-600 font-medium">Tệp đã nạp: {rubricFileName}</p>}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+                      {rubricFileName && <p className="font-medium text-blue-700">{isImportingRubric ? "Đang trích nội dung từ" : "Tệp ma trận:"} {rubricFileName}</p>}
+                      {selectedGradingAct.rubric_document_path && !rubricFile && <button type="button" onClick={() => void downloadRubricDocument()} className="font-semibold text-emerald-700 underline">Tải lại tệp gốc đã lưu</button>}
+                      <p className="text-slate-500">Hỗ trợ Word, PDF có lớp chữ, Excel, CSV, Markdown/TXT. Công thức LaTex như <code>\\frac&#123;Q&#125;&#123;U&#125;</code> được giữ nguyên.</p>
+                    </div>
+                    {rubricImportError && <p role="alert" className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-900">{rubricImportError}</p>}
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -2031,17 +2593,10 @@ maxLength={20000}
                           >
                             <Bot className="w-3.5 h-3.5"/> {gradingId === sub.id ? "Đang chấm AI..." : "AI Chấm lại"}
                           </button>
-                          <input type="number" placeholder="Điểm" className="border p-2 rounded-xl w-20 text-xs bg-slate-50" id={`score-${sub.id}`} defaultValue={sub.ai_score ?? ""} />
-                          <input type="text" placeholder="Nhận xét của cô..." className="border p-2 rounded-xl flex-1 text-xs bg-slate-50" id={`fb-${sub.id}`} defaultValue={sub.ai_feedback || ""} />
+                          <input type="number" min="0" max="10" step="0.1" placeholder="Điểm cô" className="border p-2 rounded-xl w-20 text-xs bg-slate-50" id={`score-${sub.id}`} defaultValue={sub.final_score ?? sub.ai_score ?? ""} />
+                          <input type="text" placeholder="Nhận xét của cô..." className="border p-2 rounded-xl flex-1 text-xs bg-slate-50" id={`fb-${sub.id}`} defaultValue={sub.teacher_feedback || ""} />
                           <button
-                            onClick={async () => {
-                              await supabase.from('submissions').update({
-                                ai_score: Number((document.getElementById(`score-${sub.id}`) as HTMLInputElement).value),
-                                ai_feedback: (document.getElementById(`fb-${sub.id}`) as HTMLInputElement).value,
-                                status: 'graded'
-                              }).eq('id', sub.id);
-                              fetchData();
-                            }}
+                            onClick={() => void saveTeacherGrade(sub.id, `score-${sub.id}`, `fb-${sub.id}`)}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-xl shadow-sm"
                             title="Lưu điểm & nhận xét"
                           >
@@ -2224,17 +2779,10 @@ maxLength={20000}
                       >
                         <Bot className="w-3.5 h-3.5" /> AI Chấm lại
                       </button>
-                      <input type="number" placeholder="Điểm" className="border p-2 rounded-xl w-20 text-xs bg-slate-50" id={`rescore-${sub.id}`} defaultValue={sub.ai_score ?? ""} />
-                      <input type="text" placeholder="Nhận xét..." className="border p-2 rounded-xl flex-1 text-xs bg-slate-50" id={`refb-${sub.id}`} defaultValue={sub.ai_feedback || ""} />
+                      <input type="number" min="0" max="10" step="0.1" placeholder="Điểm cô" className="border p-2 rounded-xl w-20 text-xs bg-slate-50" id={`rescore-${sub.id}`} defaultValue={sub.final_score ?? sub.ai_score ?? ""} />
+                      <input type="text" placeholder="Nhận xét của cô..." className="border p-2 rounded-xl flex-1 text-xs bg-slate-50" id={`refb-${sub.id}`} defaultValue={sub.teacher_feedback || ""} />
                       <button
-                        onClick={async () => {
-                          await supabase.from('submissions').update({
-                            ai_score: Number((document.getElementById(`rescore-${sub.id}`) as HTMLInputElement).value),
-                            ai_feedback: (document.getElementById(`refb-${sub.id}`) as HTMLInputElement).value,
-                            status: 'graded'
-                          }).eq('id', sub.id);
-                          fetchData();
-                        }}
+                        onClick={() => void saveTeacherGrade(sub.id, `rescore-${sub.id}`, `refb-${sub.id}`)}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-xl"
                         title="Xác nhận điểm"
                       >
