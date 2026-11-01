@@ -227,6 +227,9 @@ const teacherPortal = await readFile(new URL("../src/app/giao-vien/page.tsx", im
 assert.match(teacherPortal, /if \(!user\) redirect\("\/login"\)/);
 assert.match(teacherPortal, /profile\?\.role !== "teacher"/);
 assert.doesNotMatch(teacherPortal, /previewMode/);
+const initialTeacherMigration = await readFile(new URL("../supabase/migrations/20261101000000_promote_configured_teacher.sql", import.meta.url), "utf8");
+assert.match(initialTeacherMigration, /lower\(email\) = lower\('huongxuan@vatly11\.com'\)/);
+assert.match(initialTeacherMigration, /ON CONFLICT \(id\) DO UPDATE SET role = 'teacher'/);
 console.log("Teacher and student dashboards require valid role sessions; public routes no longer serve simulated class records.");
 assert.equal(scoreActivityQuiz(6, { R1:1,R2:1,R3:0,R4:0,R5:0,R6:1,R7:1,R8:0,R9:2,R10:0 }), null, "Readiness must never be scored as right or wrong.");
 assert.equal(scoreActivityQuiz(6, { R1:1 }), null, "Readiness questions are not part of the scored quiz system.");
