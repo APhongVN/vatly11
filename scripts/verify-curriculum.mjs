@@ -262,6 +262,11 @@ assert.match(resourceLibrary, /Đã thêm thử \$\{additions\.length\} tệp/, 
 assert.match(resourceLibrary, /Đã lưu liên kết vào kho mẫu/, "Preview link entry must update the visible library.");
 assert.match(resourceLibrary, /Đã xuất bản thử/, "Preview publishing must update the visible resource state.");
 assert.match(resourceLibrary, /Đã xóa thử/, "Preview deletion must update the visible resource state.");
+const resourceDeleteSection = resourceLibrary.split("const remove = async")[1]?.split("const open = async")[0] || "";
+const resourceDbDeleteIndex = resourceDeleteSection.indexOf("from(\"learning_resources\").delete()");
+const resourceFileDeleteIndex = resourceDeleteSection.indexOf("storage.from(BUCKET).remove(");
+assert.ok(resourceDbDeleteIndex >= 0 && resourceFileDeleteIndex > resourceDbDeleteIndex, "Keep a resource file if deleting its database record fails.");
+assert.match(resourceDeleteSection, /Tài liệu đã xóa khỏi danh mục, nhưng tệp gốc chưa được dọn/);
 const capacitanceLabSettings = await readFile(new URL("../src/components/CapacitanceLabSettings.tsx", import.meta.url), "utf8");
 assert.match(capacitanceLabSettings, /Đã lưu thử cấu hình trong phiên xem trước/, "Preview lab settings must have a local save response.");
 assert.doesNotMatch(capacitanceLabSettings, /disabled=\{previewMode \|\| loading \|\| saving\}/, "Preview lab settings controls must be editable.");

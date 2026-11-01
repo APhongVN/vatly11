@@ -146,12 +146,20 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
       setNotice(`Đã xóa thử “${item.title}” khỏi kho mẫu.`);
       return;
     }
+    setError(""); setNotice("");
+    const { error: dbError } = await supabase.from("learning_resources").delete().eq("id", item.id);
+    if (dbError) { setError(`Không xóa được tài liệu: ${dbError.message}`); return; }
+    setResources((current) => current.filter((resource) => resource.id !== item.id));
     if (item.storage_path) {
       const { error: storageError } = await supabase.storage.from(BUCKET).remove([item.storage_path]);
-      if (storageError) { setError(`Không xóa được tệp: ${storageError.message}`); return; }
+      if (storageError) {
+        await refresh();
+        setError(`Tài liệu đã xóa khỏi danh mục, nhưng tệp gốc chưa được dọn: ${storageError.message}`);
+        return;
+      }
     }
-    const { error: dbError } = await supabase.from("learning_resources").delete().eq("id", item.id);
-    if (dbError) setError(`Không xóa được tài liệu: ${dbError.message}`); else await refresh();
+    setNotice(`Đã xóa “${item.title}” khỏi kho học liệu.`);
+    await refresh();
   };
   const open = async (item: Resource) => {
     if (item.source_url) { window.open(item.source_url, "_blank", "noopener,noreferrer"); return; }
