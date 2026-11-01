@@ -157,6 +157,8 @@ const activityFilePolicyMigration = await readFile(new URL("../supabase/migratio
 const baselineRlsMigration = await readFile(new URL("../supabase/migrations/20261031000400_rls_policies.sql", import.meta.url), "utf8");
 const apiSecuritySource = await readFile(new URL("../src/lib/api-security.ts", import.meta.url), "utf8");
 const aiGenerateQuizApi = await readFile(new URL("../src/app/api/ai-generate-quiz/route.ts", import.meta.url), "utf8");
+const releaseSecretScanner = await readFile(new URL("../scripts/check-release-secrets.ps1", import.meta.url), "utf8");
+assert.ok(releaseSecretScanner.includes("AQ\\.[A-Za-z0-9_-]{20,}"));
 assert.match(aiGenerateQuizApi, /authorizeApi\(\["teacher"\], 10, "quiz"\)/);
 assert.match(aiGenerateQuizApi, /readBoundedRequestText\(request, MAX_REQUEST_BYTES\)/);
 assert.match(aiGenerateQuizApi, /DIFFICULTIES\.has\(difficulty\)/);

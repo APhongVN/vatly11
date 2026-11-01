@@ -13,7 +13,8 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Could not read Git working tree status.' }
   if ($dirtyFiles.Count -gt 0) { throw 'Commit or discard working tree changes before running the release-history scan.' }
 
-  $credentialPattern = '(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|AIza[A-Za-z0-9_-]{30,}|sb_secret_[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9_]{30,}|github_pat_[A-Za-z0-9_]{20,})'
+  $credentialPattern = '(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|AIza[A-Za-z0-9_-]{30,}|AQ\.[A-Za-z0-9_-]{20,}|sb_secret_[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9_]{30,}|github_pat_[A-Za-z0-9_]{20,})'
+  if ((('AQ.' + ('A' * 36)) -notmatch $credentialPattern) -or (('AIza' + ('B' * 36)) -notmatch $credentialPattern)) { throw 'Credential scanner self-test failed.' }
   $commits = @(& git rev-list $resolvedRef)
   if ($LASTEXITCODE -ne 0 -or $commits.Count -eq 0) { throw "Could not read commit history for $Ref." }
   $findings = [System.Collections.Generic.List[string]]::new()
