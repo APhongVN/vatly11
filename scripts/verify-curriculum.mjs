@@ -171,6 +171,9 @@ console.log("Student lesson resource downloads preserve filenames and report acc
 assert.match(activityResources, /\.is\("activity_id", null\)/);
 const studentPage = await readFile(new URL("../src/app/hoc-sinh/page.tsx", import.meta.url), "utf8");
 assert.match(studentPage, /<ActivityResources activityId=\{null\} \/>/, "Published resources assigned to the general class library must appear for students.");
+assert.match(studentPage, /if \(previewMode\) \{[\s\S]*preview-message-\$\{Date\.now\(\)\}/, "Student preview chat must append a local message instead of making a database write.");
+assert.match(studentPage, /URL\.createObjectURL\(chatFile\)/, "Student preview chat must support a local file or image attachment.");
+assert.doesNotMatch(studentPage, /onClickCapture=\{\(event\) => \{[\s\S]*event\.preventDefault\(\)/, "Preview must not globally block all student interactions.");
 const resourceLibrary = await readFile(new URL("../src/components/ResourceLibrary.tsx", import.meta.url), "utf8");
 assert.match(resourceLibrary, /name="source_url" type="url"/, "Teachers must be able to update a saved web link.");
 assert.match(resourceLibrary, /name="activity_id"/, "Teachers must be able to reorganize a resource under a different activity.");

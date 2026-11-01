@@ -15,7 +15,7 @@ import { filterSubmissionsForStudentGroups } from "@/lib/group-submissions.mjs";
 import ActivityResources from "@/components/ActivityResources";
 import { ACTIVITIES } from "@/lib/data/activities";
 
-const attachmentHref = (value: string) => value.startsWith("http") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
+const attachmentHref = (value: string) => value.startsWith("http") || value.startsWith("blob:") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
 
 export default function HocSinhPage() {
   const [student, setStudent] = useState<any>(null);
@@ -121,6 +121,15 @@ export default function HocSinhPage() {
     e.preventDefault();
     if ((!newMsg.trim() && !chatFile) || isChatMuted || isSendingChat) return;
     setIsSendingChat(true);
+    if (previewMode) {
+      const attachmentUrl = chatFile ? URL.createObjectURL(chatFile) : null;
+      setMessages((current) => [...current, {
+        id: `preview-message-${Date.now()}`, sender_name: student.full_name, content: newMsg.trim(), created_at: new Date().toISOString(),
+        ...(chatFile ? { attachment_url: attachmentUrl, attachment_name: chatFile.name, attachment_type: chatFile.type || "application/octet-stream" } : {}),
+      }]);
+      setNewMsg(""); setChatFile(null); setIsSendingChat(false);
+      return;
+    }
     try {
       let attachment: Record<string, string> = {};
       if (chatFile) {
@@ -142,6 +151,11 @@ export default function HocSinhPage() {
   const deleteOwnMessage = async (message: any) => {
     if (message.sender_name !== student?.full_name) return;
     if (!confirm("Xóa tin nhắn của em?")) return;
+    if (previewMode) {
+      if (typeof message.attachment_url === "string" && message.attachment_url.startsWith("blob:")) URL.revokeObjectURL(message.attachment_url);
+      setMessages((current) => current.filter((item) => item.id !== message.id));
+      return;
+    }
     if (message.attachment_url && !message.attachment_url.startsWith("http")) {
       const { error: fileError } = await supabase.storage.from("class-work").remove([message.attachment_url]);
       if (fileError) { alert("Không xóa được tệp đính kèm: " + fileError.message); return; }
@@ -192,16 +206,8 @@ export default function HocSinhPage() {
   if (!student) return <div className="p-10 text-center font-bold text-slate-500">Đang tải thông tin học sinh...</div>;
 
   return (
-    <main
-      className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/20 flex flex-col relative"
-      onClickCapture={(event) => {
-        if (!previewMode || (event.target instanceof Element && (event.target.closest("[data-preview-navigation]") || event.target.closest('a[href="/"]')))) return;
-        event.preventDefault(); event.stopPropagation();
-      }}
-      onSubmitCapture={(event) => { if (previewMode) { event.preventDefault(); event.stopPropagation(); } }}
-      onChangeCapture={(event) => { if (previewMode) { event.preventDefault(); event.stopPropagation(); } }}
-    >
-      {previewMode && <div className="fixed bottom-4 right-4 z-[70] max-w-sm rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-950 shadow-lg">Bản xem trước học sinh · Dữ liệu minh họa, thao tác ghi và nộp bài đang khóa.</div>}
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/20 flex flex-col relative">
+      {previewMode && <div className="fixed bottom-4 right-4 z-[70] max-w-sm rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-950 shadow-lg">Bản xem trước học sinh · Có thể điều hướng, nhập và thử chat với dữ liệu minh họa. Không có thao tác nào ghi vào lớp thật.</div>}
       {/* Modal xem trước tài liệu */}
       {previewUrl && (
         <div className="fixed inset-0 bg-black/85 z-50 flex flex-col items-center justify-center p-4 backdrop-blur-sm">

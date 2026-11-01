@@ -34,7 +34,7 @@ export default function ActivityEvidencePanel({ previewMode = false }: { preview
   const loadRecords = useCallback(async () => {
     if (previewMode) {
       setRecords([
-        { id: "demo-evidence-1", activity_id: 4, student_id: "demo-student-1", evidence: { kind: "virtual-lab", stations: { "charge-voltage": { notes: { prediction: "Q tăng theo U.", evidence: "5 điểm đo gần tuyến tính.", conclusion: "C là hệ số góc Q=f(U)." }, measurements: [{ U: 1, Q: 8.8e-11 }, { U: 2, Q: 1.77e-10 }] } } }, score: null, score_max: null, completed_at: null, updated_at: new Date().toISOString(), students: { full_name: "Nguyễn Minh Anh", class_name: "11A1" } },
+        { id: "demo-evidence-1", activity_id: 4, student_id: "demo-student-1", evidence: { kind: "virtual-lab", stations: { "charge-voltage": { notes: { prediction: "Q tăng theo U.", evidence: "5 điểm đo gần tuyến tính.", conclusion: "C là hệ số góc Q=f(U)." }, measurements: [{ U: 1, Q: 8.8e-11 }, { U: 2, Q: 1.77e-10 }] } } }, score: null, score_max: null, completed_at: new Date().toISOString(), updated_at: new Date().toISOString(), students: { full_name: "Nguyễn Minh Anh", class_name: "11A1" } },
         { id: "demo-evidence-2", activity_id: 6, student_id: "demo-student-2", evidence: { kind: "readiness-check", answers: { R1: 1, R2: 1 }, muddyTopics: ["disconnected-charge"], muddyPoint: "Em chưa hiểu vì sao điện tích còn lại sau khi ngắt nguồn.", confidence: "partial" }, score: null, score_max: null, completed_at: new Date().toISOString(), updated_at: new Date().toISOString(), students: { full_name: "Trần Gia Bảo", class_name: "11A1" } },
       ]);
       return;
@@ -60,7 +60,11 @@ export default function ActivityEvidencePanel({ previewMode = false }: { preview
     return matchesSearch && (activityFilter === "all" || String(record.activity_id) === activityFilter);
   });
   const deleteRecord = async (record: EvidenceRow) => {
-    if (previewMode || !confirm(`Xóa hồ sơ hoạt động của ${record.students?.full_name || "học sinh này"}?`)) return;
+    if (!confirm(`Xóa hồ sơ hoạt động của ${record.students?.full_name || "học sinh này"}?`)) return;
+    if (previewMode) {
+      setRecords((current) => current.filter((item) => item.id !== record.id));
+      return;
+    }
     const { error: deleteError } = await supabase.from("activity_evidence").delete().eq("id", record.id);
     if (deleteError) { setError("Không xóa được hồ sơ. Hãy kiểm tra quyền giáo viên."); return; }
     setRecords((current) => current.filter((item) => item.id !== record.id));
@@ -71,6 +75,21 @@ export default function ActivityEvidencePanel({ previewMode = false }: { preview
   };
 
   const analyzeReadiness = async () => {
+    if (previewMode) {
+      setAnalyzingReadiness(true);
+      window.setTimeout(() => {
+        setReadinessReport({ responseCount: 18, report: {
+          summary: "Dữ liệu minh họa cho thấy lớp đã nắm ý nghĩa điện dung nhưng còn lẫn lộn giữa điện tích của tụ khi nối nguồn và khi đã ngắt nguồn.",
+          nextLesson: "Mở đầu bằng dự đoán–quan sát hiện tượng ngắt nguồn, sau đó cho học sinh đối chiếu bảng Q–U và nhắc lại đơn vị F, µF.",
+          topics: [
+            { id: "disconnected-charge", count: 8, misconception: "Cho rằng điện tích mất ngay khi tháo tụ khỏi nguồn.", teachingAction: "Dùng mô phỏng công tắc và yêu cầu giải thích đường đi của electron." },
+            { id: "unit-conversion", count: 5, misconception: "Đổi µF sang F chưa chính xác.", teachingAction: "Dùng thẻ đổi đơn vị nhanh trước khi tính Q = CU." },
+          ],
+        }});
+        setAnalyzingReadiness(false);
+      }, 300);
+      return;
+    }
     setAnalyzingReadiness(true);
     setError("");
     try {
@@ -94,7 +113,7 @@ export default function ActivityEvidencePanel({ previewMode = false }: { preview
     {error && <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{error}</div>}
     <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-[1fr_220px_auto]"><label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400"/><input value={search} onChange={(event)=>setSearch(event.target.value)} placeholder="Tìm học sinh hoặc lớp" className="w-full rounded-xl border py-2.5 pl-9 pr-3 text-sm"/></label><select value={activityFilter} onChange={(event)=>setActivityFilter(event.target.value)} className="rounded-xl border px-3 py-2 text-sm"><option value="all">Tất cả hoạt động</option>{Object.entries(ACTIVITY_TITLES).map(([id,title])=><option key={id} value={id}>Bài {id}: {title}</option>)}</select><p className="self-center text-xs text-slate-500">{visible.length} hồ sơ · {lastUpdated ? `cập nhật ${lastUpdated}` : ""}</p></div>
     {activityFilter === "6" && <section className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-extrabold text-amber-950">Phân tích điểm còn băn khoăn trước giờ học</h3><p className="mt-1 text-xs text-amber-900">AI tổng hợp phản hồi khảo sát theo chủ đề; không chấm điểm đúng sai và không hiển thị danh tính học sinh cho mô hình.</p></div><button type="button" onClick={() => void analyzeReadiness()} disabled={previewMode || analyzingReadiness} className="rounded-xl bg-amber-800 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{analyzingReadiness ? "Đang phân tích…" : "Phân tích bằng AI"}</button></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-extrabold text-amber-950">Phân tích điểm còn băn khoăn trước giờ học</h3><p className="mt-1 text-xs text-amber-900">AI tổng hợp phản hồi khảo sát theo chủ đề; không chấm điểm đúng sai và không hiển thị danh tính học sinh cho mô hình.</p></div><button type="button" onClick={() => void analyzeReadiness()} disabled={analyzingReadiness} className="rounded-xl bg-amber-800 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{analyzingReadiness ? "Đang phân tích…" : "Phân tích bằng AI"}</button></div>
       {readinessReport && <div className="space-y-3 rounded-xl bg-white p-4 text-sm"><p className="leading-6 text-slate-700"><b>{readinessReport.responseCount} phiếu:</b> {readinessReport.report.summary}</p><div className="grid gap-3 md:grid-cols-2">{readinessReport.report.topics.map((topic) => <article key={topic.id} className="rounded-xl border border-amber-100 p-3"><p className="font-bold text-slate-900">{READINESS_TOPICS.find((item) => item.id === topic.id)?.label || topic.id} · {topic.count} lượt</p><p className="mt-2 text-slate-700">Điểm vướng chung: {topic.misconception}</p><p className="mt-2 text-amber-900"><b>Gợi ý gỡ rối:</b> {topic.teachingAction}</p></article>)}</div><p className="rounded-lg bg-amber-50 p-3 text-amber-950"><b>Ưu tiên tiết học:</b> {readinessReport.report.nextLesson}</p></div>}
     </section>}    <div className="space-y-3">{loading && <p className="rounded-xl bg-white p-8 text-center text-sm text-slate-500">Đang tải hồ sơ…</p>}{!loading && visible.length===0 && <p className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">{error ? "Hồ sơ chưa sẵn sàng." : "Chưa có học sinh lưu hồ sơ hoạt động."}</p>}{visible.map((record)=><article key={record.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-bold text-slate-900">{record.students?.full_name || "Học sinh"} <span className="font-normal text-slate-500">· {record.students?.class_name || "Chưa có lớp"}</span></p><p className="mt-1 text-sm text-blue-800">Bài {record.activity_id}: {ACTIVITY_TITLES[record.activity_id] || "Hoạt động"}</p></div><div className="flex items-start gap-3"><div className="text-right text-xs text-slate-500">{record.teacher_score !== null && record.teacher_score !== undefined ? <p className="font-bold text-emerald-700">Điểm cuối {record.teacher_score}/10</p> : record.score !== null ? <p className="font-bold text-emerald-700">Điểm tự chấm {record.score}/{record.score_max}</p> : record.ai_score !== null && record.ai_score !== undefined ? <p className="font-semibold text-indigo-700">AI gợi ý {record.ai_score}/10</p> : <p>{record.completed_at ? "Đã nộp · chờ duyệt" : "Đang lưu tiến độ"}</p>}<p>{new Date(record.updated_at).toLocaleString("vi-VN")}</p></div>{!previewMode && <button type="button" aria-label={`Xóa hồ sơ của ${record.students?.full_name || "học sinh"}`} onClick={() => void deleteRecord(record)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-700"><Trash2 className="h-4 w-4"/></button>}</div></div><EvidenceAttachments evidence={record.evidence}/><details className="mt-3 rounded-xl bg-slate-50 p-3"><summary className="cursor-pointer text-xs font-bold text-slate-700">Mở toàn bộ câu trả lời và số liệu</summary><pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs leading-5 text-slate-700">{JSON.stringify(record.evidence, null, 2)}</pre></details>{record.activity_id !== 6 && <TeacherEvidenceReview recordId={record.id} activityId={record.activity_id} evidence={record.evidence} completedAt={record.completed_at} aiScore={record.ai_score ?? null} aiFeedback={record.ai_feedback ?? null} aiStrengths={record.ai_strengths ?? null} aiWeaknesses={record.ai_weaknesses ?? null} aiModelAnswer={record.ai_model_answer ?? null} teacherScore={record.teacher_score ?? null} teacherFeedback={record.teacher_feedback ?? null} previewMode={previewMode} onReviewed={(score, feedback)=>updateTeacherReview(record.id,score,feedback)}/> }</article>)}</div>
   </section>;

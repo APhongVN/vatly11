@@ -67,7 +67,20 @@ export default function TeacherEvidenceReview(props: Props) {
   if (!props.completedAt || props.evidence.kind === "quiz") return null;
 
   const requestAiGrade = async () => {
-    if (props.previewMode || busy) return;
+    if (busy) return;
+    if (props.previewMode) {
+      setBusy(true); setError(""); setNotice("");
+      window.setTimeout(() => {
+        setAiScore(8); setAiFeedback("Gợi ý mô phỏng: học sinh đã có quy luật Q tăng theo U và nêu được ý nghĩa điện dung.");
+        setStrengths("Dữ liệu đo có xu hướng rõ và có kết luận phù hợp.");
+        setWeaknesses("Cần ghi đầy đủ đơn vị, sai số và điều kiện thí nghiệm.");
+        setModelAnswer("Với tụ có C không đổi: Q = CU, nên đồ thị Q theo U là đường thẳng; hệ số góc chính là C.");
+        setScoreDraft((current) => current || "8");
+        setNotice("Đã tạo gợi ý chấm AI mô phỏng. Cô có thể sửa điểm cuối để thử luồng duyệt.");
+        setBusy(false);
+      }, 300);
+      return;
+    }
     setBusy(true); setError(""); setNotice("");
     try {
       const response = await fetch("/api/grade", {
@@ -95,9 +108,14 @@ export default function TeacherEvidenceReview(props: Props) {
   };
 
   const saveTeacherGrade = async () => {
-    if (props.previewMode || busy) return;
+    if (busy) return;
     const score = Number(scoreDraft);
     if (!scoreDraft.trim() || !Number.isFinite(score) || score < 0 || score > 10) { setError("Điểm cuối phải nằm trong khoảng 0–10."); return; }
+    if (props.previewMode) {
+      props.onReviewed(score, feedbackDraft.trim());
+      setNotice("Đã lưu điểm cuối mô phỏng vào hồ sơ mẫu.");
+      return;
+    }
     setBusy(true); setError(""); setNotice("");
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -117,9 +135,9 @@ export default function TeacherEvidenceReview(props: Props) {
   };
 
   return <section className="mt-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h4 className="text-sm font-extrabold text-slate-900">Chấm và duyệt của giáo viên</h4><p className="mt-1 text-xs text-slate-600">AI là điểm gợi ý theo rubric; chỉ điểm giáo viên duyệt mới là điểm cuối.</p></div><button type="button" onClick={() => void requestAiGrade()} disabled={busy || props.previewMode} className="inline-flex items-center gap-2 rounded-xl bg-indigo-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin"/> : <Bot className="h-4 w-4"/>}{aiScore === null ? "Chấm sơ bộ bằng AI" : "Chấm AI lại"}</button></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h4 className="text-sm font-extrabold text-slate-900">Chấm và duyệt của giáo viên</h4><p className="mt-1 text-xs text-slate-600">AI là điểm gợi ý theo rubric; chỉ điểm giáo viên duyệt mới là điểm cuối.</p></div><button type="button" onClick={() => void requestAiGrade()} disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-indigo-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin"/> : <Bot className="h-4 w-4"/>}{aiScore === null ? "Chấm sơ bộ bằng AI" : "Chấm AI lại"}</button></div>
     {aiScore !== null && <div className="mt-3 rounded-xl border border-indigo-100 bg-white p-3 text-sm"><p className="font-bold text-indigo-900">Gợi ý AI: {aiScore}/10 <span className="font-normal text-slate-500">· chưa duyệt</span></p>{aiFeedback && <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-700">{aiFeedback}</p>}<div className="mt-2 grid gap-2 text-xs md:grid-cols-2">{strengths && <p><b>Điểm mạnh:</b> {strengths}</p>}{weaknesses && <p><b>Cần cải thiện:</b> {weaknesses}</p>}</div>{modelAnswer && <details className="mt-2"><summary className="cursor-pointer text-xs font-bold text-slate-600">Mở gợi ý đáp án cho giáo viên</summary><p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-700">{modelAnswer}</p></details>}</div>}
-    <div className="mt-3 grid gap-3 md:grid-cols-[140px_1fr_auto]"><label className="text-xs font-bold text-slate-700">Điểm cuối / 10<input type="number" min="0" max="10" step="0.5" value={scoreDraft} onChange={(event) => setScoreDraft(event.target.value)} disabled={props.previewMode || busy} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm disabled:bg-slate-100" placeholder="0–10" /></label><label className="text-xs font-bold text-slate-700">Nhận xét gửi học sinh<textarea value={feedbackDraft} onChange={(event) => setFeedbackDraft(event.target.value)} disabled={props.previewMode || busy} maxLength={4000} rows={2} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-normal leading-5 disabled:bg-slate-100" placeholder="Nhận xét, hướng cải thiện hoặc lý do điều chỉnh điểm…" /></label><button type="button" onClick={() => void saveTeacherGrade()} disabled={props.previewMode || busy || !scoreDraft.trim()} className="inline-flex items-center justify-center gap-2 self-end rounded-xl bg-emerald-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin"/> : <Save className="h-4 w-4"/>}Duyệt điểm</button></div>
+    <div className="mt-3 grid gap-3 md:grid-cols-[140px_1fr_auto]"><label className="text-xs font-bold text-slate-700">Điểm cuối / 10<input type="number" min="0" max="10" step="0.5" value={scoreDraft} onChange={(event) => setScoreDraft(event.target.value)} disabled={busy} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm disabled:bg-slate-100" placeholder="0–10" /></label><label className="text-xs font-bold text-slate-700">Nhận xét gửi học sinh<textarea value={feedbackDraft} onChange={(event) => setFeedbackDraft(event.target.value)} disabled={busy} maxLength={4000} rows={2} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-normal leading-5 disabled:bg-slate-100" placeholder="Nhận xét, hướng cải thiện hoặc lý do điều chỉnh điểm…" /></label><button type="button" onClick={() => void saveTeacherGrade()} disabled={busy || !scoreDraft.trim()} className="inline-flex items-center justify-center gap-2 self-end rounded-xl bg-emerald-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin"/> : <Save className="h-4 w-4"/>}Duyệt điểm</button></div>
     {error && <p role="alert" className="mt-3 rounded-lg bg-rose-50 p-2 text-xs text-rose-800">{error}</p>}{notice && <p role="status" className="mt-3 rounded-lg bg-emerald-50 p-2 text-xs text-emerald-800"><CheckCircle2 className="mr-1 inline h-3.5 w-3.5"/>{notice}</p>}
   </section>;
 }
