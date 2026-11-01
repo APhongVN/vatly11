@@ -180,6 +180,7 @@ assert.doesNotMatch(activities, /^\s*(?:model_answer|grading_rubric):/m, "Teache
 assert.match(activities, /title: "Các thí nghiệm liên quan đến tụ điện"/);
 assert.match(interactions, /Các mục 8, 9, 10 và 11 đã gộp/);
 assert.match(dashboard, /Sửa tên/);
+assert.match(dashboard, /if \(previewMode\) \{[\s\S]*?setPreviewNotice\(nextMuted \? "Đã khóa kênh chat mẫu[\s\S]*?return;[\s\S]*?supabase\.from\('chat_settings'\)\.update/);
 assert.match(groupMigration, /ADD COLUMN IF NOT EXISTS group_name/);
 assert.match(groupMigration, /sync_group_submission_name/);
 assert.match(groupClassMigration, /ADD COLUMN IF NOT EXISTS class_name TEXT/);

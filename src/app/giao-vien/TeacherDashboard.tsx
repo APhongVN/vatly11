@@ -3640,6 +3640,12 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
               <div className="flex gap-2">
                 <button
                   onClick={async () => {
+                    if (previewMode) {
+                      const nextMuted = !isChatMuted;
+                      setIsChatMuted(nextMuted);
+                      setPreviewNotice(nextMuted ? "Đã khóa kênh chat mẫu trong phiên này." : "Đã mở khóa kênh chat mẫu trong phiên này.");
+                      return;
+                    }
                     await supabase.from('chat_settings').update({ is_muted: !isChatMuted }).eq('id', 1);
                     fetchData();
                   }}
