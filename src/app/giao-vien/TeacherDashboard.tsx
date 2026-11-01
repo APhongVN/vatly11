@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import ExcelJS from "exceljs";
 import { countAwaitingTeacherReview } from "@/lib/report-metrics.mjs";
+import { buildClassReportMetrics } from "@/lib/class-report-metrics.mjs";
 import {
   LogOut, Home, Video, Users, FileText, Bot, Upload, MessageSquare,
   Send, Calendar, Download, CheckCircle, Trash2, ArrowLeft, Search,
@@ -1959,6 +1960,27 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       roster.addRow([index + 1, formulaSafe(student.id), formulaSafe(student.full_name), formulaSafe(classNameOf(student)), formulaSafe(student.login_email || ""), student.auth_user_id ? "Đã cấp" : "Chưa cấp", studentSubmissions.length, studentGroupSubmissions.length, studentEvidence.length, studentQuizzes.length, official.length ? official.reduce((sum, score) => sum + score, 0) / official.length : null, aiSuggestions.length ? aiScoreText(aiSuggestions[0].ai_score) : null, lastActivity]);
     });
     styleDataRows(roster, [11, 12], [13]);
+
+    const classMetrics = buildClassReportMetrics({
+      students: reportStudents,
+      individualSubmissions: reportSubmissions,
+      activityEvidence: reportEvidence,
+      quizResults: reportQuizResults,
+      groupAssignments: reportGroupAssignments,
+      groups: reportGroups,
+      groupSubmissions: reportGroupSubmissions,
+    });
+    const classSheet = workbook.addWorksheet("Thống kê theo lớp");
+    styleSheet(classSheet, "Thống kê kết quả theo lớp", "Điểm trung bình được tính bằng trung bình điểm chính thức của từng học sinh, sau đó lấy trung bình các học sinh đã có điểm; mỗi em có trọng số như nhau.", ["Lớp", "Sĩ số", "HS có hoạt động", "Tỷ lệ hoạt động", "Bài nộp cá nhân", "Hồ sơ hoạt động đã nộp", "Lượt trắc nghiệm", "Bài nhóm áp dụng", "Bài nộp nhóm", "Bản ghi chờ duyệt", "HS có điểm GV", "Bản ghi điểm GV", "Điểm GV TB / HS"], [20, 12, 16, 16, 18, 23, 17, 18, 16, 19, 17, 19, 20]);
+    classMetrics.forEach((row) => classSheet.addRow([
+      formulaSafe(row.className), row.studentCount, row.activeStudentCount,
+      row.studentCount ? row.activeStudentCount / row.studentCount : null,
+      row.individualSubmissionCount, row.submittedEvidenceCount, row.quizAttemptCount,
+      row.groupAssignmentCount, row.groupSubmissionCount, row.pendingReviewCount,
+      row.scoredStudentCount, row.officialScoreRecordCount, row.averageOfficialScorePerStudent,
+    ]));
+    styleDataRows(classSheet, [13]);
+    for (let rowNumber = 5; rowNumber <= classSheet.rowCount; rowNumber += 1) classSheet.getCell(rowNumber, 4).numFmt = "0.0%";
 
     const activitySheet = workbook.addWorksheet("Bài học");
     styleSheet(activitySheet, "Bài học và tiến độ", "Tổng hợp trạng thái mở bài và các bản ghi cá nhân theo từng hoạt động; điểm trung bình chỉ gồm điểm giáo viên.", ["Mã", "Tên bài học", "Giai đoạn", "Loại", "Thời lượng", "Trạng thái", "Hạn nộp", "Nhận bài", "Bài nộp", "Hồ sơ hoạt động", "Trắc nghiệm", "Điểm GV TB"], [10, 42, 15, 16, 18, 15, 21, 13, 14, 17, 13, 14]);

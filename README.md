@@ -21,7 +21,7 @@ Bản hiện tại có thêm các migration bắt buộc `20261031002700_rubric_
 Migration `20261101000200_group_assignment_classes.sql` bổ sung phạm vi lớp cho bài tập nhóm. Bài mới cần chọn một lớp hoặc tất cả lớp; bài cũ có `class_name` rỗng vẫn áp dụng cho toàn bộ danh sách. Áp dụng migration này trước khi sử dụng chức năng tạo hoặc chia lại nhóm theo lớp.
 ### Nhập và xuất ma trận chấm
 
-Giáo viên có thể nhập `.docx`, `.xlsx`, `.pdf`, `.txt`, `.md`, `.csv` hoặc ảnh PNG/JPG/WebP khi tạo bài, sửa bài hay mở chấm điểm. Công thức Word được chuyển sang dạng xem được; PDF scan và ảnh dùng route OCR có xác thực. Mỗi file tối đa 10 MB; PDF đọc tối đa 30 trang và OCR tối đa 5 trang scan; nội dung trích tối đa 20.000 ký tự. Hệ thống giữ file gốc trong Storage riêng tư để giáo viên tải lại, còn báo cáo Excel có sheet **Ma trận chấm điểm** cho bài cá nhân và nhóm. Cô cần rà lại nội dung OCR/công thức trước khi chấm.
+Giáo viên có thể nhập `.docx`, `.xlsx`, `.pdf`, `.txt`, `.md`, `.csv` hoặc ảnh PNG/JPG/WebP khi tạo bài, sửa bài hay mở chấm điểm. Công thức Word được chuyển sang dạng xem được; PDF scan và ảnh dùng route OCR có xác thực. Mỗi file tối đa 10 MB; PDF đọc tối đa 30 trang và OCR tối đa 5 trang scan; nội dung trích tối đa 20.000 ký tự. Hệ thống giữ file gốc trong Storage riêng tư để giáo viên tải lại, còn báo cáo Excel có sheet **Ma trận chấm điểm** cho bài cá nhân và nhóm. Báo cáo cũng có sheet **Thống kê theo lớp** gồm sĩ số, hoạt động, bài nộp, lượt quiz, bài nhóm, hàng chờ duyệt và điểm giáo viên trung bình tính theo học sinh (mỗi em có trọng số như nhau). Cô cần rà lại nội dung OCR/công thức trước khi chấm.
 
 ### Cấp tài khoản
 

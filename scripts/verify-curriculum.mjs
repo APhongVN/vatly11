@@ -16,6 +16,7 @@ import { getPeerDiscussionWindow, isPeerChoiceSet, PEER_DISCUSSION_DURATION_MS, 
 import { readFile } from "node:fs/promises";
 import { csvSafeCell } from "../src/lib/csv-export.mjs";
 import { countAwaitingTeacherReview } from "../src/lib/report-metrics.mjs";
+import { buildClassReportMetrics } from "../src/lib/class-report-metrics.mjs";
 import { isValidQUVariablePlan } from "../src/lib/virtual-lab-validation.mjs";
 import { splitExcelCellText } from "../src/lib/excel-cell-content.mjs";
 import { extractRubricFile, extractWordDocumentText } from "../src/lib/rubric-import.mjs";
@@ -41,6 +42,37 @@ assert.equal(countAwaitingTeacherReview({
   ],
   groupSubmissions: [{ status: "pending", final_score: null }, { status: "pending", final_score: 8 }],
 }), 3, "Only pending submissions and completed reviewable evidence belong in the teacher queue.");
+const classReportFixture = buildClassReportMetrics({
+  students: [{ id: "a1", class_name: "11A1" }, { id: "a2", class_name: "11A1" }, { id: "b1", class_name: "11A2" }],
+  individualSubmissions: [
+    { id: "i1", student_id: "a1", status: "graded", final_score: 8 },
+    { id: "i2", student_id: "a2", status: "pending", final_score: null },
+    { id: "i3", student_id: "b1", status: "pending", final_score: null },
+  ],
+  activityEvidence: [
+    { id: "e1", student_id: "a1", activity_id: 4, completed_at: "2026-11-01T00:00:00Z", teacher_score: null },
+    { id: "e2", student_id: "a2", activity_id: 4, completed_at: null, teacher_score: null },
+    { id: "e3", student_id: "b1", activity_id: 6, completed_at: "2026-11-01T00:00:00Z", teacher_score: null },
+  ],
+  quizResults: [{ student_id: "a1" }, { student_id: "b1" }],
+  groupAssignments: [{ id: "gA", class_name: "11A1" }, { id: "gAll", class_name: null }],
+  groups: [
+    { id: "groupA", assignment_id: "gA", group_assignment_members: [{ student_id: "a1" }, { student_id: "a2" }] },
+    { id: "groupB", assignment_id: "gAll", group_assignment_members: [{ student_id: "b1" }] },
+  ],
+  groupSubmissions: [
+    { id: "gsA", group_id: "groupA", status: "pending", final_score: null },
+    { id: "gsB", group_id: "groupB", status: "graded", final_score: 9 },
+  ],
+});
+assert.deepEqual(classReportFixture.map(({ className }) => className), ["11A1", "11A2"]);
+assert.deepEqual(classReportFixture[0], {
+  className: "11A1", studentCount: 2, activeStudentCount: 2, individualSubmissionCount: 2,
+  submittedEvidenceCount: 1, quizAttemptCount: 1, groupAssignmentCount: 2, groupSubmissionCount: 1,
+  pendingReviewCount: 3, scoredStudentCount: 1, officialScoreRecordCount: 1, averageOfficialScorePerStudent: 8,
+});
+assert.equal(classReportFixture[1].averageOfficialScorePerStudent, 9, "All-class group scores must be associated with the actual member class.");
+assert.equal(classReportFixture[1].pendingReviewCount, 1, "An ungraded readiness survey is not an item for teacher grading.");
 assert.equal(isMessageFromUser({ sender_id: "user-1", sender_name: "Nguyễn An" }, "user-1"), true);
 assert.equal(isMessageFromUser({ sender_id: "user-2", sender_name: "Nguyễn An" }, "user-1"), false, "Duplicate display names must not grant message ownership.");
 assert.equal(isMessageFromUser({ sender_id: "user-1", sender_name: "Tên cũ" }, "user-1"), true, "Renaming a student must not remove ownership of their messages.");
@@ -246,6 +278,9 @@ assert.match(studentDashboard, /submission\.completed_at \? "Đã nộp · chờ
 assert.match(studentDashboard, /Không thể tạo báo cáo/);
 assert.match(studentDashboard, /workbook\.addWorksheet\("Tổng quan"\)/);
 assert.match(studentDashboard, /workbook\.addWorksheet\("Danh sách học sinh"\)/);
+assert.match(studentDashboard, /workbook\.addWorksheet\("Thống kê theo lớp"\)/);
+assert.match(studentDashboard, /buildClassReportMetrics\(\{/);
+assert.match(studentDashboard, /Điểm trung bình được tính bằng trung bình điểm chính thức của từng học sinh/);
 assert.match(studentDashboard, /workbook\.addWorksheet\("Ma trận chấm điểm"\)/);
 assert.match(studentDashboard, /readAllActivityRubricRows/);
 assert.match(studentDashboard, /Ma trận cá nhân/);
