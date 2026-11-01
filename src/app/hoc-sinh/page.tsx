@@ -13,7 +13,6 @@ import { useRouter } from "next/navigation";
 import VirtualLab from "@/components/VirtualLab";
 import { filterSubmissionsForStudentGroups } from "@/lib/group-submissions.mjs";
 import ActivityResources from "@/components/ActivityResources";
-import { ACTIVITIES } from "@/lib/data/activities";
 
 const attachmentHref = (value: string) => value.startsWith("http") || value.startsWith("blob:") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
 
@@ -32,7 +31,6 @@ export default function HocSinhPage() {
   const [now, setNow] = useState(new Date());
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isChatMuted, setIsChatMuted] = useState(false);
-  const [previewMode, setPreviewMode] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -40,19 +38,7 @@ export default function HocSinhPage() {
     const loadIdentity = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        if (cancelled) return;
-        setPreviewMode(true);
-        setStudent({ id: "preview-student", full_name: "Nguyễn Minh Anh", class_name: "11A1" });
-        setActivities(ACTIVITIES);
-        setGroupActs([{ id: "preview-assignment", title: "Báo cáo thí nghiệm tụ điện", description: "Mẫu hoạt động nhóm để xem trước giao diện.", deadline: null }]);
-        setMessages([
-          { id: "preview-message-1", sender_name: "Cô giáo", content: "Các em nhớ ghi rõ đơn vị trong bảng số liệu nhé.", created_at: new Date().toISOString() },
-          { id: "preview-message-2", sender_name: "Nguyễn Minh Anh", content: "Cô ơi, em đã hoàn thành phiếu thí nghiệm ạ.", created_at: new Date().toISOString() },
-        ]);
-        setMySubmissions([{ id: "preview-submission", student_id: "preview-student", student_name: "Nguyễn Minh Anh", activity_id: 1, ai_score: 8.5, status: "graded", submitted_at: new Date().toISOString(), answer: "Bản ghi minh họa; không phải dữ liệu thật." }]);
-        setMyGroupSubs([{ id: "preview-group-submission", assignment_id: "preview-assignment", group_id: "preview-group", group_name: "Nhóm Thí nghiệm A", status: "pending" }]);
-        setQuizzes([]);
-        setIsChatMuted(false);
+        if (!cancelled) router.replace("/login");
         return;
       }
       const { data: accountProfile, error: accountProfileError } = await supabase.from("profiles").select("role,must_change_password").eq("id", user.id).maybeSingle();
@@ -70,7 +56,7 @@ export default function HocSinhPage() {
   }, [router]);
 
   useEffect(() => {
-    if (previewMode || !student) return;
+    if (!student) return;
     const refreshChat = async () => {
       if (document.visibilityState !== "visible") return;
       const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(300);
@@ -81,7 +67,7 @@ export default function HocSinhPage() {
       .subscribe();
     const timer = window.setInterval(() => void refreshChat(), 30000);
     return () => { window.clearInterval(timer); void supabase.removeChannel(channel); };
-  }, [previewMode, student]);
+  }, [student]);
   async function fetchData(student: any) {
     if (!student) return;
     const { data: acts } = await supabase.from('activities').select('*').order('id');
@@ -121,15 +107,6 @@ export default function HocSinhPage() {
     e.preventDefault();
     if ((!newMsg.trim() && !chatFile) || isChatMuted || isSendingChat) return;
     setIsSendingChat(true);
-    if (previewMode) {
-      const attachmentUrl = chatFile ? URL.createObjectURL(chatFile) : null;
-      setMessages((current) => [...current, {
-        id: `preview-message-${Date.now()}`, sender_name: student.full_name, content: newMsg.trim(), created_at: new Date().toISOString(),
-        ...(chatFile ? { attachment_url: attachmentUrl, attachment_name: chatFile.name, attachment_type: chatFile.type || "application/octet-stream" } : {}),
-      }]);
-      setNewMsg(""); setChatFile(null); setIsSendingChat(false);
-      return;
-    }
     try {
       let attachment: Record<string, string> = {};
       if (chatFile) {
@@ -151,11 +128,6 @@ export default function HocSinhPage() {
   const deleteOwnMessage = async (message: any) => {
     if (message.sender_name !== student?.full_name) return;
     if (!confirm("Xóa tin nhắn của em?")) return;
-    if (previewMode) {
-      if (typeof message.attachment_url === "string" && message.attachment_url.startsWith("blob:")) URL.revokeObjectURL(message.attachment_url);
-      setMessages((current) => current.filter((item) => item.id !== message.id));
-      return;
-    }
     if (message.attachment_url && !message.attachment_url.startsWith("http")) {
       const { error: fileError } = await supabase.storage.from("class-work").remove([message.attachment_url]);
       if (fileError) { alert("Không xóa được tệp đính kèm: " + fileError.message); return; }
@@ -207,7 +179,6 @@ export default function HocSinhPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/20 flex flex-col relative">
-      {previewMode && <div className="fixed bottom-4 right-4 z-[70] max-w-sm rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-950 shadow-lg">Bản xem trước học sinh · Có thể điều hướng, nhập và thử chat với dữ liệu minh họa. Không có thao tác nào ghi vào lớp thật.</div>}
       {/* Modal xem trước tài liệu */}
       {previewUrl && (
         <div className="fixed inset-0 bg-black/85 z-50 flex flex-col items-center justify-center p-4 backdrop-blur-sm">
