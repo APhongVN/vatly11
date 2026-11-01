@@ -159,6 +159,9 @@ assert.match(studentDashboard, /workbook\.addWorksheet\("Sổ tay hoạt động
 assert.match(studentDashboard, /workbook\.addWorksheet\("Kết quả trắc nghiệm"\)/);
 assert.match(studentDashboard, /workbook\.addWorksheet\("Phân nhóm"\)/);
 assert.match(studentDashboard, /workbook\.addWorksheet\("Bài nộp nhóm"\)/);
+assert.match(studentDashboard, /workbook\.addWorksheet\("Tiến độ nhóm theo HS"\)/);
+assert.match(studentDashboard, /groupSubmissionsByStudent/);
+assert.match(studentDashboard, /Mã học sinh.*Điểm giáo viên/);
 assert.match(studentDashboard, /Điểm chính thức trung bình/);
 assert.match(studentDashboard, /Không thể tạo báo cáo/);
 assert.match(studentDashboard, /workbook\.addWorksheet\("Tổng quan"\)/);

@@ -1680,6 +1680,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     const groupCounts = new Map<string, number>();
     const groupsByAssignment = new Map<string, any[]>();
     const groupsById = new Map<string, any>();
+    const groupSubmissionsByGroup = byKey(reportGroupSubmissions, (record: any) => record.group_id);
     reportGroups.forEach((group: any) => {
       const list = groupsByAssignment.get(group.assignment_id) || [];
       list.push(group);
@@ -1687,6 +1688,17 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       groupsById.set(group.id, group);
     });
     groupsByAssignment.forEach((groups, assignmentId) => groupCounts.set(String(assignmentId), groups.length));
+    const groupSubmissionsByStudent = new Map<string, any[]>();
+    reportGroups.forEach((group: any) => {
+      const members = Array.isArray(group.group_assignment_members) ? group.group_assignment_members : [];
+      const submissionsForGroup = groupSubmissionsByGroup.get(String(group.id)) || [];
+      members.forEach((member: any) => {
+        const key = String(member.student_id);
+        const existing = groupSubmissionsByStudent.get(key) || [];
+        existing.push(...submissionsForGroup);
+        groupSubmissionsByStudent.set(key, existing);
+      });
+    });
 
     const styleSheet = (sheet: ExcelJS.Worksheet, title: string, subtitle: string, headers: string[], widths: number[]) => {
       sheet.views = [{ state: "frozen", ySplit: 4 }];
@@ -1793,18 +1805,19 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     }
 
     const roster = workbook.addWorksheet("Danh sách học sinh");
-    styleSheet(roster, "Danh sách học sinh", "Tình trạng tài khoản, số bản ghi học tập, điểm giáo viên duyệt và lần hoạt động mới nhất.", ["STT", "Mã học sinh", "Họ và tên", "Lớp", "Email đăng nhập", "Tài khoản", "Bài nộp cá nhân", "Hồ sơ hoạt động", "Lượt trắc nghiệm", "Điểm GV TB", "AI gần nhất", "Hoạt động gần nhất"], [8, 38, 28, 16, 30, 16, 16, 17, 15, 15, 15, 21]);
+    styleSheet(roster, "Danh sách học sinh", "Tình trạng tài khoản, tiến độ cá nhân và bài nhóm được ghép theo mã hồ sơ thành viên.", ["STT", "Mã học sinh", "Họ và tên", "Lớp", "Email đăng nhập", "Tài khoản", "Bài nộp cá nhân", "Bài nộp nhóm", "Hồ sơ hoạt động", "Lượt trắc nghiệm", "Điểm GV TB (cá nhân + nhóm)", "AI gần nhất", "Hoạt động gần nhất"], [8, 38, 28, 16, 30, 16, 16, 15, 17, 15, 24, 15, 21]);
     reportStudents.forEach((student: any, index: number) => {
       const studentSubmissions = submissionsByStudent.get(String(student.id)) || [];
       const studentEvidence = evidenceByStudent.get(String(student.id)) || [];
       const studentQuizzes = quizResultsByStudent.get(String(student.id)) || [];
-      const official = [...studentSubmissions.map((record: any) => record.final_score), ...studentEvidence.map((record: any) => record.teacher_score)].map(scoreText).filter((score): score is number => score !== null);
-      const aiSuggestions = [...studentSubmissions, ...studentEvidence].filter((record: any) => aiScoreText(record.ai_score) !== null).sort((a: any, b: any) => new Date(b.updated_at || b.submitted_at || 0).getTime() - new Date(a.updated_at || a.submitted_at || 0).getTime());
-      const latestDates = [...studentSubmissions.map((record: any) => record.submitted_at), ...studentEvidence.map((record: any) => record.updated_at), ...studentQuizzes.map((record: any) => record.created_at)].filter(Boolean).map((date) => new Date(date as string).getTime()).filter(Number.isFinite);
+      const studentGroupSubmissions = groupSubmissionsByStudent.get(String(student.id)) || [];
+      const official = [...studentSubmissions.map((record: any) => record.final_score), ...studentEvidence.map((record: any) => record.teacher_score), ...studentGroupSubmissions.map((record: any) => record.final_score)].map(scoreText).filter((score): score is number => score !== null);
+      const aiSuggestions = [...studentSubmissions, ...studentEvidence, ...studentGroupSubmissions].filter((record: any) => aiScoreText(record.ai_score) !== null).sort((a: any, b: any) => new Date(b.updated_at || b.submitted_at || 0).getTime() - new Date(a.updated_at || a.submitted_at || 0).getTime());
+      const latestDates = [...studentSubmissions.map((record: any) => record.submitted_at), ...studentEvidence.map((record: any) => record.updated_at), ...studentQuizzes.map((record: any) => record.created_at), ...studentGroupSubmissions.map((record: any) => record.submitted_at)].filter(Boolean).map((date) => new Date(date as string).getTime()).filter(Number.isFinite);
       const lastActivity = latestDates.length ? new Date(Math.max(...latestDates)) : null;
-      roster.addRow([index + 1, formulaSafe(student.id), formulaSafe(student.full_name), formulaSafe(classNameOf(student)), formulaSafe(student.login_email || ""), student.auth_user_id ? "Đã cấp" : "Chưa cấp", studentSubmissions.length, studentEvidence.length, studentQuizzes.length, official.length ? official.reduce((sum, score) => sum + score, 0) / official.length : null, aiSuggestions.length ? aiScoreText(aiSuggestions[0].ai_score) : null, lastActivity]);
+      roster.addRow([index + 1, formulaSafe(student.id), formulaSafe(student.full_name), formulaSafe(classNameOf(student)), formulaSafe(student.login_email || ""), student.auth_user_id ? "Đã cấp" : "Chưa cấp", studentSubmissions.length, studentGroupSubmissions.length, studentEvidence.length, studentQuizzes.length, official.length ? official.reduce((sum, score) => sum + score, 0) / official.length : null, aiSuggestions.length ? aiScoreText(aiSuggestions[0].ai_score) : null, lastActivity]);
     });
-    styleDataRows(roster, [10, 11], [12]);
+    styleDataRows(roster, [11, 12], [13]);
 
     const activitySheet = workbook.addWorksheet("Bài học");
     styleSheet(activitySheet, "Bài học và tiến độ", "Tổng hợp trạng thái mở bài và các bản ghi cá nhân theo từng hoạt động; điểm trung bình chỉ gồm điểm giáo viên.", ["Mã", "Tên bài học", "Giai đoạn", "Loại", "Thời lượng", "Trạng thái", "Hạn nộp", "Nhận bài", "Bài nộp", "Hồ sơ hoạt động", "Trắc nghiệm", "Điểm GV TB"], [10, 42, 15, 16, 18, 15, 21, 13, 14, 17, 13, 14]);
@@ -1906,6 +1919,22 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       groupSubmissionSheet.addRow([formulaSafe(submission.id), formulaSafe(submission.assignment_id), formulaSafe(assignment?.title || "Bài tập đã xóa"), formulaSafe(submission.group_id || ""), formulaSafe(group?.group_name || submission.group_name || ""), approvedScore(submission), aiScoreText(submission.ai_score), reviewStatus(submission), submission.submitted_at ? new Date(submission.submitted_at) : null, cellText(submission.answer || ""), cellText(submission.ai_feedback || ""), cellText(submission.teacher_feedback || ""), cellText(submission.file_url || "")]);
     });
     styleDataRows(groupSubmissionSheet, [6, 7], [9]);
+
+    const groupProgressSheet = workbook.addWorksheet("Tiến độ nhóm theo HS");
+    styleSheet(groupProgressSheet, "Tiến độ nhóm theo học sinh", "Mỗi bài nộp nhóm được gắn với từng thành viên qua group_id và student_id; không suy đoán người nộp từ tên.", ["Mã bài nộp", "Mã nhiệm vụ", "Tên nhiệm vụ", "Mã nhóm", "Tên nhóm", "Mã học sinh", "Học sinh", "Lớp", "Điểm giáo viên", "Gợi ý AI", "Trạng thái", "Thời điểm nộp", "Tệp / liên kết"], [38, 38, 32, 38, 28, 38, 28, 16, 16, 14, 30, 21, 42]);
+    reportGroupSubmissions.forEach((submission: any) => {
+      const group: any = groupsById.get(String(submission.group_id));
+      const assignment: any = groupAssignmentById.get(String(submission.assignment_id));
+      const members = Array.isArray(group?.group_assignment_members) ? group.group_assignment_members : [];
+      if (members.length === 0) {
+        groupProgressSheet.addRow([formulaSafe(submission.id), formulaSafe(submission.assignment_id), formulaSafe(assignment?.title || "Bài tập đã xóa"), formulaSafe(submission.group_id || ""), formulaSafe(group?.group_name || submission.group_name || ""), "", "Chưa gắn học sinh", "", approvedScore(submission), aiScoreText(submission.ai_score), reviewStatus(submission), submission.submitted_at ? new Date(submission.submitted_at) : null, cellText(submission.file_url || "")]);
+      }
+      members.forEach((member: any) => {
+        const student: any = studentById.get(String(member.student_id)) || {};
+        groupProgressSheet.addRow([formulaSafe(submission.id), formulaSafe(submission.assignment_id), formulaSafe(assignment?.title || "Bài tập đã xóa"), formulaSafe(submission.group_id || ""), formulaSafe(group?.group_name || submission.group_name || ""), formulaSafe(member.student_id), formulaSafe(student.full_name || "Hồ sơ đã xóa"), formulaSafe(classNameOf(student)), approvedScore(submission), aiScoreText(submission.ai_score), reviewStatus(submission), submission.submitted_at ? new Date(submission.submitted_at) : null, cellText(submission.file_url || "")]);
+      });
+    });
+    styleDataRows(groupProgressSheet, [9, 10], [12]);
 
     const buffer = await workbook.xlsx.writeBuffer();
     const bytes = new Uint8Array(buffer as ArrayBufferLike);
