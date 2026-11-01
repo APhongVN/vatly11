@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
-import { CHAT_ATTACHMENT_ACCEPT, chatAttachmentMimeType, MAX_CHAT_ATTACHMENT_BYTES } from "@/lib/chat-attachments.mjs";
+import { CHAT_ATTACHMENT_ACCEPT, chatAttachmentMimeType, isInlineChatImage, MAX_CHAT_ATTACHMENT_BYTES } from "@/lib/chat-attachments.mjs";
 import {
   BookOpen, Clock, FileText, Download, MessageSquare, Send,
   ChevronRight, Lock, X, LogOut, ArrowLeft, CheckCircle2,
@@ -645,7 +645,7 @@ export default function HocSinhPage() {
                       }`}>
                         <p>{m.content}</p>
                         {isMe && <button onClick={() => void deleteOwnMessage(m)} className="mt-2 text-[10px] opacity-70 hover:opacity-100">Xóa tin nhắn</button>}
-                        {m.attachment_url && (m.attachment_type?.startsWith("image/") ? <a href={attachmentHref(m.attachment_url)} target="_blank" rel="noreferrer"><Image unoptimized width={800} height={600} src={attachmentHref(m.attachment_url)} alt={m.attachment_name || "Ảnh đính kèm"} className="mt-2 max-h-64 rounded-xl object-contain" /></a> : <a href={attachmentHref(m.attachment_url)} target="_blank" rel="noreferrer" className="mt-2 block underline">📎 {m.attachment_name || "Tải tệp"}</a>)}
+                        {m.attachment_url && (isInlineChatImage(m.attachment_type) ? <a href={attachmentHref(m.attachment_url)} target="_blank" rel="noreferrer"><Image unoptimized width={800} height={600} src={attachmentHref(m.attachment_url)} alt={m.attachment_name || "Ảnh đính kèm"} className="mt-2 max-h-64 rounded-xl object-contain" /></a> : <a href={attachmentHref(m.attachment_url)} target="_blank" rel="noreferrer" className="mt-2 block underline">📎 {m.attachment_name || "Tải tệp"}</a>)}
                         <button onClick={() => speakText(m.content)} className={`mt-1.5 ${isMe ? 'text-blue-200 hover:text-white' : 'text-slate-400 hover:text-blue-600'}`} title="Nghe đọc giọng nói">
                           <Volume2 className="w-3.5 h-3.5" />
                         </button>

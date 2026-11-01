@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import { CHAT_ATTACHMENT_ACCEPT, chatAttachmentMimeType, MAX_CHAT_ATTACHMENT_BYTES } from "@/lib/chat-attachments.mjs";
+import { CHAT_ATTACHMENT_ACCEPT, chatAttachmentMimeType, isInlineChatImage, MAX_CHAT_ATTACHMENT_BYTES } from "@/lib/chat-attachments.mjs";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -3707,7 +3707,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                         {m.sender_name} • {formatTime(m.created_at)}
                       </p>
                       <p className="leading-relaxed">{m.content}</p>
-                      {m.attachment_url && (m.attachment_type?.startsWith("image/") ? <a href={privateFileHref(m.attachment_url)} target="_blank" rel="noreferrer"><Image unoptimized width={800} height={600} src={privateFileHref(m.attachment_url)} alt={m.attachment_name || "Tệp ảnh"} className="mt-2 max-h-64 rounded-xl object-contain" /></a> : <a href={privateFileHref(m.attachment_url)} target="_blank" rel="noreferrer" className="mt-2 block underline">📎 {m.attachment_name || "Tải tệp đính kèm"}</a>)}<button onClick={() => deleteMessage(m)} className="mt-2 block text-[10px] opacity-70 hover:opacity-100">Xóa tin nhắn</button>
+                      {m.attachment_url && (isInlineChatImage(m.attachment_type) ? <a href={privateFileHref(m.attachment_url)} target="_blank" rel="noreferrer"><Image unoptimized width={800} height={600} src={privateFileHref(m.attachment_url)} alt={m.attachment_name || "Tệp ảnh"} className="mt-2 max-h-64 rounded-xl object-contain" /></a> : <a href={privateFileHref(m.attachment_url)} target="_blank" rel="noreferrer" className="mt-2 block underline">📎 {m.attachment_name || "Tải tệp đính kèm"}</a>)}<button onClick={() => deleteMessage(m)} className="mt-2 block text-[10px] opacity-70 hover:opacity-100">Xóa tin nhắn</button>
                     </div>
                   </div>
                 );

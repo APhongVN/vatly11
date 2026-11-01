@@ -4,7 +4,7 @@ import JSZip from "jszip";
 import { filterStudentTable, isTeacherOnlyText } from "../src/lib/curriculum-privacy.mjs";
 import { normalizeGeneratedQuiz } from "../src/lib/ai-quiz-validation.mjs";
 import { readBoundedRequestText } from "../src/lib/read-bounded-request.mjs";
-import { chatAttachmentMimeType, MAX_CHAT_ATTACHMENT_BYTES } from "../src/lib/chat-attachments.mjs";
+import { chatAttachmentMimeType, isInlineChatImage, MAX_CHAT_ATTACHMENT_BYTES } from "../src/lib/chat-attachments.mjs";
 import { filterSubmissionsForStudentGroups, renameGroupInSubmissions } from "../src/lib/group-submissions.mjs";
 import { extractStudentNamesFromText } from "../src/lib/student-import.mjs";
 import { filterStudentRoster, getStudentClassNames, hasStudentInClass } from "../src/lib/student-roster.mjs";
@@ -37,6 +37,9 @@ assert.equal(MAX_CHAT_ATTACHMENT_BYTES, 25 * 1024 * 1024);
 assert.equal(chatAttachmentMimeType({ name: "lab.HEIC", type: "" }), "image/heic");
 assert.equal(chatAttachmentMimeType({ name: "rubric.odt", type: "application/octet-stream" }), "application/vnd.oasis.opendocument.text");
 assert.equal(chatAttachmentMimeType({ name: "notes.pdf", type: "application/pdf" }), "application/pdf");
+assert.equal(isInlineChatImage("image/avif"), true);
+assert.equal(isInlineChatImage("image/heic"), false);
+assert.equal(isInlineChatImage("image/tiff"), false);
 await assert.rejects(
   () => readBoundedRequestText(new Request("http://localhost", { method: "POST", body: "12345" }), 4),
   (error) => error instanceof Error && error.name === "RequestBodyTooLargeError",
@@ -529,12 +532,16 @@ console.log("Four published microteaching videos, 18 persisted checkpoints, rubr
 const teacherDashboardSource = await readFile(new URL("../src/app/giao-vien/TeacherDashboard.tsx", import.meta.url), "utf8");
 const chatRealtimeMigration = await readFile(new URL("../supabase/migrations/20261031001800_chat_realtime.sql", import.meta.url), "utf8");
 const chatAttachmentMigration = await readFile(new URL("../supabase/migrations/20261101000400_chat_attachment_mime_types.sql", import.meta.url), "utf8");
+const chatImageMigration = await readFile(new URL("../supabase/migrations/20261101000500_chat_image_mime_types.sql", import.meta.url), "utf8");
 const chatAttachmentModule = await readFile(new URL("../src/lib/chat-attachments.mjs", import.meta.url), "utf8");
 const atomicGroupMigration = await readFile(new URL("../supabase/migrations/20261031001900_atomic_group_assignment.sql", import.meta.url), "utf8");
 const evidenceReviewMigration = await readFile(new URL("../supabase/migrations/20261031002000_activity_evidence_review.sql", import.meta.url), "utf8");
 const teacherEvidenceReview = await readFile(new URL("../src/components/TeacherEvidenceReview.tsx", import.meta.url), "utf8");
 const studentActivityResult = await readFile(new URL("../src/components/StudentActivityResult.tsx", import.meta.url), "utf8");
 assert.match(chatAttachmentMigration, /image\/heic[\s\S]+video\/quicktime/);
+assert.match(chatImageMigration, /image\/avif[\s\S]+image\/bmp/);
+assert.match(studentPortal, /isInlineChatImage\(m\.attachment_type\)/);
+assert.match(teacherDashboardSource, /isInlineChatImage\(m\.attachment_type\)/);
 assert.match(chatAttachmentMigration, /bucket\.id = 'class-work'[\s\S]+allowed_mime_types IS NOT NULL/);
 assert.match(chatAttachmentModule, /\.heic[\s\S]+\.mov/);
 assert.match(studentPortal, /accept=\{CHAT_ATTACHMENT_ACCEPT\}/);
