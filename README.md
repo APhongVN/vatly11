@@ -17,6 +17,8 @@ Migration nằm trong `supabase/migrations`. Trước khi áp dụng lên projec
 Có thể áp dụng migration qua Supabase CLI sau khi liên kết đúng project bằng `npx supabase link`, rồi chạy `npx supabase db push`. Render chỉ triển khai mã ứng dụng; việc cập nhật schema Supabase là bước riêng. Sau khi chạy migration, kiểm tra Auth, RLS, Storage buckets và luồng tải tài liệu.
 
 Bản hiện tại có thêm các migration bắt buộc `20261031002700_rubric_document_import.sql`, `20261031002800_teacher_final_feedback.sql` và `20261031002900_submission_api_rate_limit.sql`. Chúng lần lượt lưu tệp gốc của ma trận chấm điểm, tách nhận xét cuối của giáo viên và bảo vệ các route nộp bài qua giới hạn tần suất phía server. Áp dụng toàn bộ theo thứ tự số trước khi mở tài khoản/lớp học thật.
+
+Migration `20261101000200_group_assignment_classes.sql` bổ sung phạm vi lớp cho bài tập nhóm. Bài mới cần chọn một lớp hoặc tất cả lớp; bài cũ có `class_name` rỗng vẫn áp dụng cho toàn bộ danh sách. Áp dụng migration này trước khi sử dụng chức năng tạo hoặc chia lại nhóm theo lớp.
 ### Nhập và xuất ma trận chấm
 
 Giáo viên có thể nhập `.docx`, `.xlsx`, `.pdf`, `.txt`, `.md`, `.csv` hoặc ảnh PNG/JPG/WebP khi tạo bài, sửa bài hay mở chấm điểm. Công thức Word được chuyển sang dạng xem được; PDF scan và ảnh dùng route OCR có xác thực. Mỗi file tối đa 10 MB; PDF đọc tối đa 30 trang và OCR tối đa 5 trang scan; nội dung trích tối đa 20.000 ký tự. Hệ thống giữ file gốc trong Storage riêng tư để giáo viên tải lại, còn báo cáo Excel có sheet **Ma trận chấm điểm** cho bài cá nhân và nhóm. Cô cần rà lại nội dung OCR/công thức trước khi chấm.

@@ -211,6 +211,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [newGroupDeadline, setNewGroupDeadline] = useState("");
   const [newGroupDocUrl, setNewGroupDocUrl] = useState("");
   const [newGroupRubric, setNewGroupRubric] = useState("");
+  const [newGroupClassName, setNewGroupClassName] = useState("__choose__");
   const [numGroups, setNumGroups] = useState(4);
   const [maxStudentsPerGroup, setMaxStudentsPerGroup] = useState(6);
   const [currentGroupMembers, setCurrentGroupMembers] = useState<any[]>([]);
@@ -661,11 +662,14 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     e.preventDefault();
     const title = newGroupTitle.trim();
     if (!title) return alert("Nhập tên bài tập nhóm trước khi lưu.");
+    if (newGroupClassName === "__choose__") return alert("Hãy chọn lớp nhận bài nhóm hoặc chọn tất cả lớp.");
+    const className = newGroupClassName === "__all__" ? null : newGroupClassName.trim();
+    const targetStudents = className ? filterStudentRoster(students, className, "") : students;
     if (!Number.isInteger(numGroups) || numGroups < 1 || numGroups > 50 || !Number.isInteger(maxStudentsPerGroup) || maxStudentsPerGroup < 1 || maxStudentsPerGroup > 100) {
       return alert("Số nhóm phải từ 1–50 và sĩ số tối đa mỗi nhóm phải từ 1–100.");
     }
-    if (!students.length) return alert("Hãy nhập danh sách học sinh trước khi chia nhóm.");
-    if (students.length > numGroups * maxStudentsPerGroup) return alert(`Sức chứa hiện tại là ${numGroups * maxStudentsPerGroup} học sinh, chưa đủ cho lớp có ${students.length} em. Hãy tăng số nhóm hoặc sĩ số tối đa.`);
+    if (!targetStudents.length) return alert(className ? `Lớp ${className} chưa có hồ sơ học sinh.` : "Hãy nhập danh sách học sinh trước khi chia nhóm.");
+    if (targetStudents.length > numGroups * maxStudentsPerGroup) return alert(`Sức chứa hiện tại là ${numGroups * maxStudentsPerGroup} học sinh, chưa đủ cho lớp có ${targetStudents.length} em. Hãy tăng số nhóm hoặc sĩ số tối đa.`);
 
     let deadline: string | null = null;
     try { deadline = newGroupDeadline ? new Date(newGroupDeadline).toISOString() : null; }
@@ -678,29 +682,31 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         group_name: `Nhóm ${index + 1}`,
         group_assignment_members: [] as any[],
       }));
-      students.forEach((student, index) => {
+      targetStudents.forEach((student: any, index: number) => {
         const group = groups[index % groups.length];
         group.group_assignment_members.push({ id: `${group.id}-${student.id}`, group_id: group.id, student_id: student.id, students: student });
       });
-      const assignment = { id: assignmentId, title, description: newGroupDesc.trim(), deadline, document_url: newGroupDocUrl.trim() || null, rubric: newGroupRubric.trim(), group_assignment_groups: groups };
+      const assignment = { id: assignmentId, title, description: newGroupDesc.trim(), deadline, document_url: newGroupDocUrl.trim() || null, rubric: newGroupRubric.trim(), class_name: className, group_assignment_groups: groups };
       setGroupAssignments((current) => [assignment, ...current]);
       setCurrentGroupMembers(groups); setExpandedGroupAct(assignmentId); setGroupRubricText(newGroupRubric.trim());
       setNewGroupTitle(""); setNewGroupDesc(""); setNewGroupDeadline(""); setNewGroupDocUrl(""); setNewGroupRubric("");
-      setPreviewNotice(`Đã tạo thử “${title}” và phân ${students.length} học sinh vào ${numGroups} nhóm.`);
+      setPreviewNotice(`Đã tạo thử “${title}” và phân ${targetStudents.length} học sinh vào ${numGroups} nhóm.`);
       return;
     }
 
-    const { data: assignmentId, error } = await supabase.rpc("create_group_assignment_with_groups", {
+    const { data: assignmentId, error } = await supabase.rpc("create_group_assignment_for_class", {
       p_title: title,
       p_description: newGroupDesc.trim(),
       p_deadline: deadline,
       p_document_url: newGroupDocUrl.trim() || null,
       p_rubric: newGroupRubric.trim(),
+      p_class_name: className,
       p_group_count: numGroups,
       p_max_students: maxStudentsPerGroup,
     });
     if (error || !assignmentId) {
-      alert("Không tạo được bài tập nhóm. Không có dữ liệu dở dang được lưu. " + (error?.message || "Máy chủ chưa trả mã bài tập."));
+      const detail = error?.code === "PGRST202" ? "Cần áp dụng migration 20261101000200_group_assignment_classes.sql trên Supabase." : error?.message || "Máy chủ chưa trả mã bài tập.";
+      alert("Không tạo được bài tập nhóm. Không có dữ liệu dở dang được lưu. " + detail);
       return;
     }
 
@@ -709,7 +715,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     setNewGroupDeadline("");
     setNewGroupDocUrl("");
     setNewGroupRubric("");
-    alert(`Đã tạo bài tập nhóm và chia đủ ${students.length} học sinh thành ${numGroups} nhóm.`);
+    alert(`Đã tạo bài tập nhóm cho ${className || "tất cả lớp"} và chia ${targetStudents.length} học sinh thành ${numGroups} nhóm.`);
     await fetchData();
   };
 
@@ -829,19 +835,22 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
   const createGroupsForAssignment = async (assignId: string, isRandom: boolean) => {
     if (regroupingAssignmentId) return;
-    if (!students.length) return alert("Hãy nhập danh sách học sinh trước khi chia nhóm.");
-    if (students.length > numGroups * maxStudentsPerGroup) return alert(`Sức chứa hiện tại là ${numGroups * maxStudentsPerGroup} học sinh, chưa đủ cho lớp có ${students.length} em.`);
+    const assignment = groupAssignments.find((item) => item.id === assignId);
+    const className = assignment?.class_name || "";
+    const targetStudents = className ? filterStudentRoster(students, className, "") : students;
+    if (!targetStudents.length) return alert(className ? `Lớp ${className} chưa có hồ sơ học sinh.` : "Hãy nhập danh sách học sinh trước khi chia nhóm.");
+    if (targetStudents.length > numGroups * maxStudentsPerGroup) return alert(`Sức chứa hiện tại là ${numGroups * maxStudentsPerGroup} học sinh, chưa đủ cho lớp có ${targetStudents.length} em.`);
     const submittedCount = groupSubmissions.filter((submission) => submission.assignment_id === assignId).length;
     if (submittedCount > 0) return alert("Bài nhóm đã có bài nộp nên không thể đổi thành viên. Hãy tạo bài nhóm mới nếu cần chia lại để giữ đúng lịch sử và quyền xem bài.");
-    if (!confirm(`Phân ${students.length} học sinh vào ${numGroups} nhóm${isRandom ? " ngẫu nhiên" : " theo danh sách"}?`)) return;
+    if (!confirm(`Phân ${targetStudents.length} học sinh${className ? ` của lớp ${className}` : " của tất cả lớp"} vào ${numGroups} nhóm${isRandom ? " ngẫu nhiên" : " theo danh sách"}?`)) return;
 
     if (previewMode) {
-      const ordered = isRandom ? [...students].sort(() => Math.random() - 0.5) : [...students];
+      const ordered = isRandom ? [...targetStudents].sort(() => Math.random() - 0.5) : [...targetStudents];
       const groups = Array.from({ length: numGroups }, (_, index) => ({ id: `${assignId}-${index + 1}`, assignment_id: assignId, group_number: index + 1, group_name: `Nhóm ${index + 1}`, group_assignment_members: [] as any[] }));
       ordered.forEach((student, index) => groups[index % groups.length].group_assignment_members.push({ id: `${groups[index % groups.length].id}-${student.id}`, group_id: groups[index % groups.length].id, student_id: student.id, students: student }));
       setCurrentGroupMembers(groups);
       setGroupAssignments((current) => current.map((assignment) => assignment.id === assignId ? { ...assignment, group_assignment_groups: groups } : assignment));
-      setPreviewNotice(`Đã chia lại thử ${students.length} học sinh vào ${numGroups} nhóm${isRandom ? " ngẫu nhiên" : " theo danh sách"}.`);
+      setPreviewNotice(`Đã chia lại thử ${targetStudents.length} học sinh vào ${numGroups} nhóm${isRandom ? " ngẫu nhiên" : " theo danh sách"}.`);
       return;
     }
 
@@ -854,9 +863,9 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         p_random: isRandom,
       });
       if (error) throw error;
-      if (typeof data !== "number" || data !== students.length) throw new Error("Máy chủ chưa xác nhận đủ số học sinh được chia nhóm.");
+      if (typeof data !== "number" || data !== targetStudents.length) throw new Error("Máy chủ chưa xác nhận đủ số học sinh được chia nhóm.");
       await Promise.all([fetchGroupDetails(assignId), fetchData()]);
-      alert(`Đã chia ${data} học sinh thành ${numGroups} nhóm.`);
+      alert(`Đã chia ${data} học sinh lớp ${className || "tất cả lớp"} thành ${numGroups} nhóm.`);
     } catch (error) {
       alert("Không chia lại được nhóm; dữ liệu cũ vẫn được giữ. " + (error instanceof Error ? error.message : "Lỗi cơ sở dữ liệu."));
     } finally {
@@ -2135,6 +2144,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const newActivityChapters = curriculumChapters.filter((chapter) => chapter.course_id === newActCourseId);
   const studentClassOptions = getStudentClassNames(students);
   const visibleStudents = filterStudentRoster(students, studentClassFilter, searchTerm);
+  const groupTargetCount = newGroupClassName === "__all__" ? students.length : newGroupClassName === "__choose__" ? 0 : filterStudentRoster(students, newGroupClassName, "").length;
 
   // Thống kê phổ điểm
   const gradedSubs = submissions.filter(s => s.ai_score !== null && s.ai_score !== -1);
@@ -2816,7 +2826,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 <PlusCircle className="w-5 h-5 text-orange-600" /> Tạo bài tập nhóm mới
               </h3>
 
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-3 gap-4">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">Tên bài tập nhóm *</label>
                   <input value={newGroupTitle} onChange={e => setNewGroupTitle(e.target.value)} placeholder="VD: Thuyết trình ứng dụng Tụ điện trong thực tiễn..." className="w-full border p-2.5 rounded-xl text-sm outline-none bg-slate-50/50" required />
@@ -2824,6 +2834,15 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">Hạn chót nộp bài</label>
                   <input type="datetime-local" value={newGroupDeadline} onChange={e => setNewGroupDeadline(e.target.value)} className="w-full border p-2.5 rounded-xl text-sm outline-none bg-slate-50/50" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Lớp nhận bài *</label>
+                  <select required value={newGroupClassName} onChange={(event) => setNewGroupClassName(event.target.value)} className="w-full border p-2.5 rounded-xl text-sm outline-none bg-slate-50/50">
+                    <option value="__choose__" disabled>Chọn lớp…</option>
+                    <option value="__all__">Tất cả lớp</option>
+                    {studentClassOptions.map((className) => <option key={className} value={className}>{className}</option>)}
+                  </select>
+                  <p className="mt-1 text-[10px] text-slate-500">Sẽ phân {groupTargetCount} học sinh vào nhóm.</p>
                 </div>
               </div>
 
@@ -2890,7 +2909,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                         <Layers className="w-5 h-5 text-orange-600" /> {gAct.title}
                       </h3>
                       <p className="text-xs text-slate-500 mt-1">
-                        {gAct.description || "Không có mô tả"} • Hạn: {gAct.deadline ? new Date(gAct.deadline).toLocaleString('vi-VN') : 'Không giới hạn'}
+                        {gAct.description || "Không có mô tả"} • Lớp: {gAct.class_name || "Tất cả lớp"} • Hạn: {gAct.deadline ? new Date(gAct.deadline).toLocaleString('vi-VN') : 'Không giới hạn'}
                       </p>
                       {gAct.document_url && (
                         <a href={gAct.document_url} target="_blank" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 text-xs text-blue-600 underline font-semibold mt-1">
