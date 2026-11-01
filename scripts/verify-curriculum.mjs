@@ -296,6 +296,13 @@ const activityResources = await readFile(new URL("../src/components/ActivityReso
 assert.match(activityResources, /\.download\(item\.storage_path\)/);
 assert.match(activityResources, /getResourceDownloadName\(item\.storage_path, item\.title\)/);
 assert.match(activityResources, /role="alert"/);
+assert.match(activityResources, /const \[loading, setLoading\] = useState\(true\)/);
+assert.match(activityResources, /if \(result\.error\) throw result\.error/);
+assert.match(activityResources, /finally \{\s*if \(active\) setLoading\(false\)/);
+assert.match(activityResources, /role="status" aria-live="polite"/);
+assert.match(activityResources, /setLoadError\("Chưa tải được học liệu/);
+assert.match(activityResources, /Thử tải lại/);
+assert.ok(activityResources.indexOf("if (loadError)") < activityResources.indexOf("if (!items.length) return null"), "A failed resource query must not disappear as an empty library.");
 assert.doesNotMatch(activityResources, /createSignedUrl\(item\.storage_path[\s\S]*window\.open/);
 console.log("Student lesson resource downloads preserve filenames and report access errors.");
 

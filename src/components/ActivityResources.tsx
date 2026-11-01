@@ -12,19 +12,35 @@ export default function ActivityResources({ activityId }: { activityId: number |
   const [items, setItems] = useState<PublishedResource[]>([]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let active = true;
-    const query = activityId === null
-      ? supabase.from("learning_resources").select(RESOURCE_SELECT).is("activity_id", null).eq("is_published", true).order("display_order")
-      : supabase.from("learning_resources").select(RESOURCE_SELECT).eq("activity_id", activityId).eq("is_published", true).order("display_order");
-    query.then(({ data }) => {
-      if (active && data) setItems(data as PublishedResource[]);
-    });
+    setLoading(true);
+    setLoadError("");
+    setError("");
+    setItems([]);
+    const loadResources = async () => {
+      try {
+        const result = activityId === null
+          ? await supabase.from("learning_resources").select(RESOURCE_SELECT).is("activity_id", null).eq("is_published", true).order("display_order")
+          : await supabase.from("learning_resources").select(RESOURCE_SELECT).eq("activity_id", activityId).eq("is_published", true).order("display_order");
+        if (result.error) throw result.error;
+        if (active) setItems((result.data || []) as PublishedResource[]);
+      } catch {
+        if (active) {
+          setItems([]);
+          setLoadError("Chưa tải được học liệu. Kiểm tra kết nối và quyền truy cập, rồi thử lại.");
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void loadResources();
     return () => { active = false; };
-  }, [activityId]);
-
-  if (!items.length) return null;
+  }, [activityId, retryCount]);
   const downloadResource = async (item: PublishedResource) => {
     setError("");
     if (item.source_url) {
@@ -51,6 +67,9 @@ export default function ActivityResources({ activityId }: { activityId: number |
     }
   };
 
+  if (loading) return <section role="status" aria-live="polite" className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500 shadow-sm"><span className="flex items-center gap-2"><LoaderCircle className="h-4 w-4 animate-spin" />Đang tải học liệu…</span></section>;
+  if (loadError) return <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm"><p role="alert" className="text-sm text-amber-900">{loadError}</p><button type="button" onClick={() => setRetryCount((count) => count + 1)} className="mt-3 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-900 hover:bg-amber-100">Thử tải lại</button></section>;
+  if (!items.length) return null;
   return <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
     <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900"><FileText className="h-5 w-5 text-blue-700" /> {activityId === null ? "Học liệu chung của lớp" : "Học liệu của hoạt động"}</h2>
     {error && <p role="alert" className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p>}
