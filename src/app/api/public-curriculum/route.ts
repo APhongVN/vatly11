@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import { createSupabasePublicClient } from "@/lib/supabase-public";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,7 @@ async function readAllRows<T>(
 
 export async function GET() {
   try {
-    const supabase = createSupabaseAdminClient();
+    const supabase = createSupabasePublicClient();
     const [courses, chapters, activities] = await Promise.all([
       readAllRows((from, to) => supabase.from("courses").select("id,title,description,grade_level,subject").order("id").range(from, to), "Môn học"),
       readAllRows((from, to) => supabase.from("chapters").select("id,title,description,course_id").order("id").range(from, to), "Chương học"),

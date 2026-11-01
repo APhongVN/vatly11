@@ -7,7 +7,7 @@ import ActivityInteractions from "@/components/ActivityInteractions";
 import ActivityResources from "@/components/ActivityResources";
 import SubmissionWindow from "@/components/SubmissionWindow";
 import { filterStudentTable, isTeacherOnlyText } from "@/lib/curriculum-privacy.mjs";
-import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import { createSupabasePublicClient } from "@/lib/supabase-public";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +72,7 @@ export default async function ActivityPage({ params }: { params: Promise<{ id: s
     deadline: string | null;
   } | null = null;
   try {
-    const supabase = createSupabaseAdminClient();
+    const supabase = createSupabasePublicClient();
     const { data, error } = await supabase
       .from("activities")
       .select("id,title,description,phase,duration,deliverable,status,accepting_submissions,deadline")
