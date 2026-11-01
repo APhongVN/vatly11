@@ -22,6 +22,7 @@ import CapacitanceLabSettings from "@/components/CapacitanceLabSettings";
 import { formatVietnameseName, getFirstName, sortVietnameseNames, isHeaderOrInvalidCell } from "@/lib/vietnameseName";
 import { ACTIVITIES } from "@/lib/data/activities";
 import { extractStudentNamesFromText } from "@/lib/student-import.mjs";
+import { splitExcelCellText } from "@/lib/excel-cell-content.mjs";
 
 const privateFileHref = (value: string) => value.startsWith("http") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") || value.startsWith("group-rubrics/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
 const rubricUploadMimeType = (file: File) => {
@@ -1635,13 +1636,18 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     const paleAmber = "FEF3C7";
     const paleRose = "FEE2E2";
     const white = "FFFFFF";
+    const longContentChunks: Array<{ source: string; recordId: string; field: string; part: number; total: number; content: string }> = [];
     const formulaSafe = (value: unknown) => {
       if (typeof value !== "string") return value ?? "";
       return /^[=+\-@]/.test(value) ? `'${value}` : value;
     };
-    const cellText = (value: unknown, maxLength = 30_000) => {
+    const cellText = (value: unknown, source: string, recordId: unknown, field: string, maxLength = 30_000) => {
       const text = typeof value === "string" ? value : value && typeof value === "object" ? JSON.stringify(value) || String(value) : String(value ?? "");
-      return formulaSafe(text.length > maxLength ? `${text.slice(0, maxLength)}… [đã rút gọn ô Excel]` : text);
+      if (text.length <= maxLength) return formulaSafe(text);
+      const parts = splitExcelCellText(text, maxLength);
+      const id = String(recordId ?? "");
+      parts.forEach((content, index) => longContentChunks.push({ source, recordId: id, field, part: index + 1, total: parts.length, content }));
+      return formulaSafe(`Nội dung dài: sheet "Nội dung dài" · ${source} · ${id} · ${field} (${parts.length} phần)`);
     };
     const activityById = new Map(reportActivities.map((activity: any) => [String(activity.id), activity]));
     const studentById = new Map(reportStudents.map((student: any) => [String(student.id), student]));
@@ -1868,7 +1874,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     styleSheet(submissionSheet, "Bài nộp và chấm điểm", "Điểm giáo viên là điểm chính thức; điểm AI chỉ là gợi ý. Học sinh được ghép bằng mã hồ sơ, không ghép theo tên.", ["Mã bài nộp", "Mã học sinh", "Học sinh", "Lớp", "Mã bài", "Tên bài", "Điểm giáo viên", "Gợi ý AI", "Trạng thái", "Thời điểm nộp", "Bài làm", "Nhận xét AI", "Nhận xét GV", "Tệp / liên kết"], [38, 38, 26, 15, 10, 36, 16, 14, 30, 21, 52, 46, 46, 42]);
     reportSubmissions.forEach((submission: any) => {
       const student: any = studentById.get(String(submission.student_id)) || {};
-      submissionSheet.addRow([formulaSafe(submission.id), formulaSafe(submission.student_id || ""), formulaSafe(student.full_name || submission.student_name), formulaSafe(classNameOf(student)), submission.activity_id, formulaSafe(activityTitle(submission.activity_id)), approvedScore(submission), aiScoreText(submission.ai_score), reviewStatus(submission), submission.submitted_at ? new Date(submission.submitted_at) : null, cellText(submission.answer_text || submission.answer || ""), cellText(submission.ai_feedback || ""), cellText(submission.teacher_feedback || ""), cellText(submission.file_url || "")]);
+      submissionSheet.addRow([formulaSafe(submission.id), formulaSafe(submission.student_id || ""), formulaSafe(student.full_name || submission.student_name), formulaSafe(classNameOf(student)), submission.activity_id, formulaSafe(activityTitle(submission.activity_id)), approvedScore(submission), aiScoreText(submission.ai_score), reviewStatus(submission), submission.submitted_at ? new Date(submission.submitted_at) : null, cellText(submission.answer_text || submission.answer || "", "Bài nộp cá nhân", submission.id, "Bài làm"), cellText(submission.ai_feedback || "", "Bài nộp cá nhân", submission.id, "Nhận xét AI"), cellText(submission.teacher_feedback || "", "Bài nộp cá nhân", submission.id, "Nhận xét giáo viên"), cellText(submission.file_url || "", "Bài nộp cá nhân", submission.id, "Tệp / liên kết")]);
     });
     styleDataRows(submissionSheet, [7, 8], [10]);
 
@@ -1876,7 +1882,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     styleSheet(evidenceSheet, "Hồ sơ hoạt động và thí nghiệm", "Nội dung evidence được giữ dưới dạng JSON để bảo toàn cấu trúc; điểm AI và điểm giáo viên nằm ở cột riêng.", ["Mã hồ sơ", "Mã học sinh", "Học sinh", "Lớp", "Mã bài", "Tên bài", "Hoàn thành lúc", "Điểm tự đánh giá", "Thang điểm", "Điểm AI", "Điểm giáo viên", "Trạng thái", "Nội dung / bằng chứng", "Nhận xét AI", "Nhận xét GV"], [38, 38, 26, 15, 10, 36, 21, 16, 13, 13, 16, 30, 54, 42, 42]);
     reportEvidence.forEach((record: any) => {
       const student: any = studentById.get(String(record.student_id)) || {};
-      evidenceSheet.addRow([formulaSafe(record.id), formulaSafe(record.student_id), formulaSafe(student.full_name || "Hồ sơ đã xóa"), formulaSafe(classNameOf(student)), record.activity_id, formulaSafe(activityTitle(record.activity_id)), record.completed_at ? new Date(record.completed_at) : null, scoreText(record.score), scoreText(record.score_max), aiScoreText(record.ai_score), scoreText(record.teacher_score), reviewStatus(record, record.teacher_score), cellText(record.evidence), cellText(record.ai_feedback || ""), cellText(record.teacher_feedback || "")]);
+      evidenceSheet.addRow([formulaSafe(record.id), formulaSafe(record.student_id), formulaSafe(student.full_name || "Hồ sơ đã xóa"), formulaSafe(classNameOf(student)), record.activity_id, formulaSafe(activityTitle(record.activity_id)), record.completed_at ? new Date(record.completed_at) : null, scoreText(record.score), scoreText(record.score_max), aiScoreText(record.ai_score), scoreText(record.teacher_score), reviewStatus(record, record.teacher_score), cellText(record.evidence, "Sổ tay hoạt động", record.id, "Nội dung / bằng chứng"), cellText(record.ai_feedback || "", "Sổ tay hoạt động", record.id, "Nhận xét AI"), cellText(record.teacher_feedback || "", "Sổ tay hoạt động", record.id, "Nhận xét giáo viên")]);
     });
     styleDataRows(evidenceSheet, [8, 9, 10, 11], [7]);
 
@@ -1894,7 +1900,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     reportGroupAssignments.forEach((assignment: any) => {
       const assignmentSubmissions = groupSubmissionsByAssignment.get(String(assignment.id)) || [];
       const assignmentScores = assignmentSubmissions.map((submission: any) => submission.final_score).map(scoreText).filter((score): score is number => score !== null);
-      groupSheet.addRow([formulaSafe(assignment.id), formulaSafe(assignment.title), assignment.deadline ? new Date(assignment.deadline) : null, groupCounts.get(String(assignment.id)) || 0, assignmentSubmissions.length, assignmentScores.length ? assignmentScores.reduce((sum, score) => sum + score, 0) / assignmentScores.length : null, assignmentSubmissions.length ? "Có bài nộp" : "Chưa nộp", cellText(assignment.description || ""), cellText(assignment.rubric || ""), formulaSafe(assignment.rubric_document_name || ""), formulaSafe(assignment.rubric_document_path || "")]);
+      groupSheet.addRow([formulaSafe(assignment.id), formulaSafe(assignment.title), assignment.deadline ? new Date(assignment.deadline) : null, groupCounts.get(String(assignment.id)) || 0, assignmentSubmissions.length, assignmentScores.length ? assignmentScores.reduce((sum, score) => sum + score, 0) / assignmentScores.length : null, assignmentSubmissions.length ? "Có bài nộp" : "Chưa nộp", cellText(assignment.description || "", "Bài tập nhóm", assignment.id, "Mô tả"), cellText(assignment.rubric || "", "Bài tập nhóm", assignment.id, "Rubric"), formulaSafe(assignment.rubric_document_name || ""), formulaSafe(assignment.rubric_document_path || "")]);
     });
     styleDataRows(groupSheet, [6], [3]);
 
@@ -1916,7 +1922,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     reportGroupSubmissions.forEach((submission: any) => {
       const group: any = groupsById.get(String(submission.group_id));
       const assignment: any = groupAssignmentById.get(String(submission.assignment_id));
-      groupSubmissionSheet.addRow([formulaSafe(submission.id), formulaSafe(submission.assignment_id), formulaSafe(assignment?.title || "Bài tập đã xóa"), formulaSafe(submission.group_id || ""), formulaSafe(group?.group_name || submission.group_name || ""), approvedScore(submission), aiScoreText(submission.ai_score), reviewStatus(submission), submission.submitted_at ? new Date(submission.submitted_at) : null, cellText(submission.answer || ""), cellText(submission.ai_feedback || ""), cellText(submission.teacher_feedback || ""), cellText(submission.file_url || "")]);
+      groupSubmissionSheet.addRow([formulaSafe(submission.id), formulaSafe(submission.assignment_id), formulaSafe(assignment?.title || "Bài tập đã xóa"), formulaSafe(submission.group_id || ""), formulaSafe(group?.group_name || submission.group_name || ""), approvedScore(submission), aiScoreText(submission.ai_score), reviewStatus(submission), submission.submitted_at ? new Date(submission.submitted_at) : null, cellText(submission.answer || "", "Bài nộp nhóm", submission.id, "Bài làm"), cellText(submission.ai_feedback || "", "Bài nộp nhóm", submission.id, "Nhận xét AI"), cellText(submission.teacher_feedback || "", "Bài nộp nhóm", submission.id, "Nhận xét giáo viên"), cellText(submission.file_url || "", "Bài nộp nhóm", submission.id, "Tệp / liên kết")]);
     });
     styleDataRows(groupSubmissionSheet, [6, 7], [9]);
 
@@ -1927,14 +1933,30 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       const assignment: any = groupAssignmentById.get(String(submission.assignment_id));
       const members = Array.isArray(group?.group_assignment_members) ? group.group_assignment_members : [];
       if (members.length === 0) {
-        groupProgressSheet.addRow([formulaSafe(submission.id), formulaSafe(submission.assignment_id), formulaSafe(assignment?.title || "Bài tập đã xóa"), formulaSafe(submission.group_id || ""), formulaSafe(group?.group_name || submission.group_name || ""), "", "Chưa gắn học sinh", "", approvedScore(submission), aiScoreText(submission.ai_score), reviewStatus(submission), submission.submitted_at ? new Date(submission.submitted_at) : null, cellText(submission.file_url || "")]);
+        groupProgressSheet.addRow([formulaSafe(submission.id), formulaSafe(submission.assignment_id), formulaSafe(assignment?.title || "Bài tập đã xóa"), formulaSafe(submission.group_id || ""), formulaSafe(group?.group_name || submission.group_name || ""), "", "Chưa gắn học sinh", "", approvedScore(submission), aiScoreText(submission.ai_score), reviewStatus(submission), submission.submitted_at ? new Date(submission.submitted_at) : null, cellText(submission.file_url || "", "Bài nộp nhóm", submission.id, "Tệp / liên kết")]);
       }
       members.forEach((member: any) => {
         const student: any = studentById.get(String(member.student_id)) || {};
-        groupProgressSheet.addRow([formulaSafe(submission.id), formulaSafe(submission.assignment_id), formulaSafe(assignment?.title || "Bài tập đã xóa"), formulaSafe(submission.group_id || ""), formulaSafe(group?.group_name || submission.group_name || ""), formulaSafe(member.student_id), formulaSafe(student.full_name || "Hồ sơ đã xóa"), formulaSafe(classNameOf(student)), approvedScore(submission), aiScoreText(submission.ai_score), reviewStatus(submission), submission.submitted_at ? new Date(submission.submitted_at) : null, cellText(submission.file_url || "")]);
+        groupProgressSheet.addRow([formulaSafe(submission.id), formulaSafe(submission.assignment_id), formulaSafe(assignment?.title || "Bài tập đã xóa"), formulaSafe(submission.group_id || ""), formulaSafe(group?.group_name || submission.group_name || ""), formulaSafe(member.student_id), formulaSafe(student.full_name || "Hồ sơ đã xóa"), formulaSafe(classNameOf(student)), approvedScore(submission), aiScoreText(submission.ai_score), reviewStatus(submission), submission.submitted_at ? new Date(submission.submitted_at) : null, cellText(submission.file_url || "", "Bài nộp nhóm", submission.id, "Tệp / liên kết")]);
       });
     });
     styleDataRows(groupProgressSheet, [9, 10], [12]);
+
+    summary.getCell("A17").value = "Phần nội dung dài";
+    summary.getCell("B17").value = longContentChunks.length;
+    summary.getCell("C17").value = longContentChunks.length ? "Nội dung vượt giới hạn ô Excel được tách nguyên văn trong sheet Nội dung dài." : "Không có ô nào vượt giới hạn hiển thị.";
+    summary.getRow(17).eachCell((cell) => {
+      cell.font = { name: "Aptos", size: 10, color: { argb: "0F172A" } };
+      cell.alignment = { vertical: "top", wrapText: true };
+      cell.border = { bottom: { style: "hair", color: { argb: "CBD5E1" } } };
+    });
+
+    if (longContentChunks.length) {
+      const longTextSheet = workbook.addWorksheet("Nội dung dài");
+      styleSheet(longTextSheet, "Nội dung dài được tách nguyên văn", "Các phần ghép theo Mã bản ghi + Trường + Phần; thứ tự tăng dần để khôi phục nguyên văn.", ["Sheet nguồn", "Mã bản ghi", "Trường", "Phần", "Tổng phần", "Nội dung nguyên văn"], [24, 38, 26, 12, 14, 100]);
+      longContentChunks.forEach((chunk) => longTextSheet.addRow([formulaSafe(chunk.source), formulaSafe(chunk.recordId), formulaSafe(chunk.field), chunk.part, chunk.total, formulaSafe(chunk.content)]));
+      styleDataRows(longTextSheet);
+    }
 
     const buffer = await workbook.xlsx.writeBuffer();
     const bytes = new Uint8Array(buffer as ArrayBufferLike);

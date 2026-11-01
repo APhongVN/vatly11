@@ -12,6 +12,14 @@ import { getPeerDiscussionWindow, isPeerChoiceSet, PEER_DISCUSSION_DURATION_MS, 
 import { readFile } from "node:fs/promises";
 import { csvSafeCell } from "../src/lib/csv-export.mjs";
 import { isValidQUVariablePlan } from "../src/lib/virtual-lab-validation.mjs";
+import { splitExcelCellText } from "../src/lib/excel-cell-content.mjs";
+
+assert.deepEqual(splitExcelCellText("ngắn"), ["ngắn"]);
+const longExcelText = "A".repeat(30_001);
+assert.deepEqual(splitExcelCellText(longExcelText).map((part) => part.length), [30_000, 1]);
+assert.equal(splitExcelCellText(longExcelText).join(""), longExcelText, "Long report text must be recoverable without truncation.");
+assert.deepEqual(splitExcelCellText(`${"a".repeat(9)}😊b`, 10), ["a".repeat(9), "😊b"], "Excel text splitting must not break Vietnamese-adjacent Unicode symbols.");
+assert.throws(() => splitExcelCellText("x", 0), RangeError);
 
 assert.equal(csvSafeCell("=1+1"), "\"'=1+1\"");
 assert.equal(csvSafeCell("abc,def"), "\"abc,def\"");
@@ -160,7 +168,10 @@ assert.match(studentDashboard, /workbook\.addWorksheet\("Kết quả trắc nghi
 assert.match(studentDashboard, /workbook\.addWorksheet\("Phân nhóm"\)/);
 assert.match(studentDashboard, /workbook\.addWorksheet\("Bài nộp nhóm"\)/);
 assert.match(studentDashboard, /workbook\.addWorksheet\("Tiến độ nhóm theo HS"\)/);
+assert.match(studentDashboard, /workbook\.addWorksheet\("Nội dung dài"\)/);
 assert.match(studentDashboard, /groupSubmissionsByStudent/);
+assert.match(studentDashboard, /longContentChunks/);
+assert.match(studentDashboard, /splitExcelCellText\(text, maxLength\)/);
 assert.match(studentDashboard, /Mã học sinh.*Điểm giáo viên/);
 assert.match(studentDashboard, /Điểm chính thức trung bình/);
 assert.match(studentDashboard, /Không thể tạo báo cáo/);
