@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import { CHAT_ATTACHMENT_ACCEPT, chatAttachmentMimeType, MAX_CHAT_ATTACHMENT_BYTES } from "@/lib/chat-attachments.mjs";
 import {
   BookOpen, Clock, FileText, Download, MessageSquare, Send,
   ChevronRight, Lock, X, LogOut, ArrowLeft, CheckCircle2,
@@ -112,14 +113,15 @@ export default function HocSinhPage() {
     try {
       let attachment: Record<string, string> = {};
       if (chatFile) {
-        if (chatFile.size > 25 * 1024 * 1024) throw new Error("Tệp chat tối đa 25 MB.");
+        if (chatFile.size > MAX_CHAT_ATTACHMENT_BYTES) throw new Error("Tệp chat tối đa 25 MB.");
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("Phiên đăng nhập hết hạn. Em hãy đăng nhập lại.");
+        const contentType = chatAttachmentMimeType(chatFile);
         const safeName = chatFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const path = `chat/${user.id}/${Date.now()}-${safeName}`;
-        const { error: uploadError } = await supabase.storage.from("class-work").upload(path, chatFile, { upsert: false, contentType: chatFile.type || "application/octet-stream" });
+        const { error: uploadError } = await supabase.storage.from("class-work").upload(path, chatFile, { upsert: false, contentType });
         if (uploadError) throw uploadError;
-        attachment = { attachment_url: path, attachment_name: chatFile.name, attachment_type: chatFile.type || "application/octet-stream" };
+        attachment = { attachment_url: path, attachment_name: chatFile.name, attachment_type: contentType };
       }
       const { error } = await supabase.from("messages").insert([{ sender_name: student.full_name, content: newMsg.trim(), ...attachment }]);
       if (error) throw error;
@@ -658,7 +660,7 @@ export default function HocSinhPage() {
             </div>
 
             <form onSubmit={sendMessage} className="p-4 border-t bg-white flex gap-2">
-              <input type="file" onChange={(e) => setChatFile(e.target.files?.[0] || null)} className="max-w-28 text-[10px]" aria-label="Đính kèm tệp hoặc ảnh" />{chatFile && <button type="button" onClick={() => setChatFile(null)} className="max-w-24 truncate text-[10px]">{chatFile.name} ×</button>}<input
+              <input type="file" accept={CHAT_ATTACHMENT_ACCEPT} onChange={(e) => setChatFile(e.target.files?.[0] || null)} className="max-w-28 text-[10px]" aria-label="Đính kèm tệp hoặc ảnh" />{chatFile && <button type="button" onClick={() => setChatFile(null)} className="max-w-24 truncate text-[10px]">{chatFile.name} ×</button>}<input
                 value={newMsg}
                 onChange={e => setNewMsg(e.target.value)}
                 placeholder={isChatMuted ? "Giáo viên tạm khóa chat..." : "Nhập câu hỏi hoặc trao đổi cùng lớp..."}
