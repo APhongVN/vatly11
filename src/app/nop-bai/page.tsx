@@ -6,7 +6,7 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
-import RichTextEditor from "@/components/RichTextEditor";
+
 import { normalizeSubmissionFileUrl } from "@/lib/submission-validation";
 import {
   CheckCircle2, ArrowLeft, UploadCloud, FileText, Microscope,
