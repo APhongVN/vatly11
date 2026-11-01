@@ -382,7 +382,7 @@ assert.doesNotMatch(submissionPage, /Không có đáp án mẫu/);
 assert.match(submissionPage, /fetch\("\/api\/submissions"/);
 assert.doesNotMatch(submissionPage, /from\("submissions"\)\.insert/, "The browser must not write grades or submission records directly.");
 assert.match(submissionApi, /authorizeApi\(\["student"\], 12, "submission"\)/);
-assert.match(submissionApi, /normalizeSubmissionFileUrl\(body\?\.fileUrl, access\.user\.id\)/);
+assert.match(submissionApi, /normalizeSubmissionFileUrl\(payload\.fileUrl, access\.user\.id\)/);
 assert.match(submissionApi, /status: "pending"/);
 assert.doesNotMatch(submissionApi, /ai_score|final_score|ai_feedback/, "Submission API must reject client-controlled grades.");
 assert.match(submissionValidation, /url\.protocol !== "https:" && url\.protocol !== "http:"/);
@@ -390,6 +390,13 @@ assert.match(submissionValidation, /\^\$\{folder\}\/\$\{escapeRegExp\(userId\)\}
 assert.match(submissionRateLimitMigration, /WHEN 'submission' THEN 12/);
 assert.match(submissionRateLimitMigration, /WHEN 'group-submission' THEN 12/);
 assert.match(submissionRateLimitMigration, /auth\.role\(\) IS DISTINCT FROM 'service_role'/);
+for (const routeSource of [submissionApi, groupSubmissionApi]) {
+  assert.match(routeSource, /const MAX_REQUEST_BYTES = 96_000/);
+  assert.match(routeSource, /content-length[\s\S]*MAX_REQUEST_BYTES/);
+  assert.match(routeSource, /readBoundedRequestText\(request, MAX_REQUEST_BYTES\)/);
+  assert.match(routeSource, /RequestBodyTooLargeError/);
+  assert.doesNotMatch(routeSource, /request\.json\(\)/, "Submission APIs must bound the body before parsing JSON.");
+}
 assert.match(groupSubmissionApi, /authorizeApi\(\["student"\], 12, "group-submission"\)/);
 assert.match(groupSubmissionApi, /group_assignment_groups!inner\(assignment_id,group_number,group_name\)/);
 assert.match(groupSubmissionApi, /group\.assignment_id !== assignmentId/);

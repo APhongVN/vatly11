@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { authorizeApi } from "@/lib/api-security";
 import { normalizeSubmissionFileUrl } from "@/lib/submission-validation";
+import { readBoundedRequestText } from "@/lib/read-bounded-request.mjs";
 
 const MAX_ANSWER_LENGTH = 12_000;
+const MAX_REQUEST_BYTES = 96_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /** Server-owned creation/update of one group's submission. */
@@ -11,11 +13,19 @@ export async function POST(request: Request) {
   if ("response" in access) return access.response;
 
   try {
-    const body = await request.json();
-    const assignmentId = typeof body?.assignmentId === "string" ? body.assignmentId : "";
-    const groupId = typeof body?.groupId === "string" ? body.groupId : "";
-    const answer = typeof body?.answer === "string" ? body.answer.replace(/\0/g, "").trim() : "";
-    const fileUrl = normalizeSubmissionFileUrl(body?.fileUrl, access.user.id, "group-submissions");
+    const declaredLength = Number(request.headers.get("content-length") || 0);
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BYTES) {
+      return NextResponse.json({ error: "Bài nộp nhóm vượt quá dung lượng cho phép." }, { status: 413 });
+    }
+    const body: unknown = JSON.parse(await readBoundedRequestText(request, MAX_REQUEST_BYTES));
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Dữ liệu bài nộp nhóm không hợp lệ." }, { status: 400 });
+    }
+    const payload = body as Record<string, unknown>;
+    const assignmentId = typeof payload.assignmentId === "string" ? payload.assignmentId : "";
+    const groupId = typeof payload.groupId === "string" ? payload.groupId : "";
+    const answer = typeof payload.answer === "string" ? payload.answer.replace(/\0/g, "").trim() : "";
+    const fileUrl = normalizeSubmissionFileUrl(payload.fileUrl, access.user.id, "group-submissions");
     if (!UUID.test(assignmentId) || !UUID.test(groupId)) {
       return NextResponse.json({ error: "Bài tập hoặc nhóm không hợp lệ." }, { status: 400 });
     }
@@ -25,7 +35,7 @@ export async function POST(request: Request) {
     if (!answer && !fileUrl) {
       return NextResponse.json({ error: "Cần có nội dung bài làm hoặc tệp hợp lệ." }, { status: 400 });
     }
-    if (body?.fileUrl && !fileUrl) {
+    if (payload.fileUrl && !fileUrl) {
       return NextResponse.json({ error: "Đường dẫn tệp không hợp lệ." }, { status: 400 });
     }
 
@@ -65,7 +75,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Không thể lưu bài nộp nhóm lúc này." }, { status: 500 });
     }
     return NextResponse.json({ submission }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Dữ liệu bài nộp nhóm không hợp lệ." }, { status: 400 });
+  } catch (error) {
+    const tooLarge = error instanceof Error && error.name === "RequestBodyTooLargeError";
+    return NextResponse.json(
+      { error: tooLarge ? "Bài nộp nhóm vượt quá dung lượng cho phép." : "Dữ liệu bài nộp nhóm không hợp lệ." },
+      { status: tooLarge ? 413 : 400 },
+    );
   }
 }

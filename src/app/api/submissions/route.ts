@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { authorizeApi } from "@/lib/api-security";
 import { normalizeSubmissionFileUrl } from "@/lib/submission-validation";
+import { readBoundedRequestText } from "@/lib/read-bounded-request.mjs";
 
 const MAX_ANSWER_LENGTH = 12_000;
+const MAX_REQUEST_BYTES = 96_000;
 
 /**
  * The browser may upload a file to the student-owned storage prefix, but the
@@ -15,10 +17,18 @@ export async function POST(request: Request) {
   if ("response" in access) return access.response;
 
   try {
-    const body = await request.json();
-    const activityId = Number(body?.activityId);
-    const answer = typeof body?.answer === "string" ? body.answer.replace(/\0/g, "").trim() : "";
-    const fileUrl = normalizeSubmissionFileUrl(body?.fileUrl, access.user.id);
+    const declaredLength = Number(request.headers.get("content-length") || 0);
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BYTES) {
+      return NextResponse.json({ error: "Bài nộp vượt quá dung lượng cho phép." }, { status: 413 });
+    }
+    const body: unknown = JSON.parse(await readBoundedRequestText(request, MAX_REQUEST_BYTES));
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Dữ liệu bài nộp không hợp lệ." }, { status: 400 });
+    }
+    const payload = body as Record<string, unknown>;
+    const activityId = Number(payload.activityId);
+    const answer = typeof payload.answer === "string" ? payload.answer.replace(/\0/g, "").trim() : "";
+    const fileUrl = normalizeSubmissionFileUrl(payload.fileUrl, access.user.id);
 
     if (!Number.isInteger(activityId) || activityId < 1) {
       return NextResponse.json({ error: "Hoạt động không hợp lệ." }, { status: 400 });
@@ -29,7 +39,7 @@ export async function POST(request: Request) {
     if (!answer && !fileUrl) {
       return NextResponse.json({ error: "Cần có nội dung bài làm, tệp hoặc liên kết hợp lệ." }, { status: 400 });
     }
-    if (body?.fileUrl && !fileUrl) {
+    if (payload.fileUrl && !fileUrl) {
       return NextResponse.json({ error: "Liên kết hoặc đường dẫn tệp không hợp lệ." }, { status: 400 });
     }
 
@@ -63,7 +73,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Không thể lưu bài nộp lúc này." }, { status: 500 });
     }
     return NextResponse.json({ submission }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Dữ liệu bài nộp không hợp lệ." }, { status: 400 });
+  } catch (error) {
+    const tooLarge = error instanceof Error && error.name === "RequestBodyTooLargeError";
+    return NextResponse.json(
+      { error: tooLarge ? "Bài nộp vượt quá dung lượng cho phép." : "Dữ liệu bài nộp không hợp lệ." },
+      { status: tooLarge ? 413 : 400 },
+    );
   }
 }
