@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import ExcelJS from "exceljs";
+import { countAwaitingTeacherReview } from "@/lib/report-metrics.mjs";
 import {
   LogOut, Home, Video, Users, FileText, Bot, Upload, MessageSquare,
   Send, Calendar, Download, CheckCircle, Trash2, ArrowLeft, Search,
@@ -1794,7 +1795,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       return value === -1 ? null : value;
     };
     const approvedScore = (submission: any) => scoreText(submission.final_score);
-    const reviewStatus = (submission: any, officialScore = submission.final_score) => scoreText(officialScore) !== null ? "Đã duyệt điểm giáo viên" : aiScoreText(submission.ai_score) !== null ? "Có gợi ý AI · chờ giáo viên duyệt" : submission.status === "pending" ? "Chờ giáo viên xem" : String(submission.status || "Chưa rõ");
+    const reviewStatus = (submission: any, officialScore = submission.final_score) => scoreText(officialScore) !== null ? "Đã duyệt điểm giáo viên" : aiScoreText(submission.ai_score) !== null ? "Có gợi ý AI · chờ giáo viên duyệt" : submission.status === "pending" ? "Chờ giáo viên xem" : submission.completed_at ? "Đã nộp · chờ giáo viên xem" : submission.evidence !== undefined ? "Đang lưu tiến độ" : String(submission.status || "Chưa rõ");
     const classNameOf = (student: any) => student.class_name || "Chưa xếp lớp";
     const byKey = <T,>(rows: T[], keyOf: (row: T) => unknown) => {
       const result = new Map<string, T[]>();
@@ -1901,12 +1902,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     ].map(scoreText).filter((score): score is number => score !== null);
     const average = officialScores.length ? officialScores.reduce((total, score) => total + score, 0) / officialScores.length : null;
     const aiSuggestionCount = [reportSubmissions, reportEvidence, reportGroupSubmissions].flat().filter((record: any) => aiScoreText(record.ai_score) !== null).length;
-    const reviewableRecords = [
-      ...reportSubmissions.map((record: any) => ({ official: record.final_score, ai: record.ai_score })),
-      ...reportEvidence.map((record: any) => ({ official: record.teacher_score, ai: record.ai_score })),
-      ...reportGroupSubmissions.map((record: any) => ({ official: record.final_score, ai: record.ai_score })),
-    ];
-    const awaitingTeacherReview = reviewableRecords.filter((record) => scoreText(record.official) === null).length;
+    const awaitingTeacherReview = countAwaitingTeacherReview({
+      individualSubmissions: reportSubmissions,
+      activityEvidence: reportEvidence,
+      groupSubmissions: reportGroupSubmissions,
+    });
     const summary = workbook.addWorksheet("Tổng quan");
     styleSheet(summary, "Báo cáo lớp học Vật lí 11", `Thời điểm xuất: ${generatedAt.toLocaleString("vi-VN")} · Đã tải toàn bộ các bảng theo từng trang dữ liệu`, ["Chỉ số", "Giá trị", "Ghi chú"], [34, 18, 68]);
     summary.addRows([
@@ -1919,7 +1919,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       ["Bài nộp nhóm", reportGroupSubmissions.length, "Tổng kết bài nộp theo nhóm"],
       ["Bản ghi có điểm GV duyệt", officialScores.length, "Chỉ tính điểm chính thức do giáo viên chốt"],
       ["Điểm chính thức trung bình", average, average === null ? "Chưa có điểm giáo viên duyệt" : "Trung bình trên thang điểm 10; không trộn điểm AI"],
-      ["Bản ghi chờ giáo viên duyệt", awaitingTeacherReview, "Bản ghi chưa có điểm cuối của giáo viên"],
+      ["Bản ghi chờ giáo viên duyệt", awaitingTeacherReview, "Bài cá nhân/nhóm đang chờ và hồ sơ hoạt động đã nộp; bỏ qua bản nháp và phiếu khảo sát"],
       ["Bản ghi có gợi ý AI", aiSuggestionCount, "Điểm AI là gợi ý, không tính vào điểm chính thức"],
       ["Phạm vi xuất", "Đầy đủ", "Mỗi bảng được tải theo trang; báo lỗi nếu một bảng vượt 50.000 dòng"],
     ]);
@@ -2059,13 +2059,13 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     styleDataRows(quizSheet, [9], [10]);
 
     const groupSheet = workbook.addWorksheet("Bài tập nhóm");
-    styleSheet(groupSheet, "Bài tập nhóm", "Danh sách nhiệm vụ nhóm, số nhóm, bài nộp và ma trận chấm.", ["Mã bài nhóm", "Tên bài tập nhóm", "Hạn nộp", "Số nhóm", "Số bài nộp", "Điểm GV TB", "Trạng thái", "Mô tả", "Rubric", "Tên tệp rubric", "Đường dẫn tệp rubric"], [38, 32, 21, 12, 14, 14, 15, 48, 48, 30, 52]);
+    styleSheet(groupSheet, "Bài tập nhóm", "Danh sách nhiệm vụ nhóm, lớp nhận bài, số nhóm, bài nộp và ma trận chấm.", ["Mã bài nhóm", "Tên bài tập nhóm", "Lớp nhận bài", "Hạn nộp", "Số nhóm", "Số bài nộp", "Điểm GV TB", "Trạng thái", "Mô tả", "Rubric", "Tên tệp rubric", "Đường dẫn tệp rubric"], [38, 32, 20, 21, 12, 14, 14, 15, 48, 48, 30, 52]);
     reportGroupAssignments.forEach((assignment: any) => {
       const assignmentSubmissions = groupSubmissionsByAssignment.get(String(assignment.id)) || [];
       const assignmentScores = assignmentSubmissions.map((submission: any) => submission.final_score).map(scoreText).filter((score): score is number => score !== null);
-      groupSheet.addRow([formulaSafe(assignment.id), formulaSafe(assignment.title), assignment.deadline ? new Date(assignment.deadline) : null, groupCounts.get(String(assignment.id)) || 0, assignmentSubmissions.length, assignmentScores.length ? assignmentScores.reduce((sum, score) => sum + score, 0) / assignmentScores.length : null, assignmentSubmissions.length ? "Có bài nộp" : "Chưa nộp", cellText(assignment.description || "", "Bài tập nhóm", assignment.id, "Mô tả"), cellText(assignment.rubric || "", "Bài tập nhóm", assignment.id, "Rubric"), formulaSafe(assignment.rubric_document_name || ""), formulaSafe(assignment.rubric_document_path || "")]);
+      groupSheet.addRow([formulaSafe(assignment.id), formulaSafe(assignment.title), formulaSafe(assignment.class_name || "Tất cả lớp"), assignment.deadline ? new Date(assignment.deadline) : null, groupCounts.get(String(assignment.id)) || 0, assignmentSubmissions.length, assignmentScores.length ? assignmentScores.reduce((sum, score) => sum + score, 0) / assignmentScores.length : null, assignmentSubmissions.length ? "Có bài nộp" : "Chưa nộp", cellText(assignment.description || "", "Bài tập nhóm", assignment.id, "Mô tả"), cellText(assignment.rubric || "", "Bài tập nhóm", assignment.id, "Rubric"), formulaSafe(assignment.rubric_document_name || ""), formulaSafe(assignment.rubric_document_path || "")]);
     });
-    styleDataRows(groupSheet, [6], [3]);
+    styleDataRows(groupSheet, [7], [4]);
 
     const groupsSheet = workbook.addWorksheet("Phân nhóm");
     styleSheet(groupsSheet, "Danh sách nhóm và thành viên", "Mỗi thành viên có một dòng; nhóm trống thành viên vẫn xuất hiện để giáo viên rà soát.", ["Mã bài nhóm", "Bài tập", "Mã nhóm", "Số nhóm", "Tên nhóm", "Mã học sinh", "Học sinh", "Lớp", "Số thành viên"], [38, 32, 38, 12, 28, 38, 28, 16, 14]);

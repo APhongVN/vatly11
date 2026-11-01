@@ -15,6 +15,7 @@ import { isMessageFromUser } from "../src/lib/chat-identity.mjs";
 import { getPeerDiscussionWindow, isPeerChoiceSet, PEER_DISCUSSION_DURATION_MS, summarizePeerVotes } from "../src/lib/peer-votes.mjs";
 import { readFile } from "node:fs/promises";
 import { csvSafeCell } from "../src/lib/csv-export.mjs";
+import { countAwaitingTeacherReview } from "../src/lib/report-metrics.mjs";
 import { isValidQUVariablePlan } from "../src/lib/virtual-lab-validation.mjs";
 import { splitExcelCellText } from "../src/lib/excel-cell-content.mjs";
 import { extractRubricFile, extractWordDocumentText } from "../src/lib/rubric-import.mjs";
@@ -30,6 +31,16 @@ assert.equal(hasStudentInClass(rosterFixture, "Nguyễn Văn An", "11A3"), false
 assert.deepEqual(getStudentClassNames(rosterFixture), ["11A1", "11A2"]);
 assert.equal(filterStudentRoster(rosterFixture, "").length, 4);
 assert.deepEqual(filterStudentRoster(rosterFixture, "11A2", "an").map(({ id }) => id), ["s2"]);
+assert.equal(countAwaitingTeacherReview({
+  individualSubmissions: [{ status: "pending", final_score: null }, { status: "graded", final_score: null }, { status: "pending", final_score: 0 }],
+  activityEvidence: [
+    { activity_id: 4, completed_at: null, teacher_score: null },
+    { activity_id: 4, completed_at: "2026-11-01T00:00:00Z", teacher_score: null },
+    { activity_id: 6, completed_at: "2026-11-01T00:00:00Z", teacher_score: null },
+    { activity_id: 8, completed_at: "2026-11-01T00:00:00Z", teacher_score: 7 },
+  ],
+  groupSubmissions: [{ status: "pending", final_score: null }, { status: "pending", final_score: 8 }],
+}), 3, "Only pending submissions and completed reviewable evidence belong in the teacher queue.");
 assert.equal(isMessageFromUser({ sender_id: "user-1", sender_name: "Nguyễn An" }, "user-1"), true);
 assert.equal(isMessageFromUser({ sender_id: "user-2", sender_name: "Nguyễn An" }, "user-1"), false, "Duplicate display names must not grant message ownership.");
 assert.equal(isMessageFromUser({ sender_id: "user-1", sender_name: "Tên cũ" }, "user-1"), true, "Renaming a student must not remove ownership of their messages.");
@@ -227,6 +238,11 @@ assert.match(studentDashboard, /longContentChunks/);
 assert.match(studentDashboard, /splitExcelCellText\(text, maxLength\)/);
 assert.match(studentDashboard, /Mã học sinh.*Điểm giáo viên/);
 assert.match(studentDashboard, /Điểm chính thức trung bình/);
+assert.match(studentDashboard, /countAwaitingTeacherReview\(\{/);
+assert.match(studentDashboard, /bỏ qua bản nháp và phiếu khảo sát/);
+assert.match(studentDashboard, /"Lớp nhận bài"/);
+assert.match(studentDashboard, /formulaSafe\(assignment\.class_name \|\| "Tất cả lớp"\)/);
+assert.match(studentDashboard, /submission\.completed_at \? "Đã nộp · chờ giáo viên xem"/);
 assert.match(studentDashboard, /Không thể tạo báo cáo/);
 assert.match(studentDashboard, /workbook\.addWorksheet\("Tổng quan"\)/);
 assert.match(studentDashboard, /workbook\.addWorksheet\("Danh sách học sinh"\)/);
