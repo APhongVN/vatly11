@@ -1,24 +1,12 @@
 import { DOMParser } from "@xmldom/xmldom";
 import ExcelJS from "exceljs";
-import JSZip from "jszip";
+import { loadBoundedZip } from "./zip-limits.mjs";
 
 const WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 const MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math";
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_RUBRIC_CHARS = 20_000;
-const MAX_ARCHIVE_EXPANDED_BYTES = 40 * 1024 * 1024;
 
-function enforceArchiveExpansionLimit(zip, label) {
-  const expandedBytes = Object.values(zip.files).reduce((total, entry) => {
-    if (entry.dir) return total;
-    const size = entry._data?.uncompressedSize;
-    if (!Number.isSafeInteger(size) || size < 0) throw new Error(`Không xác minh được kích thước nội dung ${label}.`);
-    return total + size;
-  }, 0);
-  if (expandedBytes > MAX_ARCHIVE_EXPANDED_BYTES) {
-    throw new Error(`Tài liệu ${label} sau giải nén vượt quá giới hạn 40 MB.`);
-  }
-}
 
 const nodeName = (node) => node.localName || node.nodeName.split(":").pop() || "";
 const childElements = (node) => Array.from(node.childNodes).filter((child) => child.nodeType === 1);
@@ -190,18 +178,17 @@ export async function extractRubricFile(file, ocrImage = requestOcr) {
   if (["txt", "md", "csv"].includes(extension)) {
     text = new TextDecoder("utf-8", { fatal: false }).decode(await file.arrayBuffer());
   } else if (extension === "docx") {
-    const zip = await JSZip.loadAsync(await file.arrayBuffer());
-    enforceArchiveExpansionLimit(zip, "Word");
+    const zip = await loadBoundedZip(await file.arrayBuffer(), "Word");
     const documentXml = zip.file("word/document.xml");
     if (!documentXml) throw new Error("File Word không có phần nội dung hợp lệ.");
     const xml = await documentXml.async("string");
     if (xml.length > 20 * 1024 * 1024) throw new Error("Nội dung Word sau giải nén vượt quá giới hạn 20 MB.");
     text = extractWordDocumentText(xml);
   } else if (extension === "xlsx") {
-    const zip = await JSZip.loadAsync(await file.arrayBuffer());
-    enforceArchiveExpansionLimit(zip, "Excel");
+    const excelBuffer = await file.arrayBuffer();
+    await loadBoundedZip(excelBuffer, "Excel");
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(await file.arrayBuffer());
+    await workbook.xlsx.load(excelBuffer);
     const fragments = [];
     let remainingCells = 20_000;
     workbook.worksheets.slice(0, 10).forEach((sheet) => {

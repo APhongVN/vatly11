@@ -4,6 +4,7 @@ import JSZip from "jszip";
 import { filterStudentTable, isTeacherOnlyText } from "../src/lib/curriculum-privacy.mjs";
 import { filterSubmissionsForStudentGroups } from "../src/lib/group-submissions.mjs";
 import { extractStudentNamesFromText } from "../src/lib/student-import.mjs";
+import { filterStudentRoster, getStudentClassNames, hasStudentInClass } from "../src/lib/student-roster.mjs";
 import { getResourceDownloadName } from "../src/lib/resource-download.mjs";
 import { scoreActivityQuiz } from "../src/lib/activity-quiz.mjs";
 import { isValidReadinessEvidence } from "../src/lib/readiness-check.mjs";
@@ -17,6 +18,17 @@ import { isValidQUVariablePlan } from "../src/lib/virtual-lab-validation.mjs";
 import { splitExcelCellText } from "../src/lib/excel-cell-content.mjs";
 import { extractRubricFile, extractWordDocumentText } from "../src/lib/rubric-import.mjs";
 
+const rosterFixture = [
+  { id: "s1", full_name: "Nguyễn Văn An", class_name: "11A1" },
+  { id: "s2", full_name: "Nguyễn Văn An", class_name: "11A2" },
+  { id: "s3", full_name: "Trần Thị Bình", class_name: "11A1" },
+  { id: "s4", full_name: "Phạm Minh Châu", class_name: "11a1" },
+];
+assert.equal(hasStudentInClass(rosterFixture, "NGUYỄN VĂN AN", "11a1"), true);
+assert.equal(hasStudentInClass(rosterFixture, "Nguyễn Văn An", "11A3"), false, "Names in different classes are distinct roster records.");
+assert.deepEqual(getStudentClassNames(rosterFixture), ["11A1", "11A2"]);
+assert.equal(filterStudentRoster(rosterFixture, "").length, 4);
+assert.deepEqual(filterStudentRoster(rosterFixture, "11A2", "an").map(({ id }) => id), ["s2"]);
 assert.deepEqual(splitExcelCellText("ngắn"), ["ngắn"]);
 const longExcelText = "A".repeat(30_001);
 assert.deepEqual(splitExcelCellText(longExcelText).map((part) => part.length), [30_000, 1]);
@@ -418,6 +430,8 @@ assert.match(teacherDashboardSource, /savingGroupRubricId === gAct\.id/);
 const groupRubricMigration = await readFile(new URL("../supabase/migrations/20261101000100_group_rubric_documents.sql", import.meta.url), "utf8");
 const groupRubricSave = teacherDashboardSource.split("const saveGroupRubric = async")[1]?.split("const handleNewActivityRubricFile")[0] || "";
 const rubricImport = await readFile(new URL("../src/lib/rubric-import.mjs", import.meta.url), "utf8");
+const zipLimits = await readFile(new URL("../src/lib/zip-limits.mjs", import.meta.url), "utf8");
+const studentRoster = await readFile(new URL("../src/lib/student-roster.mjs", import.meta.url), "utf8");
 const rubricEditor = await readFile(new URL("../src/components/RubricEditor.tsx", import.meta.url), "utf8");
 const fileRoute = await readFile(new URL("../src/app/api/files/route.ts", import.meta.url), "utf8");
 assert.match(rubricEditor, /accept="\.txt,\.md,\.csv,\.docx,\.xlsx,\.pdf,\.png,\.jpg,\.jpeg,\.webp"/);
@@ -426,11 +440,16 @@ assert.match(rubricEditor, /rehypeKatex/);
 assert.match(teacherDashboardSource, /handleGroupRubricFileUpload\(event, gAct\.id\)/);
 assert.match(teacherDashboardSource, /downloadGroupRubricDocument\(gAct\)/);
 assert.match(rubricImport, /mathToLatex/);
-assert.match(rubricImport, /JSZip\.loadAsync/);
+assert.match(zipLimits, /JSZip\.loadAsync/);
 assert.match(rubricImport, /workbook\.xlsx\.load/);
 assert.match(rubricImport, /pdfjs-dist\/legacy\/build\/pdf\.mjs/);
 assert.match(rubricImport, /await ocrImage\(image\)/);
 assert.match(rubricImport, /MAX_RUBRIC_CHARS = 20_000/);
+assert.match(zipLimits, /MAX_ARCHIVE_EXPANDED_BYTES = 40 \* 1024 \* 1024/);
+assert.match(teacherDashboardSource, /await loadBoundedZip\(excelBuffer, "Excel"\)/);
+assert.match(teacherDashboardSource, /processedCells > 20_000/);
+assert.match(teacherDashboardSource, /sheet\.rowCount > 2_000/);
+assert.match(studentRoster, /hasStudentInClass/);
 assert.match(groupRubricSave, /group-rubrics\/\$\{user\.id\}/);
 assert.match(groupRubricSave, /rubric_document_path/);
 assert.match(groupRubricSave, /rubric_document_name/);
@@ -577,6 +596,10 @@ assert.match(studentDashboard, /Cấp tài khoản/);
 assert.ok(studentDashboard.includes('studentAccountSchemaMissing ? "Cần áp dụng migration 20261031002600_student_account_provisioning.sql'), "Missing account migration must be clearly reported.");
 assert.match(studentDashboard, /disabled=\{previewMode \|\| !canProvisionStudentAccounts\}/);
 assert.match(studentDashboard, /const legacyRoster = await supabase\.from\("students"\)/);
+assert.match(studentDashboard, /class_name: className/);
+assert.match(studentDashboard, /hasStudentInClass\(students, formattedName, className\)/);
+assert.match(studentDashboard, /Lọc lớp/);
+assert.match(studentDashboard, /Hồ sơ trùng tên vẫn giữ mã học sinh riêng/);
 console.log("Teacher-provisioned student accounts, one-time temporary passwords and first-login password enforcement verified.");
 
 const rubricDocumentMigration = await readFile(new URL("../supabase/migrations/20261031002700_rubric_document_import.sql", import.meta.url), "utf8");

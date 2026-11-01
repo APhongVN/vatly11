@@ -22,8 +22,10 @@ import RubricEditor from "@/components/RubricEditor";
 import { formatVietnameseName, getFirstName, sortVietnameseNames, isHeaderOrInvalidCell } from "@/lib/vietnameseName";
 import { ACTIVITIES } from "@/lib/data/activities";
 import { extractStudentNamesFromText } from "@/lib/student-import.mjs";
+import { filterStudentRoster, getStudentClassNames, hasStudentInClass } from "@/lib/student-roster.mjs";
 import { splitExcelCellText } from "@/lib/excel-cell-content.mjs";
 import { extractRubricFile } from "@/lib/rubric-import.mjs";
+import { loadBoundedZip } from "@/lib/zip-limits.mjs";
 
 const privateFileHref = (value: string) => value.startsWith("http") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") || value.startsWith("group-rubrics/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
 const rubricUploadMimeType = (file: File) => {
@@ -183,6 +185,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   // Sinh viên
   const [newStudentName, setNewStudentName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [studentClassName, setStudentClassName] = useState("11A1");
+  const [studentClassFilter, setStudentClassFilter] = useState("");
   const [importPreviewNames, setImportPreviewNames] = useState<string[]>([]);
   const [showImportModal, setShowImportModal] = useState(false);
   const [pasteNamesText, setPasteNamesText] = useState("");
@@ -1385,19 +1389,21 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     e.preventDefault();
     if (isAddingStudent) return;
     const formattedName = formatVietnameseName(newStudentName);
+    const className = studentClassName.normalize("NFC").trim();
+    if (!className || className.length > 40) {
+      alert("Tên lớp cần dài từ 1 đến 40 ký tự.");
+      return;
+    }
     if (formattedName.length < 3 || formattedName.length > 120) {
       alert("Họ tên học sinh cần dài từ 3 đến 120 ký tự.");
       return;
     }
 
-    const exists = students.some((student) => student.full_name?.trim().toLocaleLowerCase("vi") === formattedName.toLocaleLowerCase("vi"));
-    if (exists) {
-      alert(`Học sinh "${formattedName}" đã có trong danh sách!`);
-      return;
-    }
+    const exists = hasStudentInClass(students, formattedName, className);
+    if (exists && !confirm(`Lớp ${className} đã có hồ sơ tên "${formattedName}". Nếu đây là hai học sinh khác nhau, cô vẫn có thể tạo hồ sơ riêng. Tiếp tục?`)) return;
 
     if (previewMode) {
-      const student = { id: `preview-student-${Date.now()}`, full_name: formattedName, class_name: "11A1" };
+      const student = { id: `preview-student-${Date.now()}`, full_name: formattedName, class_name: className };
       setStudents((current) => [...current, student].sort(sortVietnameseNames));
       setNewStudentName(""); setPreviewNotice(`Đã thêm ${formattedName} vào danh sách mẫu.`);
       return;
@@ -1406,7 +1412,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     setIsAddingStudent(true);
     try {
       const { data, error } = await supabase.from("students")
-        .insert({ full_name: formattedName, class_name: "11A1" })
+        .insert({ full_name: formattedName, class_name: className })
         .select("id,full_name,class_name").single();
       if (error || !data) throw new Error(error?.message || "Cơ sở dữ liệu chưa trả về bản ghi đã lưu.");
       setStudents((current) => current.some((student) => student.id === data.id)
@@ -1433,6 +1439,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       if (isHeaderOrInvalidCell(clean)) return;
 
       const formatted = formatVietnameseName(clean);
+      if (formatted.length > 120) return;
       // Kiểm tra có ít nhất 2 từ (Họ + Tên)
       const words = formatted.split(/\s+/);
       if (words.length >= 2 && !seen.has(formatted.toLowerCase())) {
@@ -1458,12 +1465,20 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     if (isExcel) {
       try {
         if (file.size > 10 * 1024 * 1024) throw new Error("Tệp Excel vượt quá 10 MB.");
+        const excelBuffer = await file.arrayBuffer();
+        await loadBoundedZip(excelBuffer, "Excel");
         const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.load(await file.arrayBuffer());
+        await workbook.xlsx.load(excelBuffer);
         const sheet = workbook.worksheets[0];
         if (!sheet) throw new Error("Tệp không có trang tính nào.");
+        if (sheet.rowCount > 2_000) throw new Error("Tệp Excel danh sách chỉ nhận tối đa 2.000 dòng. Hãy chia danh sách thành nhiều lượt.");
         const candidateStrings: string[] = [];
-        sheet.eachRow((row) => row.eachCell((cell) => { if (cell.text.trim()) candidateStrings.push(cell.text); }));
+        let processedCells = 0;
+        sheet.eachRow((row) => row.eachCell((cell) => {
+          processedCells += 1;
+          if (processedCells > 20_000) throw new Error("Tệp Excel danh sách chỉ nhận tối đa 20.000 ô có dữ liệu. Hãy chia danh sách thành nhiều lượt.");
+          if (cell.text.trim()) candidateStrings.push(cell.text);
+        }));
         const sortedList = processAndSortNames(candidateStrings);
         if (sortedList.length === 0) { alert("Không tìm thấy danh sách tên học sinh hợp lệ trong tệp Excel này!"); return; }
         setImportPreviewNames(sortedList);
@@ -1517,9 +1532,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   // Lưu danh sách đã xem trước vào database
   const confirmSaveImportedStudents = async () => {
     if (importPreviewNames.length === 0) return;
+    const className = studentClassName.normalize("NFC").trim();
+    if (!className || className.length > 40) { alert("Tên lớp cần dài từ 1 đến 40 ký tự."); return; }
     if (previewMode) {
       const existingNames = new Set(students.map((student) => String(student.full_name || "").toLocaleLowerCase("vi")));
-      const incoming = importPreviewNames.filter((name) => !existingNames.has(name.toLocaleLowerCase("vi"))).map((full_name, index) => ({ id: `preview-import-${Date.now()}-${index}`, full_name, class_name: "11A1" }));
+      const incoming = importPreviewNames.filter((name) => !existingNames.has(name.toLocaleLowerCase("vi"))).map((full_name, index) => ({ id: `preview-import-${Date.now()}-${index}`, full_name, class_name: className }));
       setStudents((current) => [...current, ...incoming].sort(sortVietnameseNames));
       setShowImportModal(false); setImportPreviewNames([]); setPasteNamesText("");
       setPreviewNotice(`Đã thêm thử ${incoming.length} học sinh từ danh sách vào lớp mẫu.`);
@@ -1528,8 +1545,9 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     setIsSavingStudents(true);
     try {
       // Lọc bỏ những tên đã có trong DB
-      const existingNames = new Set(students.map(s => s.full_name?.toLowerCase()));
-      const newToAdd = importPreviewNames.filter(n => !existingNames.has(n.toLowerCase()));
+      const duplicateNames = importPreviewNames.filter((name) => hasStudentInClass(students, name, className));
+      if (duplicateNames.length && !confirm(`${duplicateNames.length} tên đã có hồ sơ trong lớp ${className}. Nếu đây là các học sinh khác nhau, tiếp tục để tạo mã hồ sơ riêng cho từng em?`)) return;
+      const newToAdd = importPreviewNames;
 
       if (newToAdd.length > 500) {
         alert("Mỗi lượt chỉ nhập tối đa 500 học sinh. Hãy chia danh sách thành nhiều lượt.");
@@ -1545,7 +1563,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
       const inserts = newToAdd.map(name => ({
         full_name: name,
-        class_name: "11A1"
+        class_name: className
       }));
 
       const { data: insertedStudents, error } = await supabase.from("students")
@@ -2115,6 +2133,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const currentSubmissions = selectedGradingAct ? submissions.filter(s => s.activity_id === selectedGradingAct.id) : [];
   const currentGroupSubs = expandedGroupAct ? groupSubmissions.filter(s => s.assignment_id === expandedGroupAct) : [];
   const newActivityChapters = curriculumChapters.filter((chapter) => chapter.course_id === newActCourseId);
+  const studentClassOptions = getStudentClassNames(students);
+  const visibleStudents = filterStudentRoster(students, studentClassFilter, searchTerm);
 
   // Thống kê phổ điểm
   const gradedSubs = submissions.filter(s => s.ai_score !== null && s.ai_score !== -1);
@@ -3339,10 +3359,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
               </div>
             </div>
 
+            <div className="flex flex-wrap items-end gap-3 rounded-2xl border bg-white p-4 shadow-sm"><label className="min-w-[220px] flex-1 text-xs font-bold text-slate-700">Lớp áp dụng cho học sinh mới<input value={studentClassName} onChange={(event) => setStudentClassName(event.target.value)} maxLength={40} required className="mt-1 w-full rounded-xl border px-3 py-2.5 text-sm font-normal outline-none focus:border-blue-500" placeholder="Ví dụ: 11A1" /></label><p className="max-w-xl text-xs leading-5 text-slate-500">Lớp này áp dụng khi thêm từng học sinh hoặc nhập danh sách; hồ sơ hiện có không bị đổi.</p></div>
             {!previewMode && !canProvisionStudentAccounts && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{studentAccountSchemaMissing ? "Cần áp dụng migration 20261031002600_student_account_provisioning.sql trên Supabase trước khi cấp tài khoản. Danh sách học sinh cũ vẫn dùng được." : "Chưa đọc được trạng thái tài khoản học sinh. Hãy kiểm tra kết nối/quyền Supabase rồi tải lại trang."}</p>}
             <div className="grid md:grid-cols-2 gap-4">
               <form onSubmit={addStudentManual} className="bg-white p-5 rounded-2xl border shadow-sm flex gap-2">
-                <input value={newStudentName} onChange={e => setNewStudentName(e.target.value)} placeholder="Nhập họ và tên học sinh mới..." className="flex-1 border p-2.5 rounded-xl text-sm outline-none bg-slate-50/50" required />
+                <input value={newStudentName} onChange={e => setNewStudentName(e.target.value)} maxLength={120} placeholder="Nhập họ và tên học sinh mới..." className="flex-1 border p-2.5 rounded-xl text-sm outline-none bg-slate-50/50" required />
                 <button disabled={isAddingStudent} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-5 py-2.5 rounded-xl text-xs font-bold">{isAddingStudent ? "Đang lưu…" : "Thêm ngay"}</button>
               </form>
               <div className="bg-white p-5 rounded-2xl border shadow-sm flex flex-col justify-center gap-3">
@@ -3351,20 +3372,24 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                   <input type="file" accept=".xlsx,.csv,.txt" onChange={handleExcelUpload} aria-label="Chọn Excel, CSV hoặc TXT chứa danh sách học sinh" className="min-w-0 flex-1 text-xs file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-emerald-100 file:text-emerald-700 file:font-semibold" />
                   <button type="button" onClick={() => setShowPasteModal(true)} className="shrink-0 rounded-lg border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50">Dán danh sách</button>
                 </div>
-                <p className="text-[11px] text-slate-500">Excel: mỗi học sinh ở một ô. CSV: cột “Họ và tên” (hoặc Họ/Tên). TXT: một họ tên mỗi dòng. Có bước xem lại trước khi lưu.</p>
+                <p className="text-[11px] text-slate-500">Lớp áp dụng: <strong>{studentClassName || "chưa nhập"}</strong>. Excel: mỗi học sinh ở một ô. CSV: cột “Họ và tên” (hoặc Họ/Tên). TXT: một họ tên mỗi dòng. Có bước xem lại trước khi lưu.</p>
               </div>
             </div>
 
             <div className="bg-white p-6 rounded-3xl border shadow-sm space-y-4">
-              <div className="relative">
-                <Search className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400" />
-                <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Tìm kiếm tên học sinh..." className="w-full pl-11 pr-4 py-3 border rounded-xl bg-slate-50/50 outline-none text-sm" />
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="relative min-w-0 flex-1">
+                  <Search className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400" />
+                  <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Tìm kiếm tên học sinh..." className="w-full pl-11 pr-4 py-3 border rounded-xl bg-slate-50/50 outline-none text-sm" />
+                </div>
+                <label className="text-xs font-semibold text-slate-600">Lọc lớp<select value={studentClassFilter} onChange={(event) => setStudentClassFilter(event.target.value)} className="mt-1 block min-w-40 rounded-xl border bg-white px-3 py-3 text-sm"><option value="">Tất cả lớp ({students.length})</option>{studentClassOptions.map((className) => <option key={className} value={className}>{className}</option>)}</select></label>
               </div>
+              <p className="text-xs text-slate-500">Đang hiển thị {visibleStudents.length} / {students.length} hồ sơ. Hồ sơ trùng tên vẫn giữ mã học sinh riêng.</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {students.filter(s => s.full_name?.toLowerCase().includes(searchTerm.toLowerCase())).map(s => (
+                {visibleStudents.map((s: any) => (
                   <div key={s.id} className="min-w-0 rounded-xl border bg-slate-50 px-3 py-2.5 text-xs group">
                     <div className="flex min-w-0 items-center justify-between gap-2">
-                      <span className="truncate font-bold">{s.full_name}</span>
+                      <span className="min-w-0 truncate font-bold">{s.full_name}<span className="ml-1.5 rounded bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">{s.class_name || "Chưa xếp lớp"}</span></span>
                       <div className="flex shrink-0 items-center gap-1">
                         {s.auth_user_id ? <span className="rounded-md bg-emerald-100 px-1.5 py-1 text-[9px] font-bold text-emerald-800">Đã cấp</span> : <button type="button" disabled={previewMode || !canProvisionStudentAccounts} title={!canProvisionStudentAccounts ? "Cần cập nhật schema Supabase trước khi cấp tài khoản." : undefined} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
                         <button type="button" aria-label={`Xóa học sinh ${s.full_name}`} onClick={() => deleteStudent(s.id)} className="rounded-md p-1 text-slate-400 hover:text-rose-600">
@@ -3375,8 +3400,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                     <p className="mt-1 truncate text-[10px] font-normal text-slate-500">{s.login_email || (s.auth_user_id ? "Tài khoản đã liên kết" : "Chưa có tài khoản đăng nhập")}</p>
                   </div>
                 ))}
-                {students.filter(s => s.full_name?.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
-                  <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-slate-500">{students.length ? "Không tìm thấy học sinh phù hợp." : "Chưa có học sinh. Thêm tên hoặc nhập danh sách để bắt đầu."}</p>
+                {visibleStudents.length === 0 && (
+                  <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-slate-500">{students.length ? "Không tìm thấy học sinh phù hợp trong lớp này." : "Chưa có học sinh. Thêm tên hoặc nhập danh sách để bắt đầu."}</p>
                 )}
               </div>
             </div>
@@ -3404,7 +3429,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
             {showImportModal && (
               <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/55 p-4" role="presentation">
                 <section role="dialog" aria-modal="true" aria-labelledby="import-students-title" className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
-                  <div className="flex items-start justify-between gap-4"><div><h3 id="import-students-title" className="text-xl font-black text-slate-900">Kiểm tra danh sách trước khi lưu</h3><p className="mt-1 text-sm text-slate-500">Tìm thấy {importPreviewNames.length} tên học sinh. Tên trùng trong tệp đã được gộp.{importPreviewNames.length > 500 ? " Mỗi lượt tối đa 500 học sinh; hãy chia danh sách nhỏ hơn." : ""}</p></div><button type="button" aria-label="Đóng" onClick={() => { setShowImportModal(false); setImportPreviewNames([]); }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
+                  <div className="flex items-start justify-between gap-4"><div><h3 id="import-students-title" className="text-xl font-black text-slate-900">Kiểm tra danh sách trước khi lưu</h3><p className="mt-1 text-sm text-slate-500">Tìm thấy {importPreviewNames.length} tên học sinh. Lớp đích: {studentClassName || "chưa nhập"}. Tên lặp trong tệp đã được gộp.{importPreviewNames.length > 500 ? " Mỗi lượt tối đa 500 học sinh; hãy chia danh sách nhỏ hơn." : ""}</p></div><button type="button" aria-label="Đóng" onClick={() => { setShowImportModal(false); setImportPreviewNames([]); }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
                   <div className="mt-4 max-h-72 overflow-y-auto rounded-xl border border-slate-200"><ol className="divide-y divide-slate-100">{importPreviewNames.map((name, index) => <li key={`${name}-${index}`} className="flex items-center gap-3 px-4 py-2.5 text-sm"><span className="w-8 text-right text-xs text-slate-400">{index + 1}.</span><span className="font-medium text-slate-800">{name}</span></li>)}</ol></div>
                   <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setShowImportModal(false); setImportPreviewNames([]); }} disabled={isSavingStudents} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-50">Hủy</button><button type="button" onClick={confirmSaveImportedStudents} disabled={isSavingStudents || importPreviewNames.length === 0 || importPreviewNames.length > 500} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50">{isSavingStudents ? "Đang lưu…" : `Lưu ${importPreviewNames.length} học sinh`}</button></div>
                 </section>
