@@ -12,6 +12,8 @@ export type Activity = {
   grading_rubric?: string;
   course_id?: string;
   chapter_id?: string;
+  accepting_submissions?: boolean;
+  deadline?: string | null;
   video_url?: string;
   document_url?: string;
 };

@@ -1,9 +1,5 @@
 import Link from "next/link";
 import { GraduationCap, LayoutDashboard, Sparkles, BookOpen, ChevronRight, Microscope, Bot } from "lucide-react";
-import { ACTIVITIES } from "@/lib/data/activities";
-
-const availableActivities = ACTIVITIES.filter((activity) => activity.status === "available").length;
-
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white relative overflow-hidden flex flex-col justify-between">
@@ -70,7 +66,7 @@ export default function HomePage() {
               </p>
             </div>
             <div className="mt-auto flex items-center text-xs font-bold text-blue-400 group-hover:text-blue-300 transition-colors">
-                Xem lộ trình và bài mẫu →
+                Xem lộ trình học →
             </div>
           </Link>
 
@@ -84,11 +80,11 @@ export default function HomePage() {
                 Khu quản lý giáo viên <LayoutDashboard className="w-5 h-5 text-emerald-400" />
               </h2>
               <p className="text-xs text-slate-300 leading-relaxed mb-6">
-                Mở bản xem trước bảng điều khiển và các khu vực quản lý. Tài khoản và thao tác ghi dữ liệu chưa mở.
+                Cổng quản lý lớp học, học liệu, hoạt động, bài nộp và báo cáo dành cho giáo viên.
               </p>
             </div>
             <div className="mt-auto flex items-center text-xs font-bold text-emerald-400 group-hover:text-emerald-300 transition-colors">
-              Xem trước giao diện giáo viên →
+              Đến cổng giáo viên →
             </div>
           </Link>
         </div>
@@ -98,7 +94,7 @@ export default function HomePage() {
           <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
             <BookOpen className="w-5 h-5 text-blue-400 mb-2" />
             <h4 className="text-xs font-bold text-white">Lớp học đảo ngược</h4>
-            <p className="text-[11px] text-slate-400 mt-0.5">{availableActivities} mẫu tương tác · {ACTIVITIES.length - availableActivities} hoạt động theo lộ trình</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">14 mục đề cương · 11 hoạt động sau khi gộp các mục 8–11</p>
           </div>
 
           <div className="p-4 rounded-2xl bg-white/5 border border-white/10">

@@ -5,8 +5,11 @@ import { ACTIVITIES } from "@/lib/data/activities";
 import curriculum from "@/lib/data/curriculum.json";
 import ActivityInteractions from "@/components/ActivityInteractions";
 import ActivityResources from "@/components/ActivityResources";
+import SubmissionWindow from "@/components/SubmissionWindow";
 import { filterStudentTable, isTeacherOnlyText } from "@/lib/curriculum-privacy.mjs";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+
+export const dynamic = "force-dynamic";
 
 type CurriculumBlock = { type: "paragraph"; text: string } | { type: "table"; rows: string[][] };
 type CurriculumActivity = { id: number; sourceSections: string[]; blocks: CurriculumBlock[] };
@@ -20,6 +23,8 @@ type ActivityPageData = {
   description: string;
   deliverable: string;
   isSourceLesson: boolean;
+  acceptingSubmissions: boolean;
+  deadline: string | null;
 };
 
 function StudentSourceBlock({ block }: { block: CurriculumBlock }) {
@@ -52,27 +57,56 @@ export default async function ActivityPage({ params }: { params: Promise<{ id: s
   let activity: ActivityPageData | null = sourceActivity ? {
     ...sourceActivity,
     isSourceLesson: true,
+    acceptingSubmissions: true,
+    deadline: null,
   } : null;
-  if (!activity) {
-    const supabase = await createServerSupabaseClient();
-    const { data } = await supabase
+  let databaseActivity: {
+    id: number;
+    title: string;
+    description: string | null;
+    phase: string | null;
+    duration: string | null;
+    deliverable: string | null;
+    status: string;
+    accepting_submissions: boolean;
+    deadline: string | null;
+  } | null = null;
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase
       .from("activities")
-      .select("id,title,description,phase,duration,deliverable")
+      .select("id,title,description,phase,duration,deliverable,status,accepting_submissions,deadline")
       .eq("id", id)
       .maybeSingle();
-    if (data) {
-      activity = {
-        id: data.id,
-        code: `BÀI-${data.id}`,
-        title: data.title,
-        phase: data.phase || "Theo kế hoạch giáo viên",
-        duration: data.duration || "Theo hướng dẫn giáo viên",
-        description: data.description || "Bài học do giáo viên tạo.",
-        deliverable: data.deliverable || "Hoàn thành nhiệm vụ theo hướng dẫn của giáo viên.",
-        isSourceLesson: false,
-      };
-    }
+    if (error) throw error;
+    databaseActivity = data;
+  } catch (error) {
+    console.error("Không tải được trạng thái hoạt động:", error instanceof Error ? error.message : "unknown error");
+    if (!sourceActivity) notFound();
+  }
+
+  if (databaseActivity && databaseActivity.status !== "available") notFound();
+  if (sourceActivity && databaseActivity) {
+    activity = {
+      ...sourceActivity,
+      isSourceLesson: true,
+      acceptingSubmissions: databaseActivity.accepting_submissions,
+      deadline: databaseActivity.deadline,
+    };
+  } else if (!activity && databaseActivity) {
+    activity = {
+      id: databaseActivity.id,
+      code: `BÀI-${databaseActivity.id}`,
+      title: databaseActivity.title,
+      phase: databaseActivity.phase || "Theo kế hoạch giáo viên",
+      duration: databaseActivity.duration || "Theo hướng dẫn giáo viên",
+      description: databaseActivity.description || "Bài học do giáo viên tạo.",
+      deliverable: databaseActivity.deliverable || "Hoàn thành nhiệm vụ theo hướng dẫn của giáo viên.",
+      isSourceLesson: false,
+      acceptingSubmissions: databaseActivity.accepting_submissions,
+      deadline: databaseActivity.deadline,
+    };
   }
   if (!activity) notFound();
-  return <main className="min-h-screen bg-slate-50 p-4 md:p-8"><div className="mx-auto max-w-5xl space-y-6"><div className="flex items-center justify-between gap-4"><Link href="/chapters" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"><ArrowLeft className="h-4 w-4" /> Tổng quan chương</Link><span className="text-right text-xs text-slate-500">{activity.phase} · {activity.duration}</span></div><header className="rounded-3xl bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-900 p-6 text-white shadow-xl md:p-9"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-200">Hoạt động {activity.id} · {activity.code}</p><h1 className="mt-2 text-3xl font-black md:text-4xl">{activity.title}</h1><p className="mt-3 max-w-3xl leading-7 text-blue-100">{activity.description}</p><div className="mt-5 rounded-2xl border border-white/15 bg-white/10 p-4"><b className="text-xs uppercase tracking-wide text-blue-100">Sản phẩm học tập</b><p className="mt-1 text-sm">{activity.deliverable}</p></div></header>{activity.isSourceLesson ? <><ActivityInteractions activityId={id} /><SourceLesson id={id} /></> : <section className="rounded-3xl border border-blue-100 bg-blue-50 p-5 shadow-sm md:p-7"><h2 className="text-xl font-extrabold text-blue-950">Nhiệm vụ do giáo viên thiết kế</h2><p className="mt-3 text-sm leading-7 text-slate-700">Đọc yêu cầu phía trên, mở các học liệu đính kèm bên dưới và nộp sản phẩm theo thời hạn giáo viên đã công bố.</p><Link href={`/nop-bai?activity=${id}`} className="mt-4 inline-flex rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-800">Đi đến trang nộp bài</Link></section>}<ActivityResources activityId={id} /></div></main>;
+  return <main className="min-h-screen bg-slate-50 p-4 md:p-8"><div className="mx-auto max-w-5xl space-y-6"><div className="flex items-center justify-between gap-4"><Link href="/chapters" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"><ArrowLeft className="h-4 w-4" /> Tổng quan chương</Link><span className="text-right text-xs text-slate-500">{activity.phase} · {activity.duration}</span></div><header className="rounded-3xl bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-900 p-6 text-white shadow-xl md:p-9"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-200">Hoạt động {activity.id} · {activity.code}</p><h1 className="mt-2 text-3xl font-black md:text-4xl">{activity.title}</h1><p className="mt-3 max-w-3xl leading-7 text-blue-100">{activity.description}</p><div className="mt-5 rounded-2xl border border-white/15 bg-white/10 p-4"><b className="text-xs uppercase tracking-wide text-blue-100">Sản phẩm học tập</b><p className="mt-1 text-sm">{activity.deliverable}</p></div></header>{activity.isSourceLesson ? <><SubmissionWindow acceptingSubmissions={activity.acceptingSubmissions} deadline={activity.deadline}><ActivityInteractions activityId={id} /></SubmissionWindow><SourceLesson id={id} /></> : <section className="rounded-3xl border border-blue-100 bg-blue-50 p-5 shadow-sm md:p-7"><h2 className="text-xl font-extrabold text-blue-950">Nhiệm vụ do giáo viên thiết kế</h2><p className="mt-3 text-sm leading-7 text-slate-700">Đọc yêu cầu phía trên và mở các học liệu đính kèm bên dưới.</p><SubmissionWindow acceptingSubmissions={activity.acceptingSubmissions} deadline={activity.deadline}><Link href={`/nop-bai?activity=${id}`} className="mt-4 inline-flex rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-800">Đi đến trang nộp bài</Link></SubmissionWindow></section>}<ActivityResources activityId={id} /></div></main>;
 }
