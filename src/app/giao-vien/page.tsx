@@ -1,15 +1,28 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import TeacherDashboard from "./TeacherDashboard";
 
 export default async function TeacherPage() {
-  const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  await connection();
+  let signedInTeacher = false;
+  let signedInNonTeacher = false;
 
-  if (!user) redirect("/login");
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    try {
+      const supabase = await createServerSupabaseClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (!authError && user) {
+        const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+        signedInTeacher = profile?.role === "teacher";
+        signedInNonTeacher = !signedInTeacher;
+      }
+    } catch (error) {
+      console.warn("Không xác thực được phiên giáo viên; mở dashboard truy cập nhanh.", error);
+    }
+  }
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  if (profile?.role !== "teacher") redirect("/login?error=role");
-
+  if (signedInNonTeacher) redirect("/hoc-sinh");
+  if (!signedInTeacher) return <TeacherDashboard previewMode />;
   return <TeacherDashboard />;
 }

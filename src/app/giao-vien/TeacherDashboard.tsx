@@ -343,8 +343,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   }, [previewMode, selectedGradingAct]);
 
   useEffect(() => {
-    if (previewMode) return;
-    fetchData();
+    if (previewMode) { void fetchData(); return; }
+    void fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [fetchData, previewMode]);
@@ -363,7 +363,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     return () => { window.clearInterval(timer); void supabase.removeChannel(channel); };
   }, [previewMode]);
   const handleLogout = async () => {
-    if (previewMode) return;
+    if (previewMode) { router.push("/"); return; }
     localStorage.removeItem('teacher_session');
     await supabase.auth.signOut();
     router.push("/login");
@@ -2342,7 +2342,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
             <Home className="w-4 h-4" /> Về Trang chủ Website
           </Link>
           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-rose-400 hover:text-white hover:bg-rose-600/40 rounded-xl transition-all">
-            <LogOut className="w-4 h-4" /> Đăng xuất
+            {previewMode ? <Home className="w-4 h-4" /> : <LogOut className="w-4 h-4" />} {previewMode ? "Về trang chủ" : "Đăng xuất"}
           </button>
         </div>
       </aside>
