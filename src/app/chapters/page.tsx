@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CHAPTERS } from "@/lib/data/chapters";
 import { ACTIVITIES, type Activity } from "@/lib/data/activities";
 import { COURSES } from "@/lib/data/courses";
-import { BookOpen, Play, CheckCircle, Lock, ArrowRight, GraduationCap } from "lucide-react";
+import { BookOpen, Play, CheckCircle, Lock, ArrowRight, GraduationCap, RefreshCw } from "lucide-react";
 
 type CatalogCourse = { id: string; title: string; description: string; grade_level: number; subject: string };
 type CatalogChapter = { id: string; title: string; description: string; course_id: string };
@@ -70,9 +70,12 @@ export default function ChapterDashboard() {
   const [expandedChapter, setExpandedChapter] = useState<string | null>(FALLBACK_CHAPTERS[0]?.id || null);
   const [activities, setActivities] = useState<Activity[]>(ACTIVITIES);
   const [catalogError, setCatalogError] = useState(false);
+  const [catalogRetryCount, setCatalogRetryCount] = useState(0);
+  const [isRefreshingCatalog, setIsRefreshingCatalog] = useState(false);
 
   useEffect(() => {
     let active = true;
+    setIsRefreshingCatalog(true);
     fetch("/api/public-curriculum", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("catalog_unavailable");
@@ -80,6 +83,7 @@ export default function ChapterDashboard() {
       })
       .then((data) => {
         if (!active) return;
+        setCatalogError(false);
         const nextCourses = Array.isArray(data.courses) ? data.courses.map((course) => ({ ...course, id: String(course.id) })) : [];
         const nextChapters = Array.isArray(data.chapters) ? data.chapters.map((chapter) => ({ ...chapter, id: String(chapter.id), course_id: String(chapter.course_id) })) : [];
         const fallbackById = new Map(ACTIVITIES.map((activity) => [activity.id, activity]));
@@ -95,9 +99,10 @@ export default function ChapterDashboard() {
       })
       .catch(() => {
         if (active) setCatalogError(true);
-      });
+      })
+      .finally(() => { if (active) setIsRefreshingCatalog(false); });
     return () => { active = false; };
-  }, []);
+  }, [catalogRetryCount]);
 
   const filteredChapters = chapters.filter((chapter) => chapter.course_id === selectedCourse);
   const chapterProgress = (chapterId: string) => {
@@ -120,7 +125,7 @@ export default function ChapterDashboard() {
           </Link>
         </div>
 
-        {catalogError && <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Chưa kết nối được danh mục trực tuyến. Danh sách đang hiển thị dữ liệu nội dung đã đóng gói; bài và chương mới do giáo viên tạo sẽ xuất hiện sau khi kết nối cơ sở dữ liệu hoạt động.</div>}
+        {catalogError && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"><p className="max-w-3xl">Chưa kết nối được danh mục trực tuyến. Danh sách đang hiển thị dữ liệu nội dung đã đóng gói; bài và chương mới do giáo viên tạo sẽ xuất hiện sau khi kết nối cơ sở dữ liệu hoạt động.</p><button type="button" disabled={isRefreshingCatalog} onClick={() => { setIsRefreshingCatalog(true); setCatalogRetryCount((count) => count + 1); }} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold hover:bg-amber-100 disabled:cursor-wait disabled:opacity-60"><RefreshCw className={`h-4 w-4 ${isRefreshingCatalog ? "animate-spin" : ""}`} />{isRefreshingCatalog ? "Đang tải lại…" : "Tải lại danh mục"}</button></div>}
 
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-4">
