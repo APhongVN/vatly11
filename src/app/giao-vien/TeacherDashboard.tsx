@@ -1582,8 +1582,9 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     const className = studentClassName.normalize("NFC").trim();
     if (!className || className.length > 40) { alert("Tên lớp cần dài từ 1 đến 40 ký tự."); return; }
     if (previewMode) {
-      const existingNames = new Set(students.map((student) => String(student.full_name || "").toLocaleLowerCase("vi")));
-      const incoming = importPreviewNames.filter((name) => !existingNames.has(name.toLocaleLowerCase("vi"))).map((full_name, index) => ({ id: `preview-import-${Date.now()}-${index}`, full_name, class_name: className }));
+      const duplicateNames = importPreviewNames.filter((name) => hasStudentInClass(students, name, className));
+      if (duplicateNames.length && !confirm(`${duplicateNames.length} tên đã có hồ sơ trong lớp ${className}. Nếu đây là các học sinh khác nhau, tiếp tục để tạo mã hồ sơ riêng cho từng em?`)) return;
+      const incoming = importPreviewNames.map((full_name, index) => ({ id: `preview-import-${Date.now()}-${index}`, full_name, class_name: className }));
       setStudents((current) => [...current, ...incoming].sort(sortVietnameseNames));
       setShowImportModal(false); setImportPreviewNames([]); setPasteNamesText("");
       setPreviewNotice(`Đã thêm thử ${incoming.length} học sinh từ danh sách vào lớp mẫu.`);

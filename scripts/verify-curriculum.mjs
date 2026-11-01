@@ -687,6 +687,11 @@ assert.match(studentDashboard, /disabled=\{previewMode \|\| !canProvisionStudent
 assert.match(studentDashboard, /const legacyRoster = await supabase\.from\("students"\)/);
 assert.match(studentDashboard, /class_name: className/);
 assert.match(studentDashboard, /hasStudentInClass\(students, formattedName, className\)/);
+const studentImportSaveSection = teacherDashboardSource.split("const confirmSaveImportedStudents = async")[1]?.split("const deleteStudent")[0] || "";
+assert.match(studentImportSaveSection, /const duplicateNames = importPreviewNames\.filter\(\(name\) => hasStudentInClass\(students, name, className\)\)/);
+assert.match(studentImportSaveSection, /if \(duplicateNames\.length && !confirm\(/);
+assert.match(studentImportSaveSection, /const incoming = importPreviewNames\.map\(/);
+assert.doesNotMatch(studentImportSaveSection, /new Set\(students\.map\(\(student\) => String\(student\.full_name/);
 assert.match(studentDashboard, /Lọc lớp/);
 assert.match(studentDashboard, /Hồ sơ trùng tên vẫn giữ mã học sinh riêng/);
 assert.match(teacherDashboardSource, /aria-expanded=\{mobileNavOpen\}/);
