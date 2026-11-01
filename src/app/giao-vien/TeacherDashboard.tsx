@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import ExcelJS from "exceljs";
-import mammoth from "mammoth";
 import {
   LogOut, Home, Video, Users, FileText, Bot, Upload, MessageSquare,
   Send, Calendar, Download, CheckCircle, Trash2, ArrowLeft, Search,
@@ -19,10 +18,12 @@ import CurriculumManager from "@/components/CurriculumManager";
 import ResourceLibrary from "@/components/ResourceLibrary";
 import ActivityEvidencePanel from "@/components/ActivityEvidencePanel";
 import CapacitanceLabSettings from "@/components/CapacitanceLabSettings";
+import RubricEditor from "@/components/RubricEditor";
 import { formatVietnameseName, getFirstName, sortVietnameseNames, isHeaderOrInvalidCell } from "@/lib/vietnameseName";
 import { ACTIVITIES } from "@/lib/data/activities";
 import { extractStudentNamesFromText } from "@/lib/student-import.mjs";
 import { splitExcelCellText } from "@/lib/excel-cell-content.mjs";
+import { extractRubricFile } from "@/lib/rubric-import.mjs";
 
 const privateFileHref = (value: string) => value.startsWith("http") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") || value.startsWith("group-rubrics/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
 const rubricUploadMimeType = (file: File) => {
@@ -31,6 +32,7 @@ const rubricUploadMimeType = (file: File) => {
     txt: "text/plain", md: "text/plain", csv: "text/csv", pdf: "application/pdf",
     docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp",
   };
   return allowed[extension] || "application/octet-stream";
 };
@@ -62,6 +64,16 @@ const readAllReportRows = async <T,>(
     if (page.length < pageSize) break;
   }
   return rows;
+};
+
+const readAllActivityRubricRows = async () => {
+  try {
+    return await readAllReportRows((from, to) => supabase.from("activity_grading_guides").select("activity_id,grading_rubric,rubric_document_name").order("activity_id").range(from, to), "Ma trận chấm cá nhân");
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLocaleLowerCase() : "";
+    if (!message.includes("rubric_document_name") && !message.includes("schema cache")) throw error;
+    return readAllReportRows((from, to) => supabase.from("activity_grading_guides").select("activity_id,grading_rubric").order("activity_id").range(from, to), "Ma trận chấm cá nhân");
+  }
 };
 
 type GradingGuide = {
@@ -130,6 +142,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [rubricFile, setRubricFile] = useState<File | null>(null);
   const [rubricImportError, setRubricImportError] = useState("");
   const [isImportingRubric, setIsImportingRubric] = useState(false);
+  const [isSavingRubric, setIsSavingRubric] = useState(false);
   const [rubricDocumentSchemaReady, setRubricDocumentSchemaReady] = useState(previewMode);
   const [gradingId, setGradingId] = useState<string | null>(null);
 
@@ -146,6 +159,16 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [newActVideo, setNewActVideo] = useState("");
   const [newActDeadline, setNewActDeadline] = useState("");
   const [newActRubric, setNewActRubric] = useState("");
+  const [newActRubricFile, setNewActRubricFile] = useState<File | null>(null);
+  const [newActRubricFileName, setNewActRubricFileName] = useState("");
+  const [newActRubricImportError, setNewActRubricImportError] = useState("");
+  const [isImportingNewActRubric, setIsImportingNewActRubric] = useState(false);
+  const [editRubricText, setEditRubricText] = useState("");
+  const [editRubricFile, setEditRubricFile] = useState<File | null>(null);
+  const [editRubricFileName, setEditRubricFileName] = useState("");
+  const [editRubricImportError, setEditRubricImportError] = useState("");
+  const [isImportingEditRubric, setIsImportingEditRubric] = useState(false);
+  const [savingActivityId, setSavingActivityId] = useState<number | null>(null);
   const [newActFile, setNewActFile] = useState<File | null>(null);
   const [isCreatingAct, setIsCreatingAct] = useState(false);
   const [newActCourseId, setNewActCourseId] = useState("");
@@ -341,44 +364,94 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   // --- QUẢN LÝ BÀI HỌC CÁ NHÂN & GỘP BÀI ---
   const saveActivity = async (id: number, e: React.FormEvent) => {
     e.preventDefault();
+    if (savingActivityId === id || isImportingEditRubric) return;
     const form = e.target as HTMLFormElement;
     const title = (form.elements.namedItem('title') as HTMLInputElement).value;
     const desc = (form.elements.namedItem('desc') as HTMLInputElement).value;
     const video = (form.elements.namedItem('video') as HTMLInputElement).value;
     const deadline = (form.elements.namedItem('deadline') as HTMLInputElement).value;
-    const rubric = (form.elements.namedItem('rubric') as HTMLTextAreaElement)?.value || "";
+    const rubric = editRubricText.trim();
     const acceptingSubmissions = (form.elements.namedItem('accepting_submissions') as HTMLInputElement).checked;
+    if (editRubricFile && !rubricDocumentSchemaReady && !previewMode) {
+      alert("Cần áp dụng migration 20261031002700_rubric_document_import.sql trước khi lưu file gốc ma trận.");
+      return;
+    }
+    if (rubric.length > 20_000) { alert("Ma trận chấm điểm tối đa 20.000 ký tự."); return; }
     if (previewMode) {
       setActivities((current) => current.map((activity) => activity.id === id ? {
         ...activity, title, description: desc, video_url: video || null,
         deadline: deadline ? new Date(deadline).toISOString() : null,
-        grading_rubric: rubric || null, accepting_submissions: acceptingSubmissions,
+        grading_rubric: rubric || null, rubric_document_name: editRubricFile?.name || activity.rubric_document_name || null,
+        accepting_submissions: acceptingSubmissions,
       } : activity));
       setExpandedAct(null);
       setPreviewNotice(`Đã lưu thử thay đổi của bài ${id} trong phiên xem trước.`);
       return;
     }
-
-    const { error } = await supabase.from('activities').update({
-      title,
-      description: desc,
-      video_url: video,
-      deadline: deadline ? new Date(deadline).toISOString() : null,
-      accepting_submissions: acceptingSubmissions
-    }).eq('id', id);
-    if (error) { alert("Không lưu được bài học: " + error.message); return; }
-
+    setSavingActivityId(id);
     const activity = activities.find((item) => item.id === id);
-    const { error: guideError } = await supabase.from('activity_grading_guides').upsert({
-      activity_id: id,
-      model_answer: activity?.model_answer || null,
-      grading_rubric: rubric || null,
-    });
-    if (guideError) { alert("Bài học đã lưu nhưng tiêu chí chấm chưa lưu được: " + guideError.message); return; }
+    const oldPath = activity?.rubric_document_path || null;
+    let uploadedRubricPath: string | null = null;
+    let activityUpdated = false;
+    try {
+      if (editRubricFile) {
+        const safeName = editRubricFile.name.normalize("NFKC").replace(/[^\p{L}\p{N}._-]+/gu, "_").slice(0, 150) || "rubric";
+        uploadedRubricPath = `rubrics/activity-${id}/${Date.now()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage.from("learning-resources").upload(uploadedRubricPath, editRubricFile, { contentType: rubricUploadMimeType(editRubricFile), upsert: false });
+        if (uploadError) throw new Error("Không tải được file ma trận: " + uploadError.message);
+      }
 
-    alert("✅ Đã lưu cập nhật bài học!");
-    setExpandedAct(null);
-    fetchData();
+      const activityPayload = {
+        title,
+        description: desc,
+        video_url: video,
+        deadline: deadline ? new Date(deadline).toISOString() : null,
+        accepting_submissions: acceptingSubmissions,
+      };
+      const { error } = await supabase.from("activities").update(activityPayload).eq("id", id);
+      if (error) throw new Error("Không lưu được bài học: " + error.message);
+      activityUpdated = true;
+
+      const guidePayload: Record<string, string | number | null> = {
+        activity_id: id,
+        model_answer: activity?.model_answer || null,
+        grading_rubric: rubric || null,
+      };
+      if (rubricDocumentSchemaReady) {
+        guidePayload.rubric_document_path = uploadedRubricPath || oldPath;
+        guidePayload.rubric_document_name = editRubricFile?.name || activity?.rubric_document_name || null;
+      }
+      const { error: guideError } = await supabase.from("activity_grading_guides").upsert(guidePayload);
+      if (guideError) {
+        const { error: rollbackError } = await supabase.from("activities").update({
+          title: activity?.title || title,
+          description: activity?.description || "",
+          video_url: activity?.video_url || null,
+          deadline: activity?.deadline || null,
+          accepting_submissions: activity?.accepting_submissions !== false,
+        }).eq("id", id);
+        if (rollbackError) throw new Error(`Không lưu được ma trận chấm: ${guideError.message}. Đồng thời chưa hoàn tác được thông tin bài học: ${rollbackError.message}`);
+        activityUpdated = false;
+        throw new Error("Không lưu được ma trận chấm: " + guideError.message);
+      }
+
+      if (uploadedRubricPath && oldPath && oldPath !== uploadedRubricPath) {
+        const { error: cleanupError } = await supabase.storage.from("learning-resources").remove([oldPath]);
+        if (cleanupError) console.warn("Không xóa được file ma trận cũ:", cleanupError.message);
+      }
+      alert("✅ Đã lưu bài học và ma trận chấm điểm.");
+      setExpandedAct(null);
+      setEditRubricFile(null);
+      setEditRubricFileName("");
+      setEditRubricImportError("");
+      fetchData();
+    } catch (error) {
+      if (uploadedRubricPath) await supabase.storage.from("learning-resources").remove([uploadedRubricPath]);
+      if (activityUpdated) alert(`Bài học đã cập nhật nhưng ma trận chưa lưu. ${error instanceof Error ? error.message : "Hãy thử lưu lại ma trận."}`);
+      else alert(error instanceof Error ? error.message : "Không thể lưu bài học và ma trận.");
+    } finally {
+      setSavingActivityId(null);
+    }
   };
   const deleteActivity = async (id: number) => {
     if (previewMode) {
@@ -476,8 +549,13 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   // --- TẠO BÀI TẬP MỚI ---
   const handleCreateNewActivity = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCreatingAct || isImportingNewActRubric) return;
     if (!newActTitle.trim()) {
       alert("Vui lòng nhập tên bài tập mới!");
+      return;
+    }
+    if (newActRubricFile && !rubricDocumentSchemaReady && !previewMode) {
+      alert("Cần áp dụng migration 20261031002700_rubric_document_import.sql trước khi lưu file gốc ma trận.");
       return;
     }
     if (previewMode) {
@@ -488,17 +566,20 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         deadline: newActDeadline ? new Date(newActDeadline).toISOString() : null, status: "available", phase: newActPhase,
         type: newActType, duration: newActDuration.trim() || "Theo hướng dẫn giáo viên", accepting_submissions: newActAcceptingSubmissions,
         course_id: newActCourseId || null, chapter_id: newActChapterId || null, grading_rubric: newActRubric.trim() || null,
+        rubric_document_name: newActRubricFile?.name || null,
       }]);
       setNewActTitle(""); setNewActDesc(""); setNewActVideo(""); setNewActDeadline(""); setNewActRubric(""); setNewActFile(null);
+      setNewActRubricFile(null); setNewActRubricFileName(""); setNewActRubricImportError("");
       setNewActCourseId(""); setNewActChapterId(""); setNewActPhase("Trước lớp"); setNewActType("Bài tập"); setNewActDuration(""); setNewActAcceptingSubmissions(true);
       setActiveTab("activities");
       setPreviewNotice(`Đã tạo thử bài ${nextId}. Bài này chỉ tồn tại trong phiên xem trước.`);
       return;
     }
     setIsCreatingAct(true);
-
+    let uploadedDocUrl = "";
+    let uploadedRubricPath = "";
+    let createdActivityId: number | null = null;
     try {
-      let uploadedDocUrl = "";
       if (newActFile) {
         const cleanName = newActFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const fileName = `act-new-${Date.now()}-${cleanName}`;
@@ -522,20 +603,26 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         course_id: newActCourseId || null,
         chapter_id: newActChapterId || null,
       }).select('id').single();
-      if (error || !createdActivity) {
-        if (uploadedDocUrl) await supabase.storage.from('videos').remove([uploadedDocUrl]);
-        throw new Error(error?.message || "Không tạo được bài học.");
+      if (error || !createdActivity) throw new Error(error?.message || "Không tạo được bài học.");
+      createdActivityId = createdActivity.id;
+
+      if (newActRubricFile) {
+        const safeName = newActRubricFile.name.normalize("NFKC").replace(/[^\p{L}\p{N}._-]+/gu, "_").slice(0, 150) || "rubric";
+        uploadedRubricPath = `rubrics/activity-${createdActivity.id}/${Date.now()}-${safeName}`;
+        const { error: rubricUploadError } = await supabase.storage.from("learning-resources").upload(uploadedRubricPath, newActRubricFile, { contentType: rubricUploadMimeType(newActRubricFile), upsert: false });
+        if (rubricUploadError) throw new Error("Không tải được file ma trận: " + rubricUploadError.message);
       }
 
-      const { error: guideError } = await supabase.from('activity_grading_guides').upsert({
+      const guidePayload: Record<string, string | number | null> = {
         activity_id: createdActivity.id,
         grading_rubric: newActRubric.trim() || null,
-      });
-      if (guideError) {
-        await supabase.from('activities').delete().eq('id', createdActivity.id);
-        if (uploadedDocUrl) await supabase.storage.from('videos').remove([uploadedDocUrl]);
-        throw new Error("Không lưu được tiêu chí chấm: " + guideError.message);
+      };
+      if (rubricDocumentSchemaReady) {
+        guidePayload.rubric_document_path = uploadedRubricPath || null;
+        guidePayload.rubric_document_name = newActRubricFile?.name || null;
       }
+      const { error: guideError } = await supabase.from('activity_grading_guides').upsert(guidePayload);
+      if (guideError) throw new Error("Không lưu được ma trận chấm: " + guideError.message);
 
       alert(`✅ Đã tạo thành công Bài tập số ${createdActivity.id}!`);
       setNewActTitle("");
@@ -543,6 +630,9 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       setNewActVideo("");
       setNewActDeadline("");
       setNewActRubric("");
+      setNewActRubricFile(null);
+      setNewActRubricFileName("");
+      setNewActRubricImportError("");
       setNewActFile(null);
       setNewActCourseId("");
       setNewActChapterId("");
@@ -553,6 +643,9 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       setActiveTab("activities");
       fetchData();
     } catch (err: unknown) {
+      if (createdActivityId !== null) await supabase.from("activities").delete().eq("id", createdActivityId);
+      if (uploadedRubricPath) await supabase.storage.from("learning-resources").remove([uploadedRubricPath]);
+      if (uploadedDocUrl) await supabase.storage.from("videos").remove([uploadedDocUrl]);
       alert("Không tạo được bài học: " + (err instanceof Error ? err.message : "Lỗi kết nối cơ sở dữ liệu."));
     } finally {
       setIsCreatingAct(false);
@@ -812,54 +905,40 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     }
   };
 
-  const extractRubricFile = async (file: File) => {
-    const extension = file.name.split(".").pop()?.toLocaleLowerCase() || "";
-    if (!["txt", "md", "csv", "docx", "xlsx", "pdf"].includes(extension)) throw new Error("Chỉ nhận TXT, Markdown, CSV, Word (.docx), Excel (.xlsx) hoặc PDF.");
-    if (file.size <= 0 || file.size > 10 * 1024 * 1024) throw new Error("File ma trận phải lớn hơn 0 byte và tối đa 10 MB.");
-    if (file.name.length > 255) throw new Error("Tên file ma trận tối đa 255 ký tự.");
-    const buffer = await file.arrayBuffer();
-    let text = "";
-    let warning = "";
-    if (["txt", "md", "csv"].includes(extension)) {
-      text = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
-    } else if (extension === "docx") {
-      const result = await mammoth.extractRawText({ arrayBuffer: buffer });
-      text = result.value;
-    } else if (extension === "xlsx") {
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(buffer);
-      const fragments: string[] = [];
-      workbook.worksheets.slice(0, 10).forEach((sheet) => {
-        fragments.push(`# ${sheet.name}`);
-        sheet.eachRow((row) => {
-          const cells: string[] = [];
-          row.eachCell({ includeEmpty: false }, (cell) => {
-            const value = cell.text.trim();
-            if (value) cells.push(value);
-          });
-          if (cells.length) fragments.push(cells.join(" | "));
-        });
-      });
-      text = fragments.join("\n");
-    } else {
-      const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-      const pdf = await pdfjs.getDocument({ data: new Uint8Array(buffer) }).promise;
-      const pages: string[] = [];
-      for (let index = 1; index <= Math.min(pdf.numPages, 30); index += 1) {
-        const content = await (await pdf.getPage(index)).getTextContent();
-        const pageText = content.items.map((item) => "str" in item ? item.str : "").join(" ").trim();
-        if (pageText) pages.push(pageText);
-      }
-      text = pages.join("\n\n");
-      if (pdf.numPages > 30) warning = "Đã trích 30 trang đầu của PDF; file gốc vẫn được lưu đầy đủ.";
+  const handleNewActivityRubricFile = async (file: File) => {
+    setNewActRubricFile(file);
+    setNewActRubricFileName(file.name);
+    setNewActRubricImportError("");
+    setIsImportingNewActRubric(true);
+    try {
+      const extracted = await extractRubricFile(file);
+      setNewActRubric(extracted.text);
+      setNewActRubricImportError(extracted.warning);
+    } catch (error) {
+      setNewActRubricFile(null);
+      setNewActRubricFileName("");
+      setNewActRubricImportError(error instanceof Error ? error.message : "Không đọc được file ma trận.");
+    } finally {
+      setIsImportingNewActRubric(false);
     }
-    const normalized = text.replace(/\0/g, "").trim();
-    if (!normalized) throw new Error("Không trích được lớp chữ. PDF scan ảnh cần OCR hoặc dùng bản có thể chọn văn bản.");
-    const clipped = normalized.slice(0, 20_000);
-    return {
-      text: clipped,
-      warning: [warning, normalized.length > clipped.length ? "Đã cắt nội dung ở 20.000 ký tự; file gốc vẫn được lưu đầy đủ." : ""].filter(Boolean).join(" "),
-    };
+  };
+
+  const handleEditActivityRubricFile = async (file: File) => {
+    setEditRubricFile(file);
+    setEditRubricFileName(file.name);
+    setEditRubricImportError("");
+    setIsImportingEditRubric(true);
+    try {
+      const extracted = await extractRubricFile(file);
+      setEditRubricText(extracted.text);
+      setEditRubricImportError(extracted.warning);
+    } catch (error) {
+      setEditRubricFile(null);
+      setEditRubricFileName("");
+      setEditRubricImportError(error instanceof Error ? error.message : "Không đọc được file ma trận.");
+    } finally {
+      setIsImportingEditRubric(false);
+    }
   };
 
   const handleGroupRubricFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, assignId: string) => {
@@ -934,7 +1013,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
   // --- CHẤM ĐIỂM CÁ NHÂN ---
   const saveRubric = async () => {
-    if (!selectedGradingAct) return;
+    if (!selectedGradingAct || isSavingRubric || isImportingRubric) return;
     if (previewMode) {
       setActivities((current) => current.map((activity) => activity.id === selectedGradingAct.id ? { ...activity, grading_rubric: rubricText || null, rubric_document_name: rubricFile?.name || activity.rubric_document_name || null } : activity));
       setSelectedGradingAct((current: any) => current ? { ...current, grading_rubric: rubricText || null, rubric_document_name: rubricFile?.name || current.rubric_document_name || null } : current);
@@ -945,36 +1024,55 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       alert("Chưa thể lưu tệp gốc vì migration 20261031002700_rubric_document_import.sql chưa được áp dụng. Nội dung ma trận chưa bị mất; hãy áp dụng migration rồi bấm Lưu ma trận lại.");
       return;
     }
-    let uploadedPath = selectedGradingAct.rubric_document_path || null;
-    const oldPath = uploadedPath;
-    if (rubricFile) {
-      const safeName = rubricFile.name.normalize("NFKC").replace(/[^\p{L}\p{N}._-]+/gu, "_").slice(0, 150) || "rubric";
-      uploadedPath = `rubrics/activity-${selectedGradingAct.id}/${Date.now()}-${safeName}`;
-      const { error: uploadError } = await supabase.storage.from("learning-resources").upload(uploadedPath, rubricFile, { contentType: rubricUploadMimeType(rubricFile), upsert: false });
-      if (uploadError) { alert("Không tải được tệp ma trận: " + uploadError.message); return; }
+    setIsSavingRubric(true);
+    const oldPath = selectedGradingAct.rubric_document_path || null;
+    let uploadedPath: string | null = oldPath;
+    let newUploadedPath: string | null = null;
+    try {
+      if (rubricFile) {
+        const safeName = rubricFile.name.normalize("NFKC").replace(/[^\p{L}\p{N}._-]+/gu, "_").slice(0, 150) || "rubric";
+        newUploadedPath = `rubrics/activity-${selectedGradingAct.id}/${Date.now()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage.from("learning-resources").upload(newUploadedPath, rubricFile, { contentType: rubricUploadMimeType(rubricFile), upsert: false });
+        if (uploadError) throw new Error("Không tải được tệp ma trận: " + uploadError.message);
+        uploadedPath = newUploadedPath;
+      }
+      const guidePayload: GradingGuide = {
+        activity_id: selectedGradingAct.id,
+        model_answer: selectedGradingAct.model_answer || null,
+        grading_rubric: rubricText.trim() || null,
+      };
+      if (rubricDocumentSchemaReady) {
+        guidePayload.rubric_document_path = uploadedPath;
+        guidePayload.rubric_document_name = rubricFile?.name || selectedGradingAct.rubric_document_name || null;
+      }
+      const { error } = await supabase.from("activity_grading_guides").upsert(guidePayload);
+      if (error) throw new Error("Không lưu được ma trận điểm: " + error.message);
+
+      if (newUploadedPath && oldPath && oldPath !== newUploadedPath) {
+        const { error: removeError } = await supabase.storage.from("learning-resources").remove([oldPath]);
+        if (removeError) console.warn("Không dọn được file ma trận cũ:", removeError.message);
+      }
+      const savedActivity = {
+        ...selectedGradingAct,
+        grading_rubric: rubricText.trim() || null,
+        rubric_document_path: uploadedPath,
+        rubric_document_name: rubricFile?.name || selectedGradingAct.rubric_document_name || null,
+      };
+      setActivities((current) => current.map((activity) => activity.id === savedActivity.id ? savedActivity : activity));
+      setSelectedGradingAct(savedActivity);
+      setRubricFile(null);
+      setRubricFileName("");
+      setRubricImportError("");
+      alert("✅ Đã lưu ma trận và file gốc cho bài " + selectedGradingAct.id);
+      fetchData();
+    } catch (error) {
+      if (newUploadedPath) await supabase.storage.from("learning-resources").remove([newUploadedPath]);
+      alert(error instanceof Error ? error.message : "Không lưu được ma trận chấm điểm.");
+    } finally {
+      setIsSavingRubric(false);
     }
-    const guidePayload: GradingGuide = {
-      activity_id: selectedGradingAct.id,
-      model_answer: selectedGradingAct.model_answer || null,
-      grading_rubric: rubricText || null,
-    };
-    if (rubricDocumentSchemaReady) {
-      guidePayload.rubric_document_path = uploadedPath;
-      guidePayload.rubric_document_name = rubricFile?.name || selectedGradingAct.rubric_document_name || null;
-    }
-    const { error } = await supabase.from('activity_grading_guides').upsert(guidePayload);
-    if (error) {
-      if (rubricFile && uploadedPath) await supabase.storage.from("learning-resources").remove([uploadedPath]);
-      alert("Không lưu được ma trận điểm: " + error.message);
-      return;
-    }
-    if (rubricFile && oldPath && oldPath !== uploadedPath) await supabase.storage.from("learning-resources").remove([oldPath]);
-    setRubricFile(null);
-    alert("✅ Đã lưu ma trận điểm cho bài " + selectedGradingAct.id);
-    fetchData();
   };
-  const handleRubricFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleRubricFileUpload = async (file: File | null) => {
     if (!file) return;
     setRubricFileName(file.name);
     setRubricFile(file);
@@ -990,19 +1088,18 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       setRubricImportError(error instanceof Error ? error.message : "Không đọc được tệp ma trận này.");
     } finally {
       setIsImportingRubric(false);
-      e.target.value = "";
     }
   };
 
-  const downloadRubricDocument = async () => {
-    const path = selectedGradingAct?.rubric_document_path;
+  const downloadRubricDocument = async (activity: any = selectedGradingAct) => {
+    const path = activity?.rubric_document_path;
     if (!path) return;
     const { data, error } = await supabase.storage.from("learning-resources").download(path);
     if (error || !data) { alert("Không tải được tệp ma trận: " + (error?.message || "tệp không tồn tại")); return; }
     const url = URL.createObjectURL(data);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = selectedGradingAct.rubric_document_name || "ma-tran-cham-diem";
+    anchor.download = activity.rubric_document_name || "ma-tran-cham-diem";
     document.body.appendChild(anchor); anchor.click(); anchor.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
@@ -1613,9 +1710,10 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     setReportExportError("");
     setReportExportSuccess("");
     try {
-    const [reportStudents, reportActivities, reportSubmissions, reportEvidence, reportQuizResults, reportGroupAssignments, reportGroups, reportGroupSubmissions] = await Promise.all([
+    const [reportStudents, reportActivities, reportGradingGuides, reportSubmissions, reportEvidence, reportQuizResults, reportGroupAssignments, reportGroups, reportGroupSubmissions] = await Promise.all([
       readAllReportRows((from, to) => supabase.from("students").select("*").order("id").range(from, to), "Danh sách học sinh"),
       readAllReportRows((from, to) => supabase.from("activities").select("*").order("id").range(from, to), "Danh sách bài học"),
+      readAllActivityRubricRows(),
       readAllReportRows((from, to) => supabase.from("submissions").select("*").order("id").range(from, to), "Bài nộp cá nhân"),
       readAllReportRows((from, to) => supabase.from("activity_evidence").select("id,student_id,activity_id,evidence,score,score_max,completed_at,created_at,updated_at,ai_score,ai_feedback,ai_strengths,ai_weaknesses,teacher_score,teacher_feedback,graded_at,students(full_name,class_name)").order("id").range(from, to), "Sổ tay hoạt động"),
       readAllReportRows((from, to) => supabase.from("quiz_submissions").select("id,quiz_id,student_id,score,created_at,students(full_name,class_name),quizzes(title,activity_id)").order("id").range(from, to), "Kết quả trắc nghiệm"),
@@ -1835,6 +1933,34 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       activitySheet.addRow([activity.id, formulaSafe(activity.title), formulaSafe(activity.phase || ""), formulaSafe(activity.type || ""), formulaSafe(activity.duration || ""), activity.status === "available" ? "Đang mở" : formulaSafe(activity.status || "Khóa"), activity.deadline ? new Date(activity.deadline) : null, activity.accepting_submissions === false ? "Đã đóng" : "Đang nhận", activitySubmissions.length, activityEvidence.length, activityQuizResults.length, finalScores.length ? finalScores.reduce((sum, score) => sum + score, 0) / finalScores.length : null]);
     });
     styleDataRows(activitySheet, [12], [7]);
+
+    const gradingGuideByActivity = new Map(reportGradingGuides.map((guide: any) => [String(guide.activity_id), guide]));
+    const rubricSheet = workbook.addWorksheet("Ma trận chấm điểm");
+    styleSheet(rubricSheet, "Ma trận chấm điểm cá nhân và nhóm", "Nội dung ma trận đã lưu trong hệ thống; công thức được giữ nguyên dạng văn bản để cô có thể sửa và đối chiếu với file gốc.", ["Loại nhiệm vụ", "Mã", "Tên bài / nhiệm vụ", "Nội dung ma trận", "File gốc", "Tình trạng"], [18, 18, 40, 86, 36, 20]);
+    reportActivities.forEach((activity: any) => {
+      const guide: any = gradingGuideByActivity.get(String(activity.id));
+      const rubric = guide?.grading_rubric || "";
+      rubricSheet.addRow([
+        "Cá nhân",
+        formulaSafe(activity.id),
+        formulaSafe(activity.title || `Hoạt động ${activity.id}`),
+        rubric ? cellText(rubric, "Ma trận chấm điểm", activity.id, "Ma trận cá nhân") : "Chưa nhập ma trận",
+        formulaSafe(guide?.rubric_document_name || ""),
+        rubric ? "Đã có ma trận" : "Chưa nhập",
+      ]);
+    });
+    reportGroupAssignments.forEach((assignment: any) => {
+      const rubric = assignment.rubric || "";
+      rubricSheet.addRow([
+        "Nhóm",
+        formulaSafe(assignment.id),
+        formulaSafe(assignment.title || "Bài tập nhóm"),
+        rubric ? cellText(rubric, "Ma trận chấm điểm", assignment.id, "Ma trận nhóm") : "Chưa nhập ma trận",
+        formulaSafe(assignment.rubric_document_name || ""),
+        rubric ? "Đã có ma trận" : "Chưa nhập",
+      ]);
+    });
+    styleDataRows(rubricSheet);
 
     const progressByPair = new Map<string, any>();
     const addProgressRecord = (studentId: unknown, activityId: unknown, kind: "submission" | "evidence" | "quiz", record: any) => {
@@ -2348,7 +2474,18 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => setExpandedAct(expandedAct === act.id ? null : act.id)}
+                          type="button"
+                          onClick={() => {
+                            if (expandedAct === act.id) {
+                              setExpandedAct(null);
+                              return;
+                            }
+                            setExpandedAct(act.id);
+                            setEditRubricText(act.grading_rubric || "");
+                            setEditRubricFile(null);
+                            setEditRubricFileName(act.rubric_document_name || "");
+                            setEditRubricImportError("");
+                          }}
                           className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
                         >
                           {expandedAct === act.id ? "Đóng" : "Sửa bài"}
@@ -2392,12 +2529,20 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
                         <div>
                           <label className="text-xs font-bold text-slate-700 block mb-1">Ma trận điểm (Rubric) cho bài này</label>
-                          <textarea
-                            name="rubric"
-                            defaultValue={act.grading_rubric || ""}
-                            placeholder="Ví dụ: 4đ công thức tụ điện, 4đ thay số tính điện dung, 2đ kết luận..."
-                            className="w-full p-3 border rounded-xl bg-white outline-none text-sm h-20"
+                          <RubricEditor
+                            id={`edit-rubric-${act.id}`}
+                            compact
+                            value={editRubricText}
+                            onChange={setEditRubricText}
+                            onImportFile={(file) => void handleEditActivityRubricFile(file)}
+                            fileName={editRubricFileName}
+                            importError={editRubricImportError}
+                            isImporting={isImportingEditRubric}
+                            disabled={savingActivityId === act.id}
+                            savedFileName={act.rubric_document_name}
+                            onDownloadSavedFile={() => void downloadRubricDocument(act)}
                           />
+                          {editRubricFile && !rubricDocumentSchemaReady && <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">Cần migration 20261031002700_rubric_document_import.sql để lưu file gốc ma trận.</p>}
                         </div>
 
                         <div className="flex flex-wrap gap-4 items-center pt-2">
@@ -2410,8 +2555,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                               <ExternalLink className="w-3.5 h-3.5" /> Xem tệp tài liệu hiện tại
                             </a>
                           )}
-                          <button type="submit" className="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2">
-                            <Save className="w-4 h-4"/> Lưu thay đổi
+                          <button type="submit" disabled={savingActivityId === act.id || isImportingEditRubric} className="ml-auto bg-blue-600 hover:bg-blue-700 disabled:cursor-wait disabled:opacity-50 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2">
+                            <Save className="w-4 h-4"/> {savingActivityId === act.id ? "Đang lưu…" : "Lưu thay đổi"}
                           </button>
                         </div>
                       </form>
@@ -2589,19 +2734,18 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 </div>
               </div>
 
-              <div className="space-y-2 p-5 rounded-2xl bg-blue-50/50 border border-blue-100">
-                <label className="text-xs font-bold text-blue-900 uppercase tracking-wider block flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-blue-600" /> Ma trận điểm (Rubric) cho AI tự động chấm
-                </label>
-                <p className="text-xs text-blue-700">
-                  Nhập biểu điểm chi tiết (ví dụ: Nêu công thức 3đ, biến đổi toán học 4đ, kết quả và đơn vị 3đ). AI sẽ dựa trực tiếp vào đây để cho điểm học sinh!
-                </p>
-                <textarea
+              <div className="space-y-3 rounded-2xl border border-blue-100 bg-blue-50/50 p-5">
+                <RubricEditor
+                  id="new-activity-rubric"
                   value={newActRubric}
-                  onChange={(e) => setNewActRubric(e.target.value)}
-                  placeholder="Thang điểm 10:&#10;- 3đ: Nêu đúng công thức C = ε.S/(9.10^9 . 4π.d)&#10;- 4đ: Thay số và đổi đúng đơn vị (cm -> m, pF -> F)&#10;- 3đ: Kết luận chính xác năng lượng W = 1/2CU^2..."
-                  className="w-full p-3.5 border border-blue-200 rounded-xl outline-none text-sm focus:ring-2 focus:ring-blue-500 bg-white h-28"
+                  onChange={setNewActRubric}
+                  onImportFile={(file) => void handleNewActivityRubricFile(file)}
+                  fileName={newActRubricFileName}
+                  importError={newActRubricImportError}
+                  isImporting={isImportingNewActRubric}
+                  disabled={isCreatingAct}
                 />
+                {!rubricDocumentSchemaReady && !previewMode && <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">Đã trích nội dung được, nhưng cần migration 20261031002700_rubric_document_import.sql để hệ thống lưu kèm file gốc.</p>}
               </div>
 
               <label className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 text-sm font-semibold text-emerald-950">
@@ -2619,7 +2763,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 </button>
                 <button
                   type="submit"
-                  disabled={isCreatingAct}
+                  disabled={isCreatingAct || isImportingNewActRubric || Boolean(newActRubricFile && !rubricDocumentSchemaReady && !previewMode)}
                   className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/25 transition-all flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
@@ -2870,7 +3014,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 {activities.map(act => (
                   <button
                     key={act.id}
-                    onClick={() => { setSelectedGradingAct(act); setRubricText(act.grading_rubric || ""); setRubricFile(null); setRubricFileName(act.rubric_document_name || ""); setRubricImportError(""); }}
+                    onClick={() => { setSelectedGradingAct(act); setRubricText(act.grading_rubric || ""); setRubricFile(null); setRubricFileName(""); setRubricImportError(""); }}
                     className={`w-full text-left p-3 rounded-2xl transition-all ${
                       selectedGradingAct?.id === act.id ? 'bg-blue-600 text-white font-bold shadow-md' : 'hover:bg-slate-100 text-slate-700'
                     }`}
@@ -2901,33 +3045,25 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                     </div>
                   </div>
 
-                  <div className="p-4 border-b bg-blue-50/40 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <label className="font-bold text-xs text-slate-700 flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4 text-blue-600" /> Ma trận điểm (Rubric) cho bài này:
-                      </label>
-                      <label className="bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 px-3 py-1 rounded-xl cursor-pointer text-xs font-semibold flex items-center gap-1">
-                        <Upload className="w-3 h-3"/> Nhập tệp ma trận
-                        <input type="file" accept=".txt,.md,.csv,.docx,.xlsx,.pdf" onChange={(event) => void handleRubricFileUpload(event)} className="hidden" />
-                      </label>
-                    </div>
-                    <div className="flex gap-2">
-                      <textarea
-                        value={rubricText}
-                        onChange={e => setRubricText(e.target.value)}
-                        className="flex-1 p-2.5 border rounded-xl text-xs h-16 outline-none bg-white font-sans"
-                        placeholder="Nhập tiêu chí chấm điểm (ví dụ: Nêu đúng công thức 4đ, thay số 4đ, kết luận 2đ)..."
-                      />
-                      <button onClick={saveRubric} className="bg-slate-900 hover:bg-black text-white px-4 rounded-xl text-xs font-bold shrink-0">
-                        Lưu ma trận
+                  <div className="space-y-3 border-b bg-blue-50/40 p-4">
+                    <RubricEditor
+                      id={`grading-rubric-${selectedGradingAct.id}`}
+                      value={rubricText}
+                      onChange={setRubricText}
+                      onImportFile={(file) => void handleRubricFileUpload(file)}
+                      fileName={rubricFile ? rubricFileName : ""}
+                      importError={rubricImportError}
+                      isImporting={isImportingRubric}
+                      disabled={isSavingRubric}
+                      savedFileName={selectedGradingAct.rubric_document_name}
+                      onDownloadSavedFile={() => void downloadRubricDocument(selectedGradingAct)}
+                    />
+                    {!rubricDocumentSchemaReady && rubricFile && <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">Cần migration 20261031002700_rubric_document_import.sql để lưu file gốc ma trận.</p>}
+                    <div className="flex justify-end">
+                      <button type="button" disabled={isSavingRubric || isImportingRubric} onClick={() => void saveRubric()} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-black disabled:cursor-wait disabled:opacity-50">
+                        <Save className="h-4 w-4" /> {isSavingRubric ? "Đang lưu ma trận…" : "Lưu ma trận và file gốc"}
                       </button>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
-                      {rubricFileName && <p className="font-medium text-blue-700">{isImportingRubric ? "Đang trích nội dung từ" : "Tệp ma trận:"} {rubricFileName}</p>}
-                      {selectedGradingAct.rubric_document_path && !rubricFile && <button type="button" onClick={() => void downloadRubricDocument()} className="font-semibold text-emerald-700 underline">Tải lại tệp gốc đã lưu</button>}
-                      <p className="text-slate-500">Hỗ trợ Word, PDF có lớp chữ, Excel, CSV, Markdown/TXT. Công thức LaTex như <code>\\frac&#123;Q&#125;&#123;U&#125;</code> được giữ nguyên.</p>
-                    </div>
-                    {rubricImportError && <p role="alert" className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-900">{rubricImportError}</p>}
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
