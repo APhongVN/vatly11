@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeApi } from "@/lib/api-security";
+import { readBoundedRequestText } from "@/lib/read-bounded-request.mjs";
 import { createSupabaseAdminClient, hasSupabaseAdminKey } from "@/lib/supabase-admin";
 import { scoreActivityQuiz } from "@/lib/activity-quiz.mjs";
 import { isTimelineComplete, MICROTEACHING_MINIMUM_DURATION_SECONDS } from "@/lib/microteaching-progress.mjs";
@@ -345,8 +346,7 @@ export async function POST(request: Request) {
   try {
     const declaredLength = Number(request.headers.get("content-length") || 0);
     if (declaredLength > MAX_BODY_BYTES) return NextResponse.json({ error: "Sổ tay vượt quá dung lượng cho phép." }, { status: 413 });
-    const rawBody = await request.text();
-    if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) return NextResponse.json({ error: "Sổ tay vượt quá dung lượng cho phép." }, { status: 413 });
+    const rawBody = await readBoundedRequestText(request, MAX_BODY_BYTES);
     const body = JSON.parse(rawBody) as { activityId?: unknown; evidence?: unknown; complete?: unknown; freezeInitial?: unknown };
     const activityId = Number(body.activityId);
     const complete = body.complete === true;
@@ -461,7 +461,8 @@ export async function POST(request: Request) {
     }
     if (!savedResult.data) return NextResponse.json({ error: "Hồ sơ đã được nộp ở thiết bị khác; hãy tải lại để xem." }, { status: 409 });
     return NextResponse.json({ record: savedResult.data });
-  } catch {
-    return NextResponse.json({ error: "Không thể lưu hồ sơ hoạt động lúc này." }, { status: 400 });
+  } catch (error) {
+    const tooLarge = error instanceof Error && error.name === "RequestBodyTooLargeError";
+    return NextResponse.json({ error: tooLarge ? "Sổ tay vượt quá dung lượng cho phép." : "Không thể lưu hồ sơ hoạt động lúc này." }, { status: tooLarge ? 413 : 400 });
   }
 }

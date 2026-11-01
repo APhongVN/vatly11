@@ -1,5 +1,11 @@
 export async function readBoundedRequestText(request, maxBytes) {
   if (!Number.isInteger(maxBytes) || maxBytes < 0) throw new RangeError("maxBytes must be a non-negative integer");
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+    const error = new Error("Request body exceeds the configured byte limit.");
+    error.name = "RequestBodyTooLargeError";
+    throw error;
+  }
   const reader = request.body?.getReader();
   if (!reader) return "";
 

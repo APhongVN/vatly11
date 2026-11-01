@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeApi } from "@/lib/api-security";
+import { readBoundedRequestText } from "@/lib/read-bounded-request.mjs";
 import { createSupabaseAdminClient, hasSupabaseAdminKey } from "@/lib/supabase-admin";
 
 export async function POST(request: Request) {
@@ -8,10 +9,7 @@ export async function POST(request: Request) {
   if (!hasSupabaseAdminKey()) return NextResponse.json({ error: "Dịch vụ chấm chưa được cấu hình đầy đủ trên máy chủ." }, { status: 503 });
 
   try {
-    const rawBody = await request.text();
-    if (new TextEncoder().encode(rawBody).byteLength > 16_000) {
-      return NextResponse.json({ error: "Bài làm vượt quá dung lượng cho phép." }, { status: 413 });
-    }
+    const rawBody = await readBoundedRequestText(request, 16_000);
     const body = JSON.parse(rawBody) as { quizId?: unknown; answers?: unknown };
     const quizId = Number(body.quizId);
     if (!Number.isInteger(quizId) || !body.answers || typeof body.answers !== "object" || Array.isArray(body.answers)) {
@@ -79,7 +77,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ score });
   } catch (error) {
-    console.error("Quiz submission failed", error instanceof Error ? error.message : "unknown error");
-    return NextResponse.json({ error: "Không thể chấm bài trắc nghiệm lúc này." }, { status: 500 });
+    const tooLarge = error instanceof Error && error.name === "RequestBodyTooLargeError";
+    if (!tooLarge) console.error("Quiz submission failed", error instanceof Error ? error.message : "unknown error");
+    return NextResponse.json({ error: tooLarge ? "Bài làm vượt quá dung lượng cho phép." : "Không thể chấm bài trắc nghiệm lúc này." }, { status: tooLarge ? 413 : 500 });
   }
 }

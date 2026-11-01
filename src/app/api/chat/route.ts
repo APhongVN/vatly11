@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { authorizeApi } from "@/lib/api-security";
+import { readBoundedRequestText } from "@/lib/read-bounded-request.mjs";
 import { GEMINI_MODELS } from "@/lib/gemini-config";
 import { getChatActivityId, isStudentTaskAwaitingWork } from "@/lib/chat-context.mjs";
 
@@ -27,10 +28,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Tin nhắn quá dài. Em hãy rút gọn câu hỏi rồi gửi lại nhé." }, { status: 413 });
     }
 
-    const rawBody = await request.text();
-    if (new TextEncoder().encode(rawBody).byteLength > MAX_REQUEST_BYTES) {
-      return NextResponse.json({ error: "Tin nhắn quá dài. Em hãy rút gọn câu hỏi rồi gửi lại nhé." }, { status: 413 });
-    }
+    const rawBody = await readBoundedRequestText(request, MAX_REQUEST_BYTES);
 
     const parsed = JSON.parse(rawBody) as { messages?: unknown; context?: unknown };
     if (!Array.isArray(parsed.messages) || parsed.messages.length === 0) {
@@ -116,7 +114,8 @@ export async function POST(request: Request) {
       { error: "Trợ lý đang bận một chút. Em thử gửi lại sau nhé." },
       { status: 503 }
     );
-  } catch {
-    return NextResponse.json({ error: "Không gửi được câu hỏi. Em thử lại nhé." }, { status: 400 });
+  } catch (error) {
+    const tooLarge = error instanceof Error && error.name === "RequestBodyTooLargeError";
+    return NextResponse.json({ error: tooLarge ? "Tin nhắn quá dài. Em hãy rút gọn câu hỏi rồi gửi lại nhé." : "Không gửi được câu hỏi. Em thử lại nhé." }, { status: tooLarge ? 413 : 400 });
   }
 }

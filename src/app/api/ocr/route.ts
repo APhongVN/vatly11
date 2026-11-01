@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { authorizeApi } from "@/lib/api-security";
+import { readBoundedRequestText } from "@/lib/read-bounded-request.mjs";
 import { GEMINI_MODELS } from "@/lib/gemini-config";
 
 const MODELS = GEMINI_MODELS;
@@ -14,10 +15,7 @@ export async function POST(req: Request) {
     if (Number(req.headers.get("content-length") || 0) > 12_500_000) {
       return NextResponse.json({ error: "Ảnh vượt quá dung lượng cho phép (tối đa khoảng 8 MB)." }, { status: 413 });
     }
-    const rawBody = await req.text();
-    if (new TextEncoder().encode(rawBody).byteLength > 12_500_000) {
-      return NextResponse.json({ error: "Ảnh vượt quá dung lượng cho phép (tối đa khoảng 8 MB)." }, { status: 413 });
-    }
+    const rawBody = await readBoundedRequestText(req, 12_500_000);
     const payload = JSON.parse(rawBody);
     const imageData = payload?.imageData;
     const mimeType = payload?.mimeType;
@@ -74,6 +72,7 @@ Quy tắc:
 
     return NextResponse.json({ error: lastError?.message || "Không thể kết nối AI trích xuất ảnh", text: "" }, { status: 500 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message, text: "" }, { status: 500 });
+    const tooLarge = error instanceof Error && error.name === "RequestBodyTooLargeError";
+    return NextResponse.json({ error: tooLarge ? "Ảnh vượt quá dung lượng cho phép (tối đa khoảng 8 MB)." : error.message, text: "" }, { status: tooLarge ? 413 : 500 });
   }
 }

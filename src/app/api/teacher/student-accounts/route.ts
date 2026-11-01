@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { authorizeApi } from "@/lib/api-security";
+import { readBoundedRequestText } from "@/lib/read-bounded-request.mjs";
 import { createSupabaseAdminClient, hasSupabaseAdminKey } from "@/lib/supabase-admin";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -24,8 +25,7 @@ export async function POST(request: Request) {
   try {
     const declaredLength = Number(request.headers.get("content-length") || 0);
     if (declaredLength > 4000) return NextResponse.json({ error: "Yêu cầu vượt quá dung lượng." }, { status: 413 });
-    const rawBody = await request.text();
-    if (new TextEncoder().encode(rawBody).byteLength > 4000) return NextResponse.json({ error: "Yêu cầu vượt quá dung lượng." }, { status: 413 });
+    const rawBody = await readBoundedRequestText(request, 4_000);
     let body: { studentId?: unknown; email?: unknown };
     try { body = JSON.parse(rawBody) as { studentId?: unknown; email?: unknown }; }
     catch { return NextResponse.json({ error: "Dữ liệu gửi lên không phải JSON hợp lệ." }, { status: 400 }); }
@@ -78,10 +78,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ email, password, studentName: student.full_name }, {
       headers: { "Cache-Control": "no-store, max-age=0", Pragma: "no-cache" },
     });
-  } catch {
+  } catch (error) {
     if (admin && createdUserId) {
       try { await rollbackCreatedUser(); } catch { /* Best-effort cleanup; never log credentials. */ }
     }
-    return NextResponse.json({ error: "Không thể cấp tài khoản lúc này." }, { status: 503 });
+    const tooLarge = error instanceof Error && error.name === "RequestBodyTooLargeError";
+    return NextResponse.json({ error: tooLarge ? "Yêu cầu vượt quá dung lượng." : "Không thể cấp tài khoản lúc này." }, { status: tooLarge ? 413 : 503 });
   }
 }

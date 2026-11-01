@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { authorizeApi } from "@/lib/api-security";
+import { readBoundedRequestText } from "@/lib/read-bounded-request.mjs";
 import { createSupabaseAdminClient, hasSupabaseAdminKey } from "@/lib/supabase-admin";
 import { GEMINI_MODELS } from "@/lib/gemini-config";
 
@@ -22,10 +23,7 @@ export async function POST(req: Request) {
     if (Number(req.headers.get("content-length") || 0) > 48_000) {
       return NextResponse.json({ error: "Bài làm vượt quá dung lượng cho phép." }, { status: 413 });
     }
-    const rawBody = await req.text();
-    if (new TextEncoder().encode(rawBody).byteLength > 48_000) {
-      return NextResponse.json({ error: "Bài làm vượt quá dung lượng cho phép." }, { status: 413 });
-    }
+    const rawBody = await readBoundedRequestText(req, 48_000);
     const body = JSON.parse(rawBody);
     const { studentAnswer, activityId } = body;
     if (!studentAnswer || typeof studentAnswer !== "string" || studentAnswer.trim().length === 0 || studentAnswer.length > 12000) {
@@ -113,6 +111,7 @@ ${JSON.stringify({ activity: activityTitle, rubric, student_submission: sanitize
       { status: 503 }
     );
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const tooLarge = error instanceof Error && error.name === "RequestBodyTooLargeError";
+    return NextResponse.json({ error: tooLarge ? "Bài làm vượt quá dung lượng cho phép." : error.message }, { status: tooLarge ? 413 : 500 });
   }
 }

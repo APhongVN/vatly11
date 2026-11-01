@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeApi } from "@/lib/api-security";
+import { readBoundedRequestText } from "@/lib/read-bounded-request.mjs";
 import { createSupabaseAdminClient, hasSupabaseAdminKey } from "@/lib/supabase-admin";
 import { getPeerDiscussionWindow, isPeerChoiceSet, summarizePeerVotes } from "@/lib/peer-votes.mjs";
 
@@ -56,8 +57,7 @@ export async function POST(request: Request) {
   try {
     const length = Number(request.headers.get("content-length") || 0);
     if (length > 8_000) return NextResponse.json({ error: "Dữ liệu bình chọn quá lớn." }, { status: 413 });
-    const rawBody = await request.text();
-    if (new TextEncoder().encode(rawBody).byteLength > 8_000) return NextResponse.json({ error: "Dữ liệu bình chọn quá lớn." }, { status: 413 });
+    const rawBody = await readBoundedRequestText(request, 8_000);
     const body = JSON.parse(rawBody) as { phase?: unknown; answers?: unknown };
     if ((body.phase !== "first" && body.phase !== "second") || !isPeerChoiceSet(body.answers)) {
       return NextResponse.json({ error: "Lựa chọn bình chọn chưa hợp lệ." }, { status: 400 });
@@ -115,7 +115,8 @@ export async function POST(request: Request) {
       if (saveError) throw saveError;
     }
     return NextResponse.json(summarizePeerVotes(await readVotes(admin)));
-  } catch {
-    return NextResponse.json({ error: "Không lưu được bình chọn lúc này." }, { status: 503 });
+  } catch (error) {
+    const tooLarge = error instanceof Error && error.name === "RequestBodyTooLargeError";
+    return NextResponse.json({ error: tooLarge ? "Dữ liệu bình chọn quá lớn." : "Không lưu được bình chọn lúc này." }, { status: tooLarge ? 413 : 503 });
   }
 }

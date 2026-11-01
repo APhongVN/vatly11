@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeApi } from "@/lib/api-security";
+import { readBoundedRequestText } from "@/lib/read-bounded-request.mjs";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export async function POST(request: Request) {
@@ -10,8 +11,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const rawBody = await request.text();
-    if (new TextEncoder().encode(rawBody).byteLength > 4000) return NextResponse.json({ error: "Mật khẩu vượt quá dung lượng." }, { status: 413 });
+    const rawBody = await readBoundedRequestText(request, 4_000);
     const body = JSON.parse(rawBody) as { password?: unknown };
     if (typeof body.password !== "string" || body.password.length < 12 || body.password.length > 128) {
       return NextResponse.json({ error: "Mật khẩu mới cần dài từ 12 đến 128 ký tự." }, { status: 400 });
@@ -26,7 +26,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Mật khẩu đã đổi nhưng chưa cập nhật được trạng thái tài khoản. Hãy thử gửi lại." }, { status: 503 });
     }
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Không thể đổi mật khẩu lúc này." }, { status: 503 });
+  } catch (error) {
+    const tooLarge = error instanceof Error && error.name === "RequestBodyTooLargeError";
+    return NextResponse.json({ error: tooLarge ? "Mật khẩu vượt quá dung lượng." : "Không thể đổi mật khẩu lúc này." }, { status: tooLarge ? 413 : 503 });
   }
 }

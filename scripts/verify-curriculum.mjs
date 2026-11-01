@@ -36,6 +36,10 @@ await assert.rejects(
   () => readBoundedRequestText(new Request("http://localhost", { method: "POST", body: "12345" }), 4),
   (error) => error instanceof Error && error.name === "RequestBodyTooLargeError",
 );
+await assert.rejects(
+  () => readBoundedRequestText(new Request("http://localhost", { method: "POST", headers: { "content-length": "100" }, body: "x" }), 4),
+  (error) => error instanceof Error && error.name === "RequestBodyTooLargeError",
+);
 const rosterFixture = [
   { id: "s1", full_name: "Nguyễn Văn An", class_name: "11A1" },
   { id: "s2", full_name: "Nguyễn Văn An", class_name: "11A2" },
@@ -390,6 +394,13 @@ assert.match(submissionValidation, /\^\$\{folder\}\/\$\{escapeRegExp\(userId\)\}
 assert.match(submissionRateLimitMigration, /WHEN 'submission' THEN 12/);
 assert.match(submissionRateLimitMigration, /WHEN 'group-submission' THEN 12/);
 assert.match(submissionRateLimitMigration, /auth\.role\(\) IS DISTINCT FROM 'service_role'/);
+const boundedBodyRoutes = ["account/update-password", "activity-evidence", "ai-generate-quiz", "capacitance-lab-settings", "chat", "grade", "group-submissions", "ocr", "peer-votes", "quiz-submit", "submissions", "teacher/student-accounts"];
+for (const routePath of boundedBodyRoutes) {
+  const routeSource = await readFile(new URL(`../src/app/api/${routePath}/route.ts`, import.meta.url), "utf8");
+  assert.match(routeSource, /readBoundedRequestText\((?:request|req),/, `${routePath} must stream requests through the byte limit.`);
+  assert.match(routeSource, /RequestBodyTooLargeError/, `${routePath} must return an explicit oversized-body response.`);
+  assert.doesNotMatch(routeSource, /(?:request|req)\.text\(\)/, `${routePath} must not buffer a body before checking its size.`);
+}
 for (const routeSource of [submissionApi, groupSubmissionApi]) {
   assert.match(routeSource, /const MAX_REQUEST_BYTES = 96_000/);
   assert.match(routeSource, /content-length[\s\S]*MAX_REQUEST_BYTES/);
