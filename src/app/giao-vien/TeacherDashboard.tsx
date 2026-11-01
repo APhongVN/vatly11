@@ -154,6 +154,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
   // Quản lý & Gộp bài tập cá nhân
   const [expandedAct, setExpandedAct] = useState<number | null>(null);
+  const [uploadingDocumentActivityId, setUploadingDocumentActivityId] = useState<number | null>(null);
   const [selectedActsToMerge, setSelectedActsToMerge] = useState<number[]>([]);
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [mergeTitle, setMergeTitle] = useState("");
@@ -481,24 +482,57 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
 
   const handleUploadFile = async (e: React.ChangeEvent<HTMLInputElement>, actId: number) => {
-    const file = e.target.files?.[0];
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
     if (previewMode) {
       setActivities((current) => current.map((activity) => activity.id === actId ? { ...activity, document_url: `preview/${file.name}` } : activity));
       setPreviewNotice(`Đã gắn thử “${file.name}” vào bài ${actId}; tệp chưa được tải lên kho thật.`);
-      e.target.value = "";
+      input.value = "";
       return;
     }
-    const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    if (file.size > 100 * 1024 * 1024) {
+      alert("Tài liệu không được vượt quá 100 MB.");
+      input.value = "";
+      return;
+    }
+
+    const cleanName = file.name.normalize("NFKC").replace(/[^\p{L}\p{N}._-]+/gu, "_").slice(0, 180) || "tai-lieu";
     const fileName = `act-${actId}-${Date.now()}-${cleanName}`;
-    if (file.size > 100 * 1024 * 1024) { alert("Tài liệu không được vượt quá 100 MB."); return; }
-    const { error } = await supabase.storage.from('videos').upload(fileName, file, { contentType: file.type || "application/octet-stream" });
-    if (!error) {
-      await supabase.from('activities').update({ document_url: fileName }).eq('id', actId);
-      alert("✅ Đã tải lên tài liệu cho bài học!");
-      fetchData();
-    } else {
-      alert("Lỗi tải tệp: " + error.message);
+    const previousPath = activities.find((activity) => activity.id === actId)?.document_url || null;
+    let uploaded = false;
+    let persisted = false;
+    setUploadingDocumentActivityId(actId);
+    try {
+      const { error: uploadError } = await supabase.storage.from("videos").upload(fileName, file, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false,
+      });
+      if (uploadError) throw new Error("Tải tệp lên thất bại: " + uploadError.message);
+      uploaded = true;
+
+      const { data, error: updateError } = await supabase.from("activities")
+        .update({ document_url: fileName }).eq("id", actId).select("id").maybeSingle();
+      if (updateError || !data) throw new Error(updateError?.message || "Không tìm thấy bài học để lưu tài liệu.");
+      persisted = true;
+
+      let cleanupWarning = "";
+      if (previousPath && previousPath !== fileName && !previousPath.startsWith("http")) {
+        const { error: removeError } = await supabase.storage.from("videos").remove([previousPath]);
+        if (removeError) cleanupWarning = " Tài liệu mới đã lưu, nhưng file cũ chưa được dọn khỏi kho.";
+      }
+      alert("✅ Đã lưu tài liệu cho bài học!" + cleanupWarning);
+      await fetchData();
+    } catch (error) {
+      if (uploaded && !persisted) {
+        const { error: cleanupError } = await supabase.storage.from("videos").remove([fileName]);
+        if (cleanupError) console.warn("Không dọn được file tải lên khi lưu thất bại:", cleanupError.message);
+      }
+      const message = error instanceof Error ? error.message : "Lỗi kết nối cơ sở dữ liệu.";
+      alert(persisted ? "Tài liệu đã lưu nhưng không tải lại được danh sách: " + message : "Không lưu được tài liệu: " + message);
+    } finally {
+      input.value = "";
+      setUploadingDocumentActivityId(null);
     }
   };
 
@@ -2620,9 +2654,9 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                         </div>
 
                         <div className="flex flex-wrap gap-4 items-center pt-2">
-                          <label className="bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-4 py-2 rounded-xl cursor-pointer text-xs font-bold transition-all flex items-center gap-2">
-                            <Upload className="w-4 h-4"/> Tải tệp tài liệu / Phiếu bài
-                            <input type="file" className="hidden" onChange={(e) => handleUploadFile(e, act.id)} />
+                          <label className={`bg-blue-50 text-blue-700 border border-blue-200 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${uploadingDocumentActivityId === act.id ? "cursor-wait opacity-60" : "hover:bg-blue-100 cursor-pointer"}`} aria-disabled={uploadingDocumentActivityId === act.id}>
+                            <Upload className="w-4 h-4"/> {uploadingDocumentActivityId === act.id ? "Đang tải và lưu…" : "Tải tệp tài liệu / Phiếu bài"}
+                            <input type="file" className="hidden" disabled={uploadingDocumentActivityId === act.id} onChange={(e) => void handleUploadFile(e, act.id)} />
                           </label>
                           {act.document_url && (
                             <a href={privateFileHref(act.document_url)} target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline text-xs font-semibold flex items-center gap-1">

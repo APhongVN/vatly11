@@ -709,6 +709,13 @@ assert.match(teacherDashboardSource, /rubric_document_path = uploadedRubricPath/
 assert.match(studentDashboard, /rubric_document_path/);
 assert.match(studentDashboard, /rubric_document_name/);
 assert.match(teacherDashboardSource, /storage\.from\("learning-resources"\)\.upload\(uploadedRubricPath, newActRubricFile/);
+assert.match(teacherDashboardSource, /const handleUploadFile = async/);
+assert.match(teacherDashboardSource, /file\.size > 100 \* 1024 \* 1024/);
+assert.match(teacherDashboardSource, /update\(\{ document_url: fileName \}\)\.eq\("id", actId\)\.select\("id"\)\.maybeSingle\(\)/);
+assert.match(teacherDashboardSource, /if \(updateError \|\| !data\) throw new Error/);
+assert.match(teacherDashboardSource, /if \(uploaded && !persisted\)[\s\S]+?storage\.from\("videos"\)\.remove\(\[fileName\]\)/);
+assert.match(teacherDashboardSource, /previousPath !== fileName[\s\S]+?storage\.from\("videos"\)\.remove\(\[previousPath\]\)/);
+assert.match(teacherDashboardSource, /disabled=\{uploadingDocumentActivityId === act\.id\}/);
 assert.match(teacherDashboardSource, /downloadRubricDocument = async \(activity: any = selectedGradingAct\)/);
 assert.match(teacherDashboardSource, /setRubricFile\(null\);\s*setRubricFileName\(""\)/);
 assert.match(teacherDashboardSource, /workbook\.addWorksheet\("Ma trận chấm điểm"\)/);
