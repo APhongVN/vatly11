@@ -1,10 +1,14 @@
 param(
   [Parameter(Mandatory = $true)]
   [string]$DocxPath,
-  [string]$CurriculumPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'src/lib/data/curriculum.json')
+  [string]$CurriculumPath
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($CurriculumPath)) {
+  $repositoryRoot = Split-Path -Parent $PSScriptRoot
+  $CurriculumPath = Join-Path $repositoryRoot 'src/lib/data/curriculum.json'
+}
 if (-not (Test-Path -LiteralPath $DocxPath -PathType Leaf)) { throw "DOCX source not found: $DocxPath" }
 if (-not (Test-Path -LiteralPath $CurriculumPath -PathType Leaf)) { throw "Curriculum JSON not found: $CurriculumPath" }
 
