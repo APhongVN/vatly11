@@ -13,7 +13,7 @@ import {
   Save, X, Plus, Clock, Layers, BookOpen, Shuffle, RefreshCw, Camera,
   Sparkles, CheckSquare, Square, Merge, AlertTriangle, ExternalLink,
   ChevronRight, LayoutDashboard, PlusCircle, BarChart3, TrendingUp,
-  BrainCircuit, Award, Lightbulb, AlertCircle, FileSpreadsheet, ClipboardList, FolderOpen
+  BrainCircuit, Award, Lightbulb, AlertCircle, FileSpreadsheet, ClipboardList, FolderOpen, Menu
 } from "lucide-react";
 import TeacherHome from "@/components/TeacherHome";
 import CurriculumManager from "@/components/CurriculumManager";
@@ -119,6 +119,8 @@ const loadTeacherGradingGuides = async (): Promise<{ data: GradingGuide[]; docum
 export default function GiaoVienPage({ previewMode = false }: { previewMode?: boolean }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("home");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const navigateToTab = (tab: string) => { setActiveTab(tab); setMobileNavOpen(false); };
   const [activities, setActivities] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
@@ -2177,10 +2179,20 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const weakCount = gradedSubs.filter(s => s.ai_score < 5).length;
 
   return (
-    <main className="min-h-screen flex bg-slate-50">
+    <main className="min-h-screen flex overflow-x-hidden bg-slate-50">
       {previewMode && <div className="fixed bottom-4 right-4 z-50 max-w-sm rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-950 shadow-lg"><p>Đang xem dashboard tương tác với dữ liệu mẫu. Có thể mở tab, thu gọn, lọc và nhập thử; các thao tác ghi/AI sẽ không chạm dữ liệu thật.</p>{previewNotice && <p role="status" className="mt-2 border-t border-amber-200 pt-2 font-normal">{previewNotice}</p>}</div>}
+      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 shadow-sm backdrop-blur lg:hidden">
+        <button type="button" aria-label={mobileNavOpen ? "Đóng menu điều hướng" : "Mở menu điều hướng"} aria-expanded={mobileNavOpen} aria-controls="teacher-navigation" onClick={() => setMobileNavOpen((open) => !open)} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100">
+          {mobileNavOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+        <div className="min-w-0">
+          <p className="truncate text-xs font-black tracking-wide text-slate-900">GIÁO VIÊN PORTAL</p>
+          <p className="truncate text-[10px] text-slate-500">Lớp 11A1 · Điều hướng nhanh</p>
+        </div>
+      </div>
+      {mobileNavOpen && <button type="button" aria-label="Đóng menu điều hướng" onClick={() => setMobileNavOpen(false)} className="fixed inset-0 z-30 bg-slate-950/50 lg:hidden" />}
       {/* SIDEBAR ĐỒNG BỘ MÀU SLATE-900 VÀ CÁC PHÂN HỆ RÕ RÀNG */}
-      <aside className="w-72 bg-slate-900 text-slate-300 flex flex-col shadow-2xl z-20 shrink-0 border-r border-slate-800">
+      <aside id="teacher-navigation" className={`fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 transform flex-col border-r border-slate-800 bg-slate-900 text-slate-300 shadow-2xl transition-transform duration-300 motion-reduce:transition-none ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"} lg:sticky lg:top-0 lg:h-screen lg:z-20 lg:translate-x-0 lg:transition-none`}>
         <div className="p-6 border-b border-slate-800 bg-gradient-to-r from-blue-900/60 to-slate-900 text-white">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black shadow-lg shadow-blue-500/30">
@@ -2198,7 +2210,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
           <div>
             <p className="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tổng quan</p>
             <button
-              onClick={() => setActiveTab('home')}
+              onClick={() => navigateToTab('home')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                 activeTab === 'home' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
               }`}
@@ -2206,7 +2218,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
               <Home className="w-4 h-4 text-blue-400" /> Trang chủ Bảng điều khiển
             </button>
             <button
-              onClick={() => setActiveTab('analytics')}
+              onClick={() => navigateToTab('analytics')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl mt-1 transition-all ${
                 activeTab === 'analytics' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
               }`}
@@ -2220,7 +2232,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
             <p className="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Quản lý Bài tập</p>
             <div className="space-y-1">
               <button
-                onClick={() => setActiveTab('activities')}
+                onClick={() => navigateToTab('activities')}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                   activeTab === 'activities' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
@@ -2228,7 +2240,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 <BookOpen className="w-4 h-4 text-blue-400" /> Bài học cá nhân ({activities.length})
               </button>
               <button
-                onClick={() => setActiveTab('curriculum')}
+                onClick={() => navigateToTab('curriculum')}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                   activeTab === 'curriculum' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
@@ -2236,7 +2248,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 <Layers className="w-4 h-4 text-cyan-300" /> Lộ trình môn & chương
               </button>
               <button
-                onClick={() => setActiveTab('resources')}
+                onClick={() => navigateToTab('resources')}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                   activeTab === 'resources' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
@@ -2244,7 +2256,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 <FolderOpen className="w-4 h-4 text-amber-300" /> Kho học liệu
               </button>
               <button
-                onClick={() => setActiveTab('create_activity')}
+                onClick={() => navigateToTab('create_activity')}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                   activeTab === 'create_activity' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
@@ -2252,7 +2264,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 <PlusCircle className="w-4 h-4 text-emerald-400" /> Tạo bài tập mới
               </button>
               <button
-                onClick={() => setActiveTab('group_assignments')}
+                onClick={() => navigateToTab('group_assignments')}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                   activeTab === 'group_assignments' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
@@ -2267,7 +2279,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
             <p className="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Chấm điểm & AI</p>
             <div className="space-y-1">
               <button
-                onClick={() => setActiveTab('grading')}
+                onClick={() => navigateToTab('grading')}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                   activeTab === 'grading' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
@@ -2275,7 +2287,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 <FileText className="w-4 h-4 text-blue-400" /> Chấm điểm cá nhân
               </button>
               <button
-                onClick={() => setActiveTab('activity-evidence')}
+                onClick={() => navigateToTab('activity-evidence')}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                   activeTab === 'activity-evidence' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
@@ -2283,7 +2295,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 <ClipboardList className="w-4 h-4 text-cyan-400" /> Sổ tay & bằng chứng
               </button>
               <button
-                onClick={() => setActiveTab('ocr')}
+                onClick={() => navigateToTab('ocr')}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                   activeTab === 'ocr' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
@@ -2291,7 +2303,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 <Camera className="w-4 h-4 text-purple-400" /> Chấm từ ảnh (AI OCR)
               </button>
               <button
-                onClick={() => setActiveTab('regrade')}
+                onClick={() => navigateToTab('regrade')}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                   activeTab === 'regrade' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
@@ -2306,7 +2318,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
             <p className="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Lớp học</p>
             <div className="space-y-1">
               <button
-                onClick={() => setActiveTab('students')}
+                onClick={() => navigateToTab('students')}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                   activeTab === 'students' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
@@ -2314,7 +2326,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 <Users className="w-4 h-4 text-emerald-400" /> Danh sách sinh viên ({students.length})
               </button>
               <button
-                onClick={() => setActiveTab('quizzes')}
+                onClick={() => navigateToTab('quizzes')}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                   activeTab === 'quizzes' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
@@ -2322,7 +2334,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                 <Sparkles className="w-4 h-4 text-indigo-400" /> Tạo Trắc nghiệm & AI Sinh Đề
               </button>
               <button
-                onClick={() => setActiveTab('chat')}
+                onClick={() => navigateToTab('chat')}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                   activeTab === 'chat' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
@@ -2335,8 +2347,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
         {/* Footer Sidebar */}
         <div className="p-4 border-t border-slate-800 space-y-1 text-xs font-semibold">
-          <Link href="/hoc-sinh" className="w-full flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
-            <ExternalLink className="w-4 h-4" /> Xem giao diện Học sinh
+          <Link href="/chapters" className="w-full flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
+            <ExternalLink className="w-4 h-4" /> Xem chương học công khai
           </Link>
           <Link href="/" className="w-full flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
             <Home className="w-4 h-4" /> Về Trang chủ Website
@@ -2348,14 +2360,14 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       </aside>
 
       {/* CONTENT AREA CHÍNH */}
-      <div className="flex-1 p-6 md:p-10 h-screen overflow-y-auto relative">
-        <Link href="/" className="absolute top-6 right-8 bg-white text-slate-600 p-3 rounded-full shadow-md border hover:bg-slate-50 transition-all z-10" title="Về trang chủ">
+      <div className="min-w-0 flex-1 p-4 pt-20 md:p-8 md:pt-20 lg:p-10 lg:pt-10 h-screen overflow-y-auto relative">
+        <Link href="/" className="absolute top-6 right-8 hidden bg-white text-slate-600 p-3 rounded-full shadow-md border hover:bg-slate-50 transition-all z-10 lg:inline-flex" title="Về trang chủ">
           <ArrowLeft className="w-5 h-5" />
         </Link>
 
         {/* 1. TAB TRANG CHỦ GIÁO VIÊN */}
         {activeTab === 'home' && (
-          <TeacherHome previewMode={previewMode} onNavigateTab={(tab) => setActiveTab(tab)} />
+          <TeacherHome previewMode={previewMode} onNavigateTab={navigateToTab} />
         )}
 
         {activeTab === 'resources' && <ResourceLibrary previewMode={previewMode} activities={activities} />}
@@ -2473,7 +2485,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
               </div>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setActiveTab('create_activity')}
+                  onClick={() => navigateToTab('create_activity')}
                   className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" /> Tạo bài tập mới
@@ -2728,7 +2740,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                     <h3 className="text-sm font-bold text-cyan-950">Vị trí trong lộ trình</h3>
                     <p className="mt-1 text-xs leading-5 text-cyan-800">Gắn bài này vào môn và chương để học sinh thấy nó trong giao diện tổng thể. Có thể tạo thêm môn/chương ở mục “Lộ trình môn &amp; chương”.</p>
                   </div>
-                  <button type="button" onClick={() => setActiveTab('curriculum')} className="shrink-0 rounded-lg border border-cyan-200 bg-white px-3 py-2 text-xs font-bold text-cyan-800 hover:bg-cyan-100">Mở lộ trình</button>
+                  <button type="button" onClick={() => navigateToTab('curriculum')} className="shrink-0 rounded-lg border border-cyan-200 bg-white px-3 py-2 text-xs font-bold text-cyan-800 hover:bg-cyan-100">Mở lộ trình</button>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="text-xs font-bold text-slate-700">Môn học
@@ -2818,7 +2830,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setActiveTab('activities')}
+                  onClick={() => navigateToTab('activities')}
                   className="px-5 py-3 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
                 >
                   Hủy bỏ

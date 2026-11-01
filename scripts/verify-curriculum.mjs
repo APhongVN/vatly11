@@ -689,6 +689,15 @@ assert.match(studentDashboard, /class_name: className/);
 assert.match(studentDashboard, /hasStudentInClass\(students, formattedName, className\)/);
 assert.match(studentDashboard, /Lọc lớp/);
 assert.match(studentDashboard, /Hồ sơ trùng tên vẫn giữ mã học sinh riêng/);
+assert.match(teacherDashboardSource, /aria-expanded=\{mobileNavOpen\}/);
+assert.match(teacherDashboardSource, /aria-controls="teacher-navigation"/);
+assert.match(teacherDashboardSource, /motion-reduce:transition-none/);
+assert.match(teacherDashboardSource, /onNavigateTab=\{navigateToTab\}/);
+assert.match(teacherDashboardSource, /href="\/chapters"[\s\S]+?Xem chương học công khai/);
+const teacherRenderedTabs = new Set([...teacherDashboardSource.matchAll(/activeTab\s*===\s*'([^']+)'/g)].map((match) => match[1]));
+const teacherNavigationTabs = new Set([...teacherDashboardSource.matchAll(/navigateToTab\('([^']+)'\)/g)].map((match) => match[1]));
+assert.ok(teacherRenderedTabs.size > 0, "Teacher dashboard must render its tab panels.");
+assert.deepEqual([...teacherNavigationTabs].sort(), [...teacherRenderedTabs].sort(), "Every teacher dashboard tab must have a working navigation target.");
 console.log("Teacher-provisioned student accounts, one-time temporary passwords and first-login password enforcement verified.");
 
 const rubricDocumentMigration = await readFile(new URL("../supabase/migrations/20261031002700_rubric_document_import.sql", import.meta.url), "utf8");
