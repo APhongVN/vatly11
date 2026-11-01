@@ -1805,17 +1805,29 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     setReportExportError("");
     setReportExportSuccess("");
     try {
-    const [reportStudents, reportActivities, reportGradingGuides, reportSubmissions, reportEvidence, reportQuizResults, reportGroupAssignments, reportGroups, reportGroupSubmissions] = await Promise.all([
-      readAllReportRows((from, to) => supabase.from("students").select("*").order("id").range(from, to), "Danh sách học sinh"),
-      readAllReportRows((from, to) => supabase.from("activities").select("*").order("id").range(from, to), "Danh sách bài học"),
-      readAllActivityRubricRows(),
-      readAllReportRows((from, to) => supabase.from("submissions").select("*").order("id").range(from, to), "Bài nộp cá nhân"),
-      readAllReportRows((from, to) => supabase.from("activity_evidence").select("id,student_id,activity_id,evidence,score,score_max,completed_at,created_at,updated_at,ai_score,ai_feedback,ai_strengths,ai_weaknesses,teacher_score,teacher_feedback,graded_at,students(full_name,class_name)").order("id").range(from, to), "Sổ tay hoạt động"),
-      readAllReportRows((from, to) => supabase.from("quiz_submissions").select("id,quiz_id,student_id,score,created_at,students(full_name,class_name),quizzes(title,activity_id)").order("id").range(from, to), "Kết quả trắc nghiệm"),
-      readAllReportRows((from, to) => supabase.from("group_assignments").select("*").order("id").range(from, to), "Bài tập nhóm"),
-      readAllReportRows((from, to) => supabase.from("group_assignment_groups").select("id,assignment_id,group_number,group_name,group_assignment_members(id,student_id,students(full_name,class_name))").order("id").range(from, to), "Phân nhóm"),
-      readAllReportRows((from, to) => supabase.from("group_submissions").select("*").order("id").range(from, to), "Bài nộp nhóm"),
-    ]);
+    let reportStudents: any[] = students;
+    let reportActivities: any[] = activities;
+    let reportGradingGuides: any[] = [];
+    let reportSubmissions: any[] = submissions;
+    let reportEvidence: any[] = [];
+    let reportQuizResults: any[] = [];
+    let reportGroupAssignments: any[] = groupAssignments;
+    let reportGroups: any[] = [];
+    let reportGroupSubmissions: any[] = groupSubmissions;
+
+    if (!previewMode) {
+      [reportStudents, reportActivities, reportGradingGuides, reportSubmissions, reportEvidence, reportQuizResults, reportGroupAssignments, reportGroups, reportGroupSubmissions] = await Promise.all([
+        readAllReportRows((from, to) => supabase.from("students").select("*").order("id").range(from, to), "Danh sách học sinh"),
+        readAllReportRows((from, to) => supabase.from("activities").select("*").order("id").range(from, to), "Danh sách bài học"),
+        readAllActivityRubricRows(),
+        readAllReportRows((from, to) => supabase.from("submissions").select("*").order("id").range(from, to), "Bài nộp cá nhân"),
+        readAllReportRows((from, to) => supabase.from("activity_evidence").select("id,student_id,activity_id,evidence,score,score_max,completed_at,created_at,updated_at,ai_score,ai_feedback,ai_strengths,ai_weaknesses,teacher_score,teacher_feedback,graded_at,students(full_name,class_name)").order("id").range(from, to), "Sổ tay hoạt động"),
+        readAllReportRows((from, to) => supabase.from("quiz_submissions").select("id,quiz_id,student_id,score,created_at,students(full_name,class_name),quizzes(title,activity_id)").order("id").range(from, to), "Kết quả trắc nghiệm"),
+        readAllReportRows((from, to) => supabase.from("group_assignments").select("*").order("id").range(from, to), "Bài tập nhóm"),
+        readAllReportRows((from, to) => supabase.from("group_assignment_groups").select("id,assignment_id,group_number,group_name,group_assignment_members(id,student_id,students(full_name,class_name))").order("id").range(from, to), "Phân nhóm"),
+        readAllReportRows((from, to) => supabase.from("group_submissions").select("*").order("id").range(from, to), "Bài nộp nhóm"),
+      ]);
+    }
     const workbook = new ExcelJS.Workbook();
     const generatedAt = new Date();
     workbook.creator = "Vật lí 11";

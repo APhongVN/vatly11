@@ -425,6 +425,9 @@ assert.match(teacherDashboard, /if \(previewMode\) \{ void fetchData\(\); return
 assert.match(teacherDashboard, /setDataLoadIssues\(failedSections\)/);
 assert.match(teacherDashboard, /Chưa tải được đầy đủ dữ liệu lớp/);
 assert.match(teacherDashboard, /onClick=\{\(\) => void fetchData\(\)\}/);
+assert.match(teacherDashboard, /let reportStudents: any\[\] = students;[\s\S]+?if \(!previewMode\) \{[\s\S]+?readAllReportRows/);
+assert.match(teacherDashboard, /setReportExportSuccess\(previewMode \? "Đã xuất báo cáo từ dữ liệu mẫu\."/);
+assert.match(teacherDashboard, /workbook\.xlsx\.writeBuffer\(\)/);
 console.log("Teacher portal opens directly in safe sample mode for guests; authenticated teacher data stays role-gated.");
 assert.equal(scoreActivityQuiz(6, { R1:1,R2:1,R3:0,R4:0,R5:0,R6:1,R7:1,R8:0,R9:2,R10:0 }), null, "Readiness must never be scored as right or wrong.");
 assert.equal(scoreActivityQuiz(6, { R1:1 }), null, "Readiness questions are not part of the scored quiz system.");
