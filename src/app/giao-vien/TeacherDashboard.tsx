@@ -262,6 +262,10 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [reportExportSuccess, setReportExportSuccess] = useState("");
   const [previewNotice, setPreviewNotice] = useState("");
   const [dataLoadIssues, setDataLoadIssues] = useState<string[]>([]);
+  const readRubricFile = (file: File) => extractRubricFile(file, previewMode ? async () => {
+    setPreviewNotice(`OCR đang mô phỏng cho “${file.name}”; ảnh không được gửi tới Gemini trong chế độ xem tự do.`);
+    return `[OCR mô phỏng cho ${file.name}. Nội dung thật sẽ được nhận dạng trong phiên giáo viên.]`;
+  } : undefined);
 
   const fetchData = useCallback(async () => {
     if (previewMode) {
@@ -990,7 +994,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     setNewActRubricImportError("");
     setIsImportingNewActRubric(true);
     try {
-      const extracted = await extractRubricFile(file);
+      const extracted = await readRubricFile(file);
       setNewActRubric(extracted.text);
       setNewActRubricImportError(extracted.warning);
     } catch (error) {
@@ -1008,7 +1012,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     setEditRubricImportError("");
     setIsImportingEditRubric(true);
     try {
-      const extracted = await extractRubricFile(file);
+      const extracted = await readRubricFile(file);
       setEditRubricText(extracted.text);
       setEditRubricImportError(extracted.warning);
     } catch (error) {
@@ -1029,7 +1033,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     setGroupRubricImportError("");
     setIsImportingGroupRubric(true);
     try {
-      const extracted = await extractRubricFile(file);
+      const extracted = await readRubricFile(file);
       setGroupRubricText(extracted.text);
       setGroupRubricImportError(extracted.warning);
     } catch (error) {
@@ -1158,7 +1162,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     setRubricImportError("");
     setIsImportingRubric(true);
     try {
-      const extracted = await extractRubricFile(file);
+      const extracted = await readRubricFile(file);
       setRubricText(extracted.text);
       setRubricImportError(extracted.warning);
     } catch (error) {
