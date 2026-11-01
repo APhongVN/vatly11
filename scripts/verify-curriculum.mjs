@@ -176,6 +176,14 @@ assert.match(resourceLibrary, /name="source_url" type="url"/, "Teachers must be 
 assert.match(resourceLibrary, /name="activity_id"/, "Teachers must be able to reorganize a resource under a different activity.");
 assert.match(resourceLibrary, /setFiles\(\(current\) => current\.slice\(completed\)\)/, "A partial multi-file upload must not retry already-saved files.");
 assert.match(resourceLibrary, /getResourceDownloadName\(item\.storage_path, item\.title\)/);
+assert.match(resourceLibrary, /preview_file\?: File/, "Preview uploads must retain the selected file for a real local download.");
+assert.match(resourceLibrary, /Đã thêm thử \$\{additions\.length\} tệp/, "Preview file upload must update the visible library.");
+assert.match(resourceLibrary, /Đã lưu liên kết vào kho mẫu/, "Preview link entry must update the visible library.");
+assert.match(resourceLibrary, /Đã xuất bản thử/, "Preview publishing must update the visible resource state.");
+assert.match(resourceLibrary, /Đã xóa thử/, "Preview deletion must update the visible resource state.");
+const capacitanceLabSettings = await readFile(new URL("../src/components/CapacitanceLabSettings.tsx", import.meta.url), "utf8");
+assert.match(capacitanceLabSettings, /Đã lưu thử cấu hình trong phiên xem trước/, "Preview lab settings must have a local save response.");
+assert.doesNotMatch(capacitanceLabSettings, /disabled=\{previewMode \|\| loading \|\| saving\}/, "Preview lab settings controls must be editable.");
 console.log("Shared student library, resource editing, original filenames and partial-upload retry verified.");
 
 

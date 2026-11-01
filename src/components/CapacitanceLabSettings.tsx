@@ -53,6 +53,14 @@ export default function CapacitanceLabSettings({ previewMode = false }: { previe
   const save = async () => {
     if (!isValidCapacitanceLabSettings(settings)) { setError("Miền giá trị chưa hợp lệ: giá trị lớn phải lớn hơn giá trị nhỏ, εr mặc định phải nằm trong miền εr."); return; }
     setSaving(true); setError(""); setMessage("");
+    if (previewMode) {
+      window.setTimeout(() => {
+        setStorageReady(true);
+        setMessage("Đã lưu thử cấu hình trong phiên xem trước. Dữ liệu lớp thật không bị thay đổi.");
+        setSaving(false);
+      }, 250);
+      return;
+    }
     try {
       const response = await fetch("/api/capacitance-lab-settings", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ settings }),
@@ -69,12 +77,12 @@ export default function CapacitanceLabSettings({ previewMode = false }: { previe
 
   return <section className="space-y-4 rounded-2xl border border-cyan-200 bg-gradient-to-br from-cyan-50 to-white p-5">
     <header className="flex items-start gap-3"><SlidersHorizontal className="mt-1 h-5 w-5 text-cyan-800"/><div><h3 className="text-lg font-extrabold text-slate-950">Cấu hình phòng thí nghiệm tụ điện</h3><p className="mt-1 text-sm leading-6 text-slate-600">Thiết lập miền U, S, d và εr trước khi giao bài. Cấu hình được dùng chung cho hai phòng thí nghiệm và bị khóa khi lớp đã có hồ sơ đo.</p></div></header>
-    {previewMode && <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900">Bản xem trước: đang hiển thị cấu hình mẫu; cần phiên giáo viên để lưu thay đổi.</p>}
+    {previewMode && <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900">Bản xem trước: có thể chỉnh thông số và bấm Lưu để thử kiểm tra miền giá trị. Không có cấu hình lớp thật nào bị thay đổi.</p>}
     {!previewMode && !storageReady && !loading && <p role="status" className="rounded-xl bg-amber-50 p-3 text-xs text-amber-950">Chưa tải được cấu hình đã lưu. Hãy áp dụng migration 20261031002300 trên Supabase trước khi giao thí nghiệm.</p>}
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{FIELDS.map((field) => <label key={field.key} className="text-xs font-bold text-slate-700">{field.label}<div className="mt-1 flex items-center gap-2"><input type="number" min={field.min} max={field.max} step={field.step} value={settings[field.key]} disabled={previewMode || loading || saving} onChange={(event) => update(field.key, event.currentTarget.valueAsNumber)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm font-semibold disabled:bg-slate-100"/><span className="min-w-8 text-slate-500">{field.unit}</span></div></label>)}</div>
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{FIELDS.map((field) => <label key={field.key} className="text-xs font-bold text-slate-700">{field.label}<div className="mt-1 flex items-center gap-2"><input type="number" min={field.min} max={field.max} step={field.step} value={settings[field.key]} disabled={loading || saving} onChange={(event) => update(field.key, event.currentTarget.valueAsNumber)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm font-semibold disabled:bg-slate-100"/><span className="min-w-8 text-slate-500">{field.unit}</span></div></label>)}</div>
     <p className="text-xs leading-5 text-slate-500">Mặc định theo tài liệu: U≤12 V, S=100–600 cm², d=1–10 mm; εr mặc định 2 và có thể điều chỉnh trong miền do giáo viên đặt.</p>
     {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
     {message && <p role="status" className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900"><CheckCircle2 className="h-4 w-4 shrink-0"/>{message}</p>}
-    <button type="button" onClick={() => void save()} disabled={previewMode || loading || saving} className="inline-flex items-center gap-2 rounded-xl bg-cyan-800 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="h-4 w-4"/>}{loading ? "Đang tải cấu hình…" : saving ? "Đang lưu…" : "Lưu cấu hình thí nghiệm"}</button>
+    <button type="button" onClick={() => void save()} disabled={loading || saving} className="inline-flex items-center gap-2 rounded-xl bg-cyan-800 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="h-4 w-4"/>}{loading ? "Đang tải cấu hình…" : saving ? "Đang lưu…" : "Lưu cấu hình thí nghiệm"}</button>
   </section>;
 }

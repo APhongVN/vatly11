@@ -10,6 +10,8 @@ type Resource = {
   id: string; title: string; description: string; resource_type: "file" | "link"; category: string;
   tags: string[]; storage_path: string | null; source_url: string | null; mime_type: string | null;
   file_size: number | null; activity_id: number | null; is_published: boolean; created_at: string;
+  /** A local-only file exists only while a teacher explores the public preview. */
+  preview_file?: File;
 };
 const BUCKET = "learning-resources";
 const CATEGORIES = ["Bài giảng", "Phiếu bài tập", "Đề kiểm tra", "Video", "Thí nghiệm", "Tài liệu tham khảo", "Khác"];
@@ -65,6 +67,21 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
     if (!files.length || saving) return;
     if (files.length > 20 || files.some((file) => file.size > MAX_FILE_BYTES)) { setError("Tối đa 20 tệp mỗi lượt, dung lượng mỗi tệp không quá 100 MB."); return; }
     setSaving(true); setError(""); setNotice("");
+    if (previewMode) {
+      const uploadedAt = new Date().toISOString();
+      const additions: Resource[] = files.map((file, index) => ({
+        id: `preview-file-${Date.now()}-${index}`,
+        title: title.trim() && files.length === 1 ? title.trim() : file.name,
+        description: description.trim(), resource_type: "file", category, tags: tagList(),
+        storage_path: null, source_url: null, mime_type: file.type || "application/octet-stream", file_size: file.size,
+        activity_id: activityId ? Number(activityId) : null, is_published: false, created_at: uploadedAt, preview_file: file,
+      }));
+      setResources((current) => [...additions, ...current]);
+      clearForm();
+      setNotice(`Đã thêm thử ${additions.length} tệp vào kho mẫu. Có thể tải lại tệp trong phiên xem trước này.`);
+      setSaving(false);
+      return;
+    }
     let completed = 0;
     for (const file of files) {
       const path = `${new Date().getFullYear()}/${crypto.randomUUID()}-${file.name.normalize("NFKC").replace(/[^\p{L}\p{N}._-]+/gu, "_").slice(0, 150)}`;
@@ -91,6 +108,18 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
     try { parsed = new URL(url.trim()); } catch { setError("Đường dẫn chưa hợp lệ."); return; }
     if (!["https:", "http:"].includes(parsed.protocol)) { setError("Chỉ nhận liên kết http hoặc https."); return; }
     setSaving(true); setError(""); setNotice("");
+    if (previewMode) {
+      const item: Resource = {
+        id: `preview-link-${Date.now()}`, title: title.trim() || parsed.hostname, description: description.trim(), resource_type: "link",
+        category, tags: tagList(), storage_path: null, source_url: parsed.toString(), mime_type: null, file_size: null,
+        activity_id: activityId ? Number(activityId) : null, is_published: false, created_at: new Date().toISOString(),
+      };
+      setResources((current) => [item, ...current]);
+      clearForm();
+      setNotice("Đã lưu liên kết vào kho mẫu. Bấm Mở link để kiểm tra ngay.");
+      setSaving(false);
+      return;
+    }
     const result = await supabase.from("learning_resources").insert({
       title: title.trim() || parsed.hostname, description: description.trim(), resource_type: "link",
       category, tags: tagList(), source_url: parsed.toString(), activity_id: activityId ? Number(activityId) : null,
@@ -101,11 +130,22 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
   };
 
   const publish = async (item: Resource) => {
+    if (previewMode) {
+      const nextPublished = !item.is_published;
+      setResources((current) => current.map((resource) => resource.id === item.id ? { ...resource, is_published: nextPublished } : resource));
+      setNotice(nextPublished ? `Đã xuất bản thử “${item.title}”.` : `Đã chuyển “${item.title}” về bản nháp.`);
+      return;
+    }
     const { error: updateError } = await supabase.from("learning_resources").update({ is_published: !item.is_published }).eq("id", item.id);
     if (updateError) setError(`Không đổi được trạng thái: ${updateError.message}`); else await refresh();
   };
   const remove = async (item: Resource) => {
     if (!window.confirm(`Xóa “${item.title}” khỏi kho?`)) return;
+    if (previewMode) {
+      setResources((current) => current.filter((resource) => resource.id !== item.id));
+      setNotice(`Đã xóa thử “${item.title}” khỏi kho mẫu.`);
+      return;
+    }
     if (item.storage_path) {
       const { error: storageError } = await supabase.storage.from(BUCKET).remove([item.storage_path]);
       if (storageError) { setError(`Không xóa được tệp: ${storageError.message}`); return; }
@@ -115,6 +155,13 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
   };
   const open = async (item: Resource) => {
     if (item.source_url) { window.open(item.source_url, "_blank", "noopener,noreferrer"); return; }
+    if (previewMode && item.preview_file) {
+      const objectUrl = URL.createObjectURL(item.preview_file);
+      window.open(objectUrl, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      return;
+    }
+    if (previewMode) { setNotice("Tệp minh họa này không có nội dung thật. Hãy thêm một tệp của bạn để thử mở và tải xuống."); return; }
     if (!item.storage_path) return;
     const { data, error: signedError } = await supabase.storage.from(BUCKET).createSignedUrl(item.storage_path, 3600);
     if (signedError || !data?.signedUrl) setError("Không tạo được liên kết tải tệp. Hãy kiểm tra quyền kho học liệu.");
@@ -122,6 +169,16 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
   };
   const download = async (item: Resource) => {
     if (item.source_url) { window.open(item.source_url, "_blank", "noopener,noreferrer"); return; }
+    if (previewMode && item.preview_file) {
+      const objectUrl = URL.createObjectURL(item.preview_file);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl; anchor.download = item.preview_file.name || item.title;
+      document.body.appendChild(anchor); anchor.click(); anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      setNotice(`Đã tải “${item.preview_file.name}” từ kho mẫu.`);
+      return;
+    }
+    if (previewMode) { setNotice("Tệp minh họa này không có nội dung để tải. Hãy thêm một tệp của bạn để thử luồng tải xuống."); return; }
     if (!item.storage_path) return;
     const { data, error: downloadError } = await supabase.storage.from(BUCKET).download(item.storage_path);
     if (downloadError || !data) { setError("Không tải được tài liệu. Hãy kiểm tra quyền truy cập."); return; }
@@ -133,19 +190,31 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
     const current = resources.find((item) => item.id === id);
     const nextTitle = String(values.get("title") || "").trim();
     const nextActivity = String(values.get("activity_id") || "");
-    const changes: Record<string, unknown> = {
-      title: nextTitle, description: String(values.get("description") || "").trim(),
-      category: String(values.get("category") || "Khác"), tags: String(values.get("tags") || "").split(/[;,]/).map((tag) => tag.trim()).filter(Boolean).slice(0, 12),
-      activity_id: nextActivity ? Number(nextActivity) : null,
-    };
+    const nextDescription = String(values.get("description") || "").trim();
+    const nextCategory = String(values.get("category") || "Khác");
+    const nextTags = String(values.get("tags") || "").split(/[;,]/).map((tag) => tag.trim()).filter(Boolean).slice(0, 12);
+    const nextActivityId = nextActivity ? Number(nextActivity) : null;
+    let nextSourceUrl = current?.source_url || null;
     if (!nextTitle) { setError("Tên tài liệu không được để trống."); return; }
     if (current?.resource_type === "link") {
       try {
         const nextUrl = new URL(String(values.get("source_url") || "").trim());
         if (!["http:", "https:"].includes(nextUrl.protocol)) throw new Error();
-        changes.source_url = nextUrl.toString();
+        nextSourceUrl = nextUrl.toString();
       } catch { setError("Liên kết phải là địa chỉ http hoặc https hợp lệ."); return; }
     }
+    if (previewMode) {
+      setResources((currentResources) => currentResources.map((resource) => resource.id === id ? {
+        ...resource, title: nextTitle, description: nextDescription, category: nextCategory,
+        tags: nextTags, activity_id: nextActivityId, source_url: nextSourceUrl,
+      } : resource));
+      setEditingId(null); setError(""); setNotice(`Đã lưu thay đổi của “${nextTitle}” trong kho mẫu.`);
+      return;
+    }
+    const changes: Record<string, unknown> = {
+      title: nextTitle, description: nextDescription, category: nextCategory, tags: nextTags, activity_id: nextActivityId,
+      ...(current?.resource_type === "link" ? { source_url: nextSourceUrl } : {}),
+    };
     const { error: updateError } = await supabase.from("learning_resources").update(changes).eq("id", id);
     if (updateError) setError(`Không lưu được thay đổi: ${updateError.message}`); else { setEditingId(null); setError(""); await refresh(); }
   };
@@ -155,6 +224,7 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
       <div><p className="mb-2 text-xs font-bold uppercase tracking-[.18em] text-blue-200">Quản trị nội dung</p><h1 className="text-3xl font-black md:text-4xl">Kho học liệu</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">Tập trung tệp, video và đường dẫn; gắn vào hoạt động, phân loại bằng thẻ và kiểm soát nội dung học sinh được xem.</p></div>
       <div className="flex gap-3"><div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3"><b className="block text-2xl">{resources.length}</b><span className="text-xs text-blue-100">tài nguyên</span></div><div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3"><b className="block text-2xl">{resources.filter((item) => item.is_published).length}</b><span className="text-xs text-blue-100">đã xuất bản</span></div></div>
     </header>
+    {previewMode && <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">Chế độ xem tự do: có thể thêm, sửa, xuất bản, xóa và tải tệp mẫu ngay trên trình duyệt. Không thay đổi kho dữ liệu lớp thật.</p>}
     {(error || notice) && <div role={error ? "alert" : "status"} className={`rounded-2xl border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{error || notice}</div>}
     <div className="grid gap-6 xl:grid-cols-[minmax(320px,.8fr)_minmax(0,1.2fr)]">
       <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
