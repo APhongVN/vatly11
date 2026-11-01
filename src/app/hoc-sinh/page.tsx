@@ -12,6 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import VirtualLab from "@/components/VirtualLab";
 import { filterSubmissionsForStudentGroups } from "@/lib/group-submissions.mjs";
+import { isMessageFromUser } from "@/lib/chat-identity.mjs";
 import ActivityResources from "@/components/ActivityResources";
 
 const attachmentHref = (value: string) => value.startsWith("http") || value.startsWith("blob:") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") || value.startsWith("group-rubrics/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
@@ -47,9 +48,10 @@ export default function HocSinhPage() {
       const { data: profile } = await supabase.from('students').select('id,full_name,class_name').eq('auth_user_id', user.id).maybeSingle();
       if (!profile) { router.replace('/login?error=student-profile'); return; }
       if (cancelled) return;
-      localStorage.setItem('student_session', JSON.stringify(profile));
-      setStudent(profile);
-      fetchData(profile);
+      const authenticatedStudent = { ...profile, auth_user_id: user.id };
+      localStorage.setItem('student_session', JSON.stringify(authenticatedStudent));
+      setStudent(authenticatedStudent);
+      fetchData(authenticatedStudent);
     };
     void loadIdentity();
     return () => { cancelled = true; };
@@ -126,15 +128,15 @@ export default function HocSinhPage() {
     finally { setIsSendingChat(false); }
   };
   const deleteOwnMessage = async (message: any) => {
-    if (message.sender_name !== student?.full_name) return;
+    if (!isMessageFromUser(message, student?.auth_user_id)) return;
     if (!confirm("Xóa tin nhắn của em?")) return;
+    const { error } = await supabase.from("messages").delete().eq("id", message.id);
+    if (error) { alert("Không xóa được tin nhắn: " + error.message); return; }
+    setMessages((current) => current.filter((item) => item.id !== message.id));
     if (message.attachment_url && !message.attachment_url.startsWith("http")) {
       const { error: fileError } = await supabase.storage.from("class-work").remove([message.attachment_url]);
-      if (fileError) { alert("Không xóa được tệp đính kèm: " + fileError.message); return; }
+      if (fileError) alert("Tin nhắn đã xóa, nhưng chưa dọn được tệp đính kèm: " + fileError.message);
     }
-    const { error } = await supabase.from("messages").delete().eq("id", message.id).eq("sender_name", student.full_name);
-    if (error) alert("Không xóa được tin nhắn: " + error.message);
-    else setMessages((current) => current.filter((item) => item.id !== message.id));
   };
   const speakText = (text: string) => {
     if ('speechSynthesis' in window) {
@@ -626,7 +628,7 @@ export default function HocSinhPage() {
 
             <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-slate-50/50">
               {messages.map(m => {
-                const isMe = m.sender_name === student.full_name;
+                const isMe = isMessageFromUser(m, student.auth_user_id);
                 const isTeacher = m.sender_name?.includes('Cô') || m.sender_name?.includes('Giáo viên');
                 return (
                   <div key={m.id} className={`flex gap-3 group ${isMe ? 'flex-row-reverse' : ''}`}>

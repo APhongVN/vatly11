@@ -1732,13 +1732,14 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       return;
     }
     if (!confirm("Xóa tin nhắn này khỏi kênh chat?")) return;
+    const { error } = await supabase.from("messages").delete().eq("id", message.id);
+    if (error) { alert("Không xóa được tin nhắn: " + error.message); return; }
+    setMessages((current) => current.filter((item) => item.id !== message.id));
     if (message.attachment_url && !message.attachment_url.startsWith("http")) {
       const { error: fileError } = await supabase.storage.from("class-work").remove([message.attachment_url]);
-      if (fileError) { alert("Không xóa được tệp đính kèm: " + fileError.message); return; }
+      if (fileError) alert("Tin nhắn đã xóa, nhưng chưa dọn được tệp đính kèm: " + fileError.message);
     }
-    const { error } = await supabase.from("messages").delete().eq("id", message.id);
-    if (error) alert("Không xóa được tin nhắn: " + error.message);
-    else await fetchData();
+    await fetchData();
   };
   const exportExcelReport = async () => {
     if (isExportingReport) return;
