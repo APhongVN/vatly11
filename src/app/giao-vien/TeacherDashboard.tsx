@@ -210,6 +210,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [numGroups, setNumGroups] = useState(4);
   const [maxStudentsPerGroup, setMaxStudentsPerGroup] = useState(6);
   const [currentGroupMembers, setCurrentGroupMembers] = useState<any[]>([]);
+  const [groupDetailsError, setGroupDetailsError] = useState("");
   const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
   const [groupNameDraft, setGroupNameDraft] = useState("");
   const [groupRubricText, setGroupRubricText] = useState("");
@@ -734,6 +735,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const fetchGroupDetails = async (assignId: string) => {
     const requestId = ++groupDetailsRequestRef.current;
     setLoadingGroupDetailsId(assignId);
+    setGroupDetailsError("");
     setGroupRubricAssignmentId(assignId);
     setGroupRubricText("");
     setGroupRubricFile(null);
@@ -754,7 +756,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         supabase.from('group_assignments').select('id,rubric,rubric_document_path,rubric_document_name').eq('id', assignId).maybeSingle(),
       ]);
       if (requestId !== groupDetailsRequestRef.current) return;
-      if (groupsResult.data) setCurrentGroupMembers(groupsResult.data);
+      if (groupsResult.error) throw new Error(groupsResult.error.message);
+      setCurrentGroupMembers(groupsResult.data || []);
 
       let rubricData = rubricResult.data as any;
       let documentSchemaReady = !rubricResult.error;
@@ -770,6 +773,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       setGroupRubricDocumentSchemaReady(documentSchemaReady);
       setGroupRubricText(rubricData?.rubric || "");
       setGroupRubricFileName(rubricData?.rubric_document_name || "");
+    } catch (error) {
+      if (requestId === groupDetailsRequestRef.current) {
+        setCurrentGroupMembers([]);
+        setGroupDetailsError(error instanceof Error ? error.message : "Không tải được danh sách nhóm.");
+      }
     } finally {
       if (requestId === groupDetailsRequestRef.current) setLoadingGroupDetailsId(null);
     }
@@ -808,6 +816,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       setLoadingGroupDetailsId(null);
       setExpandedGroupAct(null);
       setCurrentGroupMembers([]);
+      setGroupDetailsError("");
     } else {
       setExpandedGroupAct(id);
       fetchGroupDetails(id);
@@ -2855,7 +2864,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
               )}
               {groupAssignments.map(gAct => (
                 <div key={gAct.id} className={`bg-white rounded-2xl shadow-sm border transition-all ${expandedGroupAct === gAct.id ? 'border-orange-400 ring-1 ring-orange-200' : 'border-slate-200'}`}>
-                  <div onClick={() => toggleExpandGroupAct(gAct.id)} aria-disabled={isImportingGroupRubric || savingGroupRubricId !== null} className={`p-5 flex items-center justify-between bg-slate-50/50 rounded-t-2xl ${isImportingGroupRubric || savingGroupRubricId !== null ? "cursor-wait" : "cursor-pointer"}`}>
+                  <div className="p-5 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
                     <div>
                       <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
                         <Layers className="w-5 h-5 text-orange-600" /> {gAct.title}
@@ -2870,17 +2879,17 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <button disabled={savingGroupRubricId === gAct.id} onClick={(e) => { e.stopPropagation(); deleteGroupAssignment(gAct.id); }} className="text-slate-400 hover:text-rose-600 p-2 disabled:opacity-40" title="Xóa bài nhóm">
+                      <button type="button" disabled={savingGroupRubricId === gAct.id} onClick={(e) => { e.stopPropagation(); deleteGroupAssignment(gAct.id); }} className="text-slate-400 hover:text-rose-600 p-2 disabled:opacity-40" title="Xóa bài nhóm">
                         <Trash2 className="w-4 h-4"/>
                       </button>
-                      <button className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-xl text-xs font-bold">
+                      <button type="button" aria-expanded={expandedGroupAct === gAct.id} aria-controls={`group-details-${gAct.id}`} onClick={() => toggleExpandGroupAct(gAct.id)} className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-xl text-xs font-bold">
                         {expandedGroupAct === gAct.id ? "Thu gọn" : "Chi tiết & Chấm điểm"}
                       </button>
                     </div>
                   </div>
 
                   {expandedGroupAct === gAct.id && (
-                    <div className="border-t border-slate-100 p-6 space-y-6">
+                    <div id={`group-details-${gAct.id}`} className="border-t border-slate-100 p-6 space-y-6">
                       <div>
                         <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2 text-sm">
                           <Users className="w-4 h-4 text-orange-600"/> Danh sách thành viên từng nhóm
@@ -2893,6 +2902,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                             <Shuffle className="w-4 h-4"/> Chia nhóm ngẫu nhiên
                           </button>
                         </div>
+                        {groupDetailsError && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-900"><span>Không tải được danh sách nhóm: {groupDetailsError}</span><button type="button" onClick={() => void fetchGroupDetails(gAct.id)} className="rounded-lg border border-rose-300 bg-white px-3 py-1.5 font-bold hover:bg-rose-100">Tải lại</button></div>}
                         <div className="grid md:grid-cols-4 gap-4">
                           {currentGroupMembers.map(g => (
                             <div key={g.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
@@ -2930,7 +2940,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                             {gAct.rubric_document_path && <button type="button" onClick={() => void downloadGroupRubricDocument(gAct)} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-[11px] font-bold text-emerald-800 hover:bg-emerald-50"><Download className="h-3.5 w-3.5" /> Tải file gốc</button>}
                             {groupRubricFileName && <span className="min-w-0 truncate text-[11px] text-slate-600">{isImportingGroupRubric ? "Đang trích xuất: " : "Ma trận từ file: "}{groupRubricFileName}</span>}
                           </div>
-                          {loadingGroupDetailsId === gAct.id && <p role="status" className="mb-2 rounded-lg bg-blue-50 px-3 py-2 text-[11px] text-blue-900">Đang tải ma trận đã lưu…</p>}
+                          {loadingGroupDetailsId === gAct.id && <p role="status" className="mb-2 rounded-lg bg-blue-50 px-3 py-2 text-[11px] text-blue-900">Đang tải danh sách nhóm và ma trận đã lưu…</p>}
                           {groupRubricFile && !groupRubricDocumentSchemaReady && <p role="status" className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-900">File gốc sẽ được lưu sau khi áp dụng migration 20261101000100_group_rubric_documents.sql.</p>}
                           {groupRubricImportError && <p role="alert" className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-900">{groupRubricImportError}</p>}
                           <div className="flex gap-2">
