@@ -4,7 +4,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 type AdminClient = ReturnType<typeof createSupabaseAdminClient>;
 
-const STUDENT_EMAIL_DOMAIN = "students.vatly11.invalid";
+const DEFAULT_STUDENT_AUTH_EMAIL_DOMAIN = "vatly11.com";
+const EMAIL_DOMAIN_PATTERN = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
 const MAX_USERNAME_LENGTH = 32;
 
 export function normalizeStudentUsername(value: string) {
@@ -25,9 +26,14 @@ export function generateTemporaryStudentPassword(fullName: string) {
 }
 
 export function studentInternalEmail(username: string) {
-  return `${normalizeStudentUsername(username)}@${STUDENT_EMAIL_DOMAIN}`;
+  const domain = (process.env.STUDENT_AUTH_EMAIL_DOMAIN || DEFAULT_STUDENT_AUTH_EMAIL_DOMAIN).trim().toLocaleLowerCase("en-US");
+  if (!EMAIL_DOMAIN_PATTERN.test(domain) || domain.endsWith(".invalid")) {
+    throw new Error("STUDENT_AUTH_EMAIL_DOMAIN cần là miền email thật, có thể phân giải DNS.");
+  }
+  const normalizedUsername = normalizeStudentUsername(username);
+  if (normalizedUsername.length < 3) throw new Error("Tên đăng nhập học sinh chưa hợp lệ.");
+  return `student-${normalizedUsername}@${domain}`;
 }
-
 export function studentUsernameRateLimitHash(username: string) {
   return createHash("sha256").update(`username:${normalizeStudentUsername(username)}`).digest("hex");
 }
