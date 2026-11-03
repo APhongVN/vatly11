@@ -22,10 +22,10 @@ export default function HomePage() {
 
           <div className="flex items-center gap-4">
             <Link
-              href="/chapters"
+              href="/hoc-sinh"
               className="px-5 py-2.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/10 transition-all "
             >
-              Xem chương học
+              Vào lớp học
             </Link>
           </div>
         </div>
@@ -51,7 +51,7 @@ export default function HomePage() {
         <div className="grid md:grid-cols-2 gap-6 pt-4 max-w-4xl mx-auto">
           {/* Cổng Học sinh */}
           <Link
-            href="/chapters"
+            href="/hoc-sinh"
             className="group relative bg-white/5 hover:bg-white/10 border border-white/15 hover:border-blue-400/50 p-8 rounded-3xl transition-[transform,background-color,border-color,box-shadow] duration-300 motion-safe:hover:-translate-y-1 text-left portal-enter portal-enter-delay flex flex-col justify-between  shadow-xl hover:shadow-2xl"
           >
             <div>
@@ -59,14 +59,14 @@ export default function HomePage() {
                 <GraduationCap className="w-7 h-7" />
               </div>
               <h2 className="text-2xl font-black mb-2 text-white flex items-center gap-2">
-                Khám phá chương Tụ điện <ChevronRight className="w-5 h-5 text-blue-400 group-hover:translate-x-1 transition-transform" />
+                Không gian học tập học sinh <ChevronRight className="w-5 h-5 text-blue-400 group-hover:translate-x-1 transition-transform" />
               </h2>
               <p className="text-xs text-slate-300 leading-relaxed mb-6">
-                Làm bài tập chuẩn bị trước khi đến lớp, thực hành trên Phòng thí nghiệm ảo, nộp bài quét ảnh AI OCR và hỏi đáp trợ lý gia sư thông minh.
+                Mở 11 hoạt động học, đọc tài liệu chi tiết, làm thí nghiệm ảo và tự kiểm tra kiến thức.
               </p>
             </div>
             <div className="mt-auto flex items-center text-xs font-bold text-blue-400 group-hover:text-blue-300 transition-colors">
-                Xem lộ trình học →
+                Vào lớp học →
             </div>
           </Link>
 

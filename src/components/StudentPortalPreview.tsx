@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDown, ArrowRight, BookOpen, CheckCircle2, Clock3, FlaskConical,
-  GraduationCap, RefreshCw, Search, Sparkles, Zap,
+  GraduationCap, Microscope, RefreshCw, Search, Sparkles, Zap,
 } from "lucide-react";
 import { ACTIVITIES, type Activity } from "@/lib/data/activities";
 
@@ -120,7 +120,7 @@ export default function StudentPortalPreview() {
   }, [activities, phase, search]);
 
   const firstOpenActivity = activities.find((activity) => activity.status === "available");
-  const mainLab = activities.find((activity) => activity.id === 8);
+  const mainLab = activities.find((activity) => activity.id === 8 && activity.status === "available");
   const phaseInfo: Record<Exclude<Phase, "Tất cả">, { title: string; subtitle: string; icon: typeof BookOpen }> = {
     "Trước lớp": { title: "Chuẩn bị trước giờ học", subtitle: "Xem bài, đặt câu hỏi và tự kiểm tra kiến thức nền.", icon: BookOpen },
     "Trên lớp": { title: "Khám phá và thực hành trên lớp", subtitle: "Thảo luận, làm thí nghiệm và luyện tập cùng lớp.", icon: FlaskConical },
@@ -147,11 +147,12 @@ export default function StudentPortalPreview() {
           <p className="mt-2 text-sm leading-6 text-slate-600">{guide?.summary || activity.description}</p>
           {activity.id === 8 && <p className="mt-3 inline-flex rounded-lg bg-violet-50 px-2.5 py-1.5 text-xs font-bold text-violet-800">Đã gộp nội dung nguồn 8, 9, 10 và 11</p>}
           {guide?.task && <div className="mt-4 rounded-xl bg-slate-50 p-3.5 text-sm leading-5 text-slate-700"><span className="font-bold text-slate-900">Em sẽ làm:</span> {guide.task}</div>}
+          {activity.deliverable && <p className="mt-3 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2 text-xs leading-5 text-slate-700"><b className="text-slate-900">Sản phẩm cần hoàn thành:</b> {activity.deliverable}</p>}
         </div>
         <div className="mt-5 border-t border-slate-100 pt-4">
           {canOpen ? (
             <Link href={"/hoat-dong/" + activity.id} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-3 text-sm font-extrabold text-white transition hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-200">
-              Vào bài học <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              Mở nội dung và học liệu <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
           ) : <div className="rounded-xl bg-slate-100 px-4 py-3 text-center text-xs font-bold text-slate-500">{activity.status === "locked" ? "Bài chưa được mở" : "Bài đã kết thúc"}</div>}
         </div>
@@ -183,15 +184,15 @@ export default function StudentPortalPreview() {
           <div aria-hidden="true" className="absolute bottom-[-8rem] right-[30%] -z-10 h-64 w-64 rounded-full bg-cyan-400/15 blur-3xl" />
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-center">
             <div>
-              <p className="inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-white/5 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-cyan-200"><GraduationCap className="h-4 w-4" /> Lộ trình học Vật lí 11</p>
+              <p className="inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-white/5 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-cyan-200"><GraduationCap className="h-4 w-4" /> Không gian học tập học sinh</p>
               <h1 className="mt-5 max-w-3xl text-3xl font-black leading-tight tracking-tight md:text-5xl">Chuyên đề <span className="text-cyan-300">Tụ điện</span></h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">Đi từ hiện tượng nạp – phóng điện, tự làm thí nghiệm, rồi dùng kiến thức để giải thích và vận dụng. Em có thể mở bài học để xem nội dung ngay.</p>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">Mở bài học để đọc tài liệu, xem hướng dẫn, làm thí nghiệm ảo và tự kiểm tra. Em có thể học và xem học liệu tự do; gửi bài để cô xem cần tài khoản lớp.</p>
               <div className="mt-6 flex flex-wrap gap-3">
-                {firstOpenActivity && <Link href={"/hoat-dong/" + firstOpenActivity.id} className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-5 py-3 text-sm font-extrabold text-slate-950 transition hover:bg-cyan-200">Bắt đầu học <ArrowRight className="h-4 w-4" /></Link>}
-                {mainLab && <Link href="/hoat-dong/8" className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"><FlaskConical className="h-4 w-4" /> Đến bài thí nghiệm</Link>}
+                {firstOpenActivity && <Link href={"/hoat-dong/" + firstOpenActivity.id} className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-5 py-3 text-sm font-extrabold text-slate-950 transition hover:bg-cyan-200">Mở bài học đầu tiên <ArrowRight className="h-4 w-4" /></Link>}
+                {mainLab && <Link href="/hoat-dong/8" className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"><FlaskConical className="h-4 w-4" /> Mở hoạt động thực nghiệm 8</Link>}
               </div>
               <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-xs font-medium text-slate-300">
-                <span className="inline-flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-300" /> Nội dung xem tự do</span>
+                <span className="inline-flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-300" /> Xem bài không cần đăng nhập</span>
                 <span className="inline-flex items-center gap-2"><BookOpen className="h-4 w-4 text-cyan-300" /> {activities.length} bài học trên web</span>
                 <span className="inline-flex items-center gap-2"><FlaskConical className="h-4 w-4 text-violet-300" /> Gộp đúng mục 8–11</span>
               </div>
@@ -213,18 +214,33 @@ export default function StudentPortalPreview() {
               <div className="mt-5 rounded-2xl bg-[#0b142b] p-4">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Công thức cần nhớ</p>
                 <p className="mt-2 text-2xl font-black tracking-wide text-white">C = <span className="text-cyan-300">Q</span>/<span className="text-amber-300">U</span></p>
-                <p className="mt-1 text-xs leading-5 text-slate-400">Điện dung cho biết tụ điện tích được bao nhiêu điện tích ở một hiệu điện thế.</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">Q đo bằng coulomb (C), U bằng volt (V), điện dung C bằng farad (F).</p>
               </div>
             </div>
           </div>
         </section>
 
+        <section aria-label="Mở nhanh hoạt động học" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { id: 1, label: "Bài 1 · Khởi động", detail: "Đọc tình huống và ghi dự đoán.", icon: BookOpen },
+            { id: 4, label: "Bài 4 · Phòng thí nghiệm ảo", detail: "Thử thay đổi S, d và điện môi.", icon: FlaskConical },
+            { id: 6, label: "Bài 6 · Tự kiểm tra", detail: "Làm câu hỏi trước giờ học.", icon: CheckCircle2 },
+            { id: 8, label: "Bài 8 · Thí nghiệm tụ điện", detail: "Mở hoạt động gộp các mục 8–11.", icon: Microscope },
+          ].map(({ id, label, detail, icon: Icon }) => {
+            const activity = activities.find((item) => item.id === id);
+            if (!activity || activity.status !== "available") return null;
+            return <Link key={id} href={"/hoat-dong/" + id} className="group flex min-h-28 items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md">
+              <span className="rounded-xl bg-blue-50 p-2.5 text-blue-700"><Icon className="h-5 w-5" /></span>
+              <span><b className="block text-sm text-slate-900">{label}</b><span className="mt-1 block text-xs leading-5 text-slate-500">{detail}</span><span className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-blue-700">Mở bài <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span></span>
+            </Link>;
+          })}
+        </section>
         {catalogError && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"><p>Chưa đồng bộ được thay đổi mới từ lớp. Các bài học có sẵn vẫn mở được bên dưới.</p><button type="button" disabled={isRefreshing} onClick={() => { setIsRefreshing(true); setRetryCount((count) => count + 1); }} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold disabled:opacity-50"><RefreshCw className={"h-4 w-4 " + (isRefreshing ? "animate-spin" : "")} />{isRefreshing ? "Đang tải…" : "Thử đồng bộ lại"}</button></div>}
 
         <section className="grid gap-4 md:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div><p className="text-xs font-bold uppercase tracking-wider text-blue-700">Em sẽ học gì?</p><h2 className="mt-1 text-xl font-black">Lộ trình bài học</h2><p className="mt-1 text-sm text-slate-500">Chọn một bài để mở hướng dẫn, tài liệu và hoạt động học.</p></div>
+              <div><p className="text-xs font-bold uppercase tracking-wider text-blue-700">Em sẽ học gì?</p><h2 className="mt-1 text-xl font-black">Lộ trình bài học</h2><p className="mt-1 text-sm text-slate-500">Mỗi bài mở ra nội dung chi tiết, nhiệm vụ, mô phỏng hoặc phiếu tự kiểm tra.</p></div>
               <label className="relative block w-full sm:max-w-xs">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm bài học…" className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
@@ -253,7 +269,7 @@ export default function StudentPortalPreview() {
           </section>;
         })}
 
-        <footer className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between"><span className="inline-flex items-center gap-2 font-semibold"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Em có thể xem bài học và tài liệu mà không cần đăng nhập.</span><span className="text-xs text-slate-500">Bài nộp và điểm số sẽ được kết nối khi tài khoản lớp được bật.</span></footer>
+        <footer className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between"><span className="inline-flex items-center gap-2 font-semibold"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Em có thể xem bài học và tài liệu mà không cần đăng nhập.</span><span className="text-xs text-slate-500">Muốn lưu bài nộp vào hồ sơ lớp, em cần được cấp tài khoản học sinh.</span></footer>
       </div>
     </main>
   );
