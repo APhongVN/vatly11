@@ -15,6 +15,7 @@ import VirtualLab from "@/components/VirtualLab";
 import { filterSubmissionsForStudentGroups } from "@/lib/group-submissions.mjs";
 import { isMessageFromUser } from "@/lib/chat-identity.mjs";
 import ActivityResources from "@/components/ActivityResources";
+import StudentPortalPreview from "@/components/StudentPortalPreview";
 
 const attachmentHref = (value: string) => value.startsWith("http") || value.startsWith("blob:") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") || value.startsWith("group-rubrics/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
 
@@ -40,11 +41,12 @@ export default function HocSinhPage() {
     const loadIdentity = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        if (!cancelled) router.replace("/login");
+        // Guests can explore published lessons without a fake student profile.
         return;
       }
       const { data: accountProfile, error: accountProfileError } = await supabase.from("profiles").select("role,must_change_password").eq("id", user.id).maybeSingle();
-      if (accountProfileError || accountProfile?.role !== "student") { await supabase.auth.signOut(); router.replace("/login?error=role"); return; }
+      if (accountProfileError) { await supabase.auth.signOut(); router.replace("/login?error=role"); return; }
+      if (accountProfile?.role !== "student") { router.replace(accountProfile?.role === "teacher" ? "/giao-vien" : "/login?error=role"); return; }
       if (accountProfile.must_change_password) { router.replace("/doi-mat-khau"); return; }
       const { data: profile } = await supabase.from('students').select('id,full_name,class_name').eq('auth_user_id', user.id).maybeSingle();
       if (!profile) { router.replace('/login?error=student-profile'); return; }
@@ -179,7 +181,7 @@ export default function HocSinhPage() {
     ? (gradedList.reduce((acc, cur) => acc + cur.ai_score, 0) / gradedList.length).toFixed(1)
     : "Chưa có";
 
-  if (!student) return <div className="p-10 text-center font-bold text-slate-500">Đang tải thông tin học sinh...</div>;
+  if (!student) return <StudentPortalPreview />;
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/20 flex flex-col relative">

@@ -22,12 +22,14 @@ function redirectWithRefreshedCookies(response: NextResponse, request: NextReque
 export async function proxy(request: NextRequest) {
   const isTeacherPortal = request.nextUrl.pathname === "/giao-vien"
     || request.nextUrl.pathname.startsWith("/giao-vien/");
+  const isStudentPreview = request.nextUrl.pathname.replace(/\/+$/, "") === "/hoc-sinh";
   let response = NextResponse.next({ request });
+  if (isStudentPreview) return response;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = getSupabasePublicKey();
   if (!url || !key) {
-    // Giữ cổng giáo viên xem tự do khi chưa cấu hình Supabase; các trang học sinh vẫn cần phiên thật.
+    // Cổng giáo viên và trang xem học sinh là công khai; các thao tác ghi vẫn qua API có xác thực.
     return isTeacherPortal ? response : redirectWithRefreshedCookies(response, request, "/login");
   }
 
