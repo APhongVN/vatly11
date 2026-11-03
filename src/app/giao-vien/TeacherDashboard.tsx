@@ -3552,7 +3552,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
             <div className="grid md:grid-cols-2 gap-4">
               <form onSubmit={addStudentManual} className="bg-white p-5 rounded-2xl border shadow-sm flex gap-2">
                 <input value={newStudentName} onChange={e => setNewStudentName(e.target.value)} maxLength={120} placeholder="Nhập họ và tên học sinh mới..." className="flex-1 border p-2.5 rounded-xl text-sm outline-none bg-slate-50/50" required /><input type="date" aria-label="Ngày sinh học sinh" value={newStudentBirthDate} onChange={(event) => setNewStudentBirthDate(event.target.value)} className="w-36 border p-2.5 rounded-xl text-xs" />
-                <button disabled={isAddingStudent || (!previewMode && !canProvisionStudentAccounts)} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-5 py-2.5 rounded-xl text-xs font-bold">{isAddingStudent ? "Đang lưu…" : "Thêm ngay"}</button>
+                <button type="submit" disabled={isAddingStudent || (!previewMode && !canProvisionStudentAccounts)} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-5 py-2.5 rounded-xl text-xs font-bold">{isAddingStudent ? "Đang lưu…" : "Thêm ngay"}</button>
               </form>
               <div className="bg-white p-5 rounded-2xl border shadow-sm flex flex-col justify-center gap-3">
                 <span className="text-xs font-bold text-slate-600">Nhập danh sách học sinh</span>

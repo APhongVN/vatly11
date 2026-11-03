@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint src",
-    "test:content": "node scripts/verify-curriculum.mjs"
+    "test:content": "node scripts/verify-curriculum.mjs && node scripts/verify-actionable-buttons.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.32.0",
