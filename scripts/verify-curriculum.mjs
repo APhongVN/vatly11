@@ -282,6 +282,9 @@ console.log("Named group result lookup verified by stable group_id, including re
 
 assert.deepEqual(extractStudentNamesFromText("Mã,Họ và tên,Lớp\n1,\"Nguyễn Văn An\",11A1\n2,\"Trần Thị Bình\",11A1"), ["Nguyễn Văn An", "Trần Thị Bình"], "CSV import must select the full-name column and ignore class/id columns.");
 assert.deepEqual(extractStudentNamesFromText("Họ,Tên đệm,Tên,Lớp\nNguyễn,Văn,An,11A1"), ["Nguyễn Văn An"], "CSV import must combine Vietnamese name columns.");
+assert.deepEqual(extractStudentNamesFromText('"Nguyễn Văn An";11A1\n"Trần Thị Bình";11A1'), ["Nguyễn Văn An", "Trần Thị Bình"], "Headerless CSV must select the name column instead of appending class values.");
+assert.deepEqual(extractStudentNamesFromText('"Nguyễn, Văn An";11A1\n"Trần, Thị Bình";11A1'), ["Nguyễn, Văn An", "Trần, Thị Bình"], "Delimiter detection must ignore separators inside quoted CSV cells.");
+assert.deepEqual(extractStudentNamesFromText("\uFEFFMã,Học sinh,Lớp\n1,Nguyễn Văn An,11A1\n2,Trần Thị Bình,11A1"), ["Nguyễn Văn An", "Trần Thị Bình"], "CSV with BOM and unrecognized student-name headers must ignore id/class columns.");
 assert.deepEqual(extractStudentNamesFromText("Nguyễn Văn An\r\nTrần Thị Bình"), ["Nguyễn Văn An", "Trần Thị Bình"], "TXT import must preserve one name per line.");
 const guestStudentRouteText = await readFile(new URL("../src/app/giao-vien/TeacherDashboard.tsx", import.meta.url), "utf8");
 assert.match(guestStudentRouteText, /showImportModal &&/);
