@@ -149,6 +149,7 @@ const interactions = await readFile(new URL("../src/components/ActivityInteracti
 const dashboard = await readFile(new URL("../src/app/giao-vien/TeacherDashboard.tsx", import.meta.url), "utf8");
 const groupMigration = await readFile(new URL("../supabase/migrations/20261031001100_named_groups.sql", import.meta.url), "utf8");
 const groupClassMigration = await readFile(new URL("../supabase/migrations/20261101000200_group_assignment_classes.sql", import.meta.url), "utf8");
+const groupFeedbackProtectionMigration = await readFile(new URL("../supabase/migrations/20261103000300_protect_group_teacher_feedback.sql", import.meta.url), "utf8");
 const privateDataMigration = await readFile(new URL("../supabase/migrations/20261031001300_private_activity_data.sql", import.meta.url), "utf8");
 const answerPrivacyMigration = await readFile(new URL("../supabase/migrations/20261031001400_protect_answer_keys.sql", import.meta.url), "utf8");
 const uniqueQuizMigration = await readFile(new URL("../supabase/migrations/20261031001500_unique_quiz_attempts.sql", import.meta.url), "utf8");
@@ -199,6 +200,9 @@ assert.match(groupMigration, /ADD COLUMN IF NOT EXISTS group_name/);
 const groupNameSyncFunction = groupMigration.match(/CREATE OR REPLACE FUNCTION public\.sync_group_submission_name\(\)([\s\S]*?)\$\$;/)?.[1] || "";
 assert.match(groupNameSyncFunction, /UPDATE public\.group_submissions[\s\S]*SET group_name = COALESCE\([\s\S]*WHERE group_id = NEW\.id/);
 assert.match(groupMigration, /CREATE TRIGGER group_name_sync_submissions\s+AFTER UPDATE OF group_name ON public\.group_assignment_groups\s+FOR EACH ROW EXECUTE FUNCTION public\.sync_group_submission_name\(\)/);
+assert.match(groupFeedbackProtectionMigration, /IF NOT public\.is_teacher\(\) THEN[\s\S]+IF TG_OP = 'INSERT' THEN[\s\S]+NEW\.teacher_feedback := NULL;[\s\S]+NEW\.teacher_feedback := OLD\.teacher_feedback/);
+assert.match(groupFeedbackProtectionMigration, /BEFORE INSERT OR UPDATE ON public\.group_submissions[\s\S]+EXECUTE FUNCTION public\.protect_group_submission_teacher_feedback/);
+assert.match(groupFeedbackProtectionMigration, /REVOKE ALL ON FUNCTION[\s\S]+FROM PUBLIC, anon, authenticated/);
 assert.match(groupClassMigration, /ADD COLUMN IF NOT EXISTS class_name TEXT/);
 assert.match(groupClassMigration, /CREATE OR REPLACE FUNCTION public\.create_group_assignment_for_class/);
 assert.match(groupClassMigration, /WHERE v_class_name IS NULL OR lower\(btrim\(student\.class_name\)\)/);
