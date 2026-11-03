@@ -48,14 +48,24 @@ export async function provisionStudentAccount(
 ) {
   const fullName = input.fullName.normalize("NFC").trim();
   const className = input.className.normalize("NFC").trim();
-  let existing: { id: string; full_name: string; class_name: string; auth_user_id: string | null; username: string | null; login_email: string | null } | null = null;
+  let existing: { id: string; full_name: string; class_name: string; auth_user_id: string | null; username: string | null; login_email: string | null; is_active?: boolean } | null = null;
 
   if (input.studentId) {
-    const { data, error } = await admin.from("students")
-      .select("id,full_name,class_name,auth_user_id,username,login_email")
+    const { data: activeData, error: activeError } = await admin.from("students")
+      .select("id,full_name,class_name,auth_user_id,username,login_email,is_active")
       .eq("id", input.studentId).maybeSingle();
+    let data = activeData;
+    let error = activeError;
+    if (error?.code === "42703" || error?.code === "PGRST204") {
+      const legacyResult = await admin.from("students")
+        .select("id,full_name,class_name,auth_user_id,username,login_email")
+        .eq("id", input.studentId).maybeSingle();
+      data = legacyResult.data ? { ...legacyResult.data, is_active: true } : null;
+      error = legacyResult.error;
+    }
     if (error) throw new Error("Không đọc được hồ sơ học sinh.");
     if (!data) throw new Error("Không tìm thấy hồ sơ học sinh.");
+    if (data.is_active === false) throw new Error("Học sinh này đã được lưu trữ. Hãy khôi phục hồ sơ trước khi cấp tài khoản.");
     existing = data;
     if (existing.auth_user_id) {
       const username = existing.username || studentUsernameBase(existing.full_name);

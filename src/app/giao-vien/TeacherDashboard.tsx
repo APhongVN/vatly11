@@ -10,7 +10,7 @@ import { countAwaitingTeacherReview } from "@/lib/report-metrics.mjs";
 import { renameGroupInSubmissions } from "@/lib/group-submissions.mjs";
 import { buildClassReportMetrics } from "@/lib/class-report-metrics.mjs";
 import {
-  LogOut, Home, Video, Users, FileText, Bot, Upload, MessageSquare,
+  LogOut, Home, Video, Users, FileText, Bot, Upload, MessageSquare, Archive, RotateCcw,
   Send, Calendar, Download, CheckCircle, Trash2, ArrowLeft, Search,
   Save, X, Plus, Clock, Layers, BookOpen, Shuffle, RefreshCw, Camera,
   Sparkles, CheckSquare, Square, Merge, AlertTriangle, ExternalLink,
@@ -42,18 +42,51 @@ const rubricUploadMimeType = (file: File) => {
   };
   return allowed[extension] || "application/octet-stream";
 };
-const loadTeacherStudentRoster = async () => {
-  const withAccountFields = await supabase.from("students")
-    .select("id,full_name,class_name,auth_user_id,login_email,username,birth_date").order("full_name").limit(1000);
-  if (!withAccountFields.error) return { ...withAccountFields, accountFieldsReady: true, accountSchemaMissing: false };
-  if (withAccountFields.error.code !== "42703" && withAccountFields.error.code !== "PGRST204") {
-    return { ...withAccountFields, accountFieldsReady: false, accountSchemaMissing: false };
-  }
-  // Keep the roster readable until the account migration is applied, and disable provisioning meanwhile.
-  const legacyRoster = await supabase.from("students").select("id,full_name,class_name").order("full_name").limit(1000);
-  return { ...legacyRoster, accountFieldsReady: false, accountSchemaMissing: true };
-};
+const isMissingStudentSchemaField = (error: { code?: string } | null) => error?.code === "42703" || error?.code === "PGRST204";
 
+const loadTeacherStudentRoster = async () => {
+  const completeRoster = await supabase.from("students")
+    .select("id,full_name,class_name,auth_user_id,login_email,username,birth_date,is_active").order("full_name").limit(1000);
+  if (!completeRoster.error) {
+    return { ...completeRoster, accountFieldsReady: true, accountSchemaMissing: false, archiveSchemaMissing: false };
+  }
+  if (!isMissingStudentSchemaField(completeRoster.error)) {
+    return { ...completeRoster, accountFieldsReady: false, accountSchemaMissing: false, archiveSchemaMissing: false };
+  }
+
+  const accountRoster = await supabase.from("students")
+    .select("id,full_name,class_name,auth_user_id,login_email,username,birth_date").order("full_name").limit(1000);
+  if (!accountRoster.error) {
+    return {
+      ...accountRoster,
+      data: (accountRoster.data || []).map((student) => ({ ...student, is_active: true })),
+      accountFieldsReady: true,
+      accountSchemaMissing: false,
+      archiveSchemaMissing: true,
+    };
+  }
+  if (!isMissingStudentSchemaField(accountRoster.error)) {
+    return { ...accountRoster, accountFieldsReady: false, accountSchemaMissing: false, archiveSchemaMissing: true };
+  }
+
+  const archiveRoster = await supabase.from("students")
+    .select("id,full_name,class_name,is_active").order("full_name").limit(1000);
+  if (!archiveRoster.error) {
+    return { ...archiveRoster, accountFieldsReady: false, accountSchemaMissing: true, archiveSchemaMissing: false };
+  }
+  if (!isMissingStudentSchemaField(archiveRoster.error)) {
+    return { ...archiveRoster, accountFieldsReady: false, accountSchemaMissing: true, archiveSchemaMissing: false };
+  }
+
+  const legacyRoster = await supabase.from("students").select("id,full_name,class_name").order("full_name").limit(1000);
+  return {
+    ...legacyRoster,
+    data: (legacyRoster.data || []).map((student) => ({ ...student, is_active: true })),
+    accountFieldsReady: false,
+    accountSchemaMissing: true,
+    archiveSchemaMissing: true,
+  };
+};
 const readAllReportRows = async <T,>(
   loadPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
   label: string,
@@ -125,6 +158,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const navigateToTab = (tab: string) => { setActiveTab(tab); setMobileNavOpen(false); };
   const [activities, setActivities] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
+  const activeStudents = students.filter((student) => student.is_active !== false);
+  const archivedStudents = students.filter((student) => student.is_active === false);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [quizzes, setQuizzes] = useState<any[]>([]);
@@ -195,6 +230,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [searchTerm, setSearchTerm] = useState("");
   const [studentClassName, setStudentClassName] = useState("11A1");
   const [studentClassFilter, setStudentClassFilter] = useState("");
+  const [showArchivedStudents, setShowArchivedStudents] = useState(false);
+  const [studentArchiveBusyId, setStudentArchiveBusyId] = useState<string | null>(null);
   const [importPreviewNames, setImportPreviewNames] = useState<string[]>([]);
   const [showImportModal, setShowImportModal] = useState(false);
   const [pasteNamesText, setPasteNamesText] = useState("");
@@ -208,6 +245,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [isCreatingStudentAccount, setIsCreatingStudentAccount] = useState(false);
   const [canProvisionStudentAccounts, setCanProvisionStudentAccounts] = useState(false);
   const [studentAccountSchemaMissing, setStudentAccountSchemaMissing] = useState(false);
+  const [studentArchiveSchemaMissing, setStudentArchiveSchemaMissing] = useState(false);
 
   // Quản lý bài tập nhóm
   const [groupAssignments, setGroupAssignments] = useState<any[]>([]);
@@ -234,6 +272,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [groupRubricAssignmentId, setGroupRubricAssignmentId] = useState<string | null>(null);
   const [loadingGroupDetailsId, setLoadingGroupDetailsId] = useState<string | null>(null);
   const groupDetailsRequestRef = useRef(0);
+  const previewGroupSequence = useRef(0);
   const [savingGroupRubricId, setSavingGroupRubricId] = useState<string | null>(null);
   const [groupSubmissions, setGroupSubmissions] = useState<any[]>([]);
 
@@ -273,6 +312,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       setDataLoadIssues([]);
       setCanProvisionStudentAccounts(false);
       setStudentAccountSchemaMissing(false);
+      setStudentArchiveSchemaMissing(false);
       setActivities(ACTIVITIES);
       setStudents([
         { id: "demo-student-1", full_name: "Nguyễn Minh Anh", class_name: "11A1" },
@@ -299,7 +339,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     try {
       const [
         { data: acts, error: activitiesError },
-        { data: studs, error: studentsError, accountFieldsReady, accountSchemaMissing },
+        { data: studs, error: studentsError, accountFieldsReady, accountSchemaMissing, archiveSchemaMissing },
         { data: subs, error: submissionsError },
         { data: msgs, error: messagesError },
         { data: qzs, error: quizzesError },
@@ -338,6 +378,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
       setCanProvisionStudentAccounts(accountFieldsReady === true);
       setStudentAccountSchemaMissing(accountSchemaMissing === true);
+      setStudentArchiveSchemaMissing(archiveSchemaMissing === true);
       setRubricDocumentSchemaReady(guideResult.documentFieldsReady);
 
       if (acts) {
@@ -365,7 +406,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       console.warn("Lỗi tải dữ liệu giáo viên:", err);
       setDataLoadIssues(["kết nối Supabase"]);
     }
-  }, [previewMode, selectedGradingAct]);
+  }, [previewMode, selectedGradingAct, setIsChatMuted]);
 
   useEffect(() => {
     if (previewMode) { void fetchData(); return; }
@@ -724,7 +765,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     if (!title) return alert("Nhập tên bài tập nhóm trước khi lưu.");
     if (newGroupClassName === "__choose__") return alert("Hãy chọn lớp nhận bài nhóm hoặc chọn tất cả lớp.");
     const className = newGroupClassName === "__all__" ? null : newGroupClassName.trim();
-    const targetStudents = className ? filterStudentRoster(students, className, "") : students;
+    const targetStudents = className ? filterStudentRoster(activeStudents, className, "") : activeStudents;
     if (!Number.isInteger(numGroups) || numGroups < 1 || numGroups > 50 || !Number.isInteger(maxStudentsPerGroup) || maxStudentsPerGroup < 1 || maxStudentsPerGroup > 100) {
       return alert("Số nhóm phải từ 1–50 và sĩ số tối đa mỗi nhóm phải từ 1–100.");
     }
@@ -736,7 +777,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     catch { return alert("Thời hạn chưa hợp lệ."); }
 
     if (previewMode) {
-      const assignmentId = `preview-group-${Date.now()}`;
+      const assignmentId = `preview-group-${++previewGroupSequence.current}`;
       const groups = Array.from({ length: numGroups }, (_, index) => ({
         id: `${assignmentId}-${index + 1}`, assignment_id: assignmentId, group_number: index + 1,
         group_name: `Nhóm ${index + 1}`,
@@ -899,7 +940,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     if (regroupingAssignmentId) return;
     const assignment = groupAssignments.find((item) => item.id === assignId);
     const className = assignment?.class_name || "";
-    const targetStudents = className ? filterStudentRoster(students, className, "") : students;
+    const targetStudents = className ? filterStudentRoster(activeStudents, className, "") : activeStudents;
     if (!targetStudents.length) return alert(className ? `Lớp ${className} chưa có hồ sơ học sinh.` : "Hãy nhập danh sách học sinh trước khi chia nhóm.");
     if (targetStudents.length > numGroups * maxStudentsPerGroup) return alert(`Sức chứa hiện tại là ${numGroups * maxStudentsPerGroup} học sinh, chưa đủ cho lớp có ${targetStudents.length} em.`);
     const submittedCount = groupSubmissions.filter((submission) => submission.assignment_id === assignId).length;
@@ -1661,19 +1702,44 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
   const deleteStudent = async (id: string) => {
     const student = students.find((item) => item.id === id);
+    if (!student || studentArchiveBusyId) return;
+    const restoring = student.is_active === false;
     if (previewMode) {
-      setStudents((current) => current.filter((item) => item.id !== id));
-      setPreviewNotice(`Đã xóa thử ${student?.full_name || "học sinh"} khỏi danh sách lớp mẫu.`);
+      setStudents((current) => current.map((item) => item.id === id ? { ...item, is_active: restoring } : item));
+      setPreviewNotice(restoring
+        ? "Đã khôi phục thử " + student.full_name + " trong danh sách lớp mẫu."
+        : "Đã lưu trữ thử " + student.full_name + "; dữ liệu mẫu vẫn còn trong phiên này.");
       return;
     }
-    if (!confirm(`Xóa ${student?.full_name || "học sinh này"} khỏi danh sách lớp? Lịch sử bài nộp vẫn được giữ.`)) return;
-    const { error } = await supabase.from("students").delete().eq("id", id);
-    if (error) { alert("Không xóa được học sinh: " + error.message); return; }
-    setStudents((current) => current.filter((item) => item.id !== id));
-  };
+    if (studentArchiveSchemaMissing) {
+      alert("Cần áp dụng migration 20261103000200_student_archive.sql trước khi lưu trữ hoặc khôi phục học sinh.");
+      return;
+    }
+    const action = restoring ? "khôi phục" : "lưu trữ";
+    const detail = restoring
+      ? "Khôi phục " + student.full_name + " vào danh sách lớp? Hồ sơ này cần được cấp tài khoản mới trước khi học sinh đăng nhập."
+      : "Lưu trữ " + student.full_name + "? Tài khoản sẽ bị khóa; bài nộp, điểm và lịch sử nhóm vẫn được giữ.";
+    if (!confirm(detail)) return;
 
+    setStudentArchiveBusyId(id);
+    try {
+      const response = await fetch("/api/teacher/students/" + encodeURIComponent(id), { method: restoring ? "PATCH" : "DELETE" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Không thể " + action + " học sinh.");
+      setStudents((current) => current.map((item) => item.id === id
+        ? { ...item, is_active: restoring, auth_user_id: restoring ? item.auth_user_id : null }
+        : item));
+      alert(restoring
+        ? "Đã khôi phục hồ sơ. Hãy cấp tài khoản mới nếu học sinh cần đăng nhập."
+        : "Đã lưu trữ học sinh và khóa tài khoản. Bài nộp, điểm và lịch sử vẫn được giữ.");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Không thể " + action + " học sinh.");
+    } finally {
+      setStudentArchiveBusyId(null);
+    }
+  };
   const openStudentAccountModal = (student: any) => {
-    if (previewMode || !canProvisionStudentAccounts) return;
+    if (previewMode || !canProvisionStudentAccounts || student.is_active === false) return;
     setAccountStudent(student);
     setStudentAccountCredentials(null);
     setStudentAccountError("");
@@ -1682,7 +1748,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
   const createStudentAccount = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (previewMode || !canProvisionStudentAccounts || !accountStudent?.id || isCreatingStudentAccount) return;
+    if (previewMode || !canProvisionStudentAccounts || !accountStudent?.id || accountStudent.is_active === false || isCreatingStudentAccount) return;
     setIsCreatingStudentAccount(true);
     setStudentAccountError("");
     setStudentAccountNotice("");
@@ -2231,9 +2297,10 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const currentSubmissions = selectedGradingAct ? submissions.filter(s => s.activity_id === selectedGradingAct.id) : [];
   const currentGroupSubs = expandedGroupAct ? groupSubmissions.filter(s => s.assignment_id === expandedGroupAct) : [];
   const newActivityChapters = curriculumChapters.filter((chapter) => chapter.course_id === newActCourseId);
-  const studentClassOptions = getStudentClassNames(students);
-  const visibleStudents = filterStudentRoster(students, studentClassFilter, searchTerm);
-  const groupTargetCount = newGroupClassName === "__all__" ? students.length : newGroupClassName === "__choose__" ? 0 : filterStudentRoster(students, newGroupClassName, "").length;
+  const currentRoster = showArchivedStudents ? archivedStudents : activeStudents;
+  const studentClassOptions = getStudentClassNames(currentRoster);
+  const visibleStudents = filterStudentRoster(currentRoster, studentClassFilter, searchTerm);
+  const groupTargetCount = newGroupClassName === "__all__" ? activeStudents.length : newGroupClassName === "__choose__" ? 0 : filterStudentRoster(activeStudents, newGroupClassName, "").length;
 
   // Thống kê phổ điểm
   const gradedSubs = submissions.filter(s => s.ai_score !== null && s.ai_score !== -1);
@@ -2387,7 +2454,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                   activeTab === 'students' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
               >
-                <Users className="w-4 h-4 text-emerald-400" /> Danh sách sinh viên ({students.length})
+                <Users className="w-4 h-4 text-emerald-400" /> Danh sách sinh viên ({activeStudents.length})
               </button>
               <button
                 onClick={() => navigateToTab('quizzes')}
@@ -3473,13 +3540,15 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
           <div className="space-y-6 max-w-5xl animate-in fade-in">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-3xl font-extrabold text-slate-900">Danh sách Học sinh ({students.length})</h2>
+                <h2 className="text-3xl font-extrabold text-slate-900">Danh sách Học sinh ({activeStudents.length})</h2>
                 <p className="text-slate-500 text-sm mt-1">Quản lý tài khoản học sinh, thêm từng em hoặc nhập hàng loạt từ Excel.</p>
               </div>
             </div>
 
             <div className="flex flex-wrap items-end gap-3 rounded-2xl border bg-white p-4 shadow-sm"><label className="min-w-[220px] flex-1 text-xs font-bold text-slate-700">Lớp áp dụng cho học sinh mới<input value={studentClassName} onChange={(event) => setStudentClassName(event.target.value)} maxLength={40} required className="mt-1 w-full rounded-xl border px-3 py-2.5 text-sm font-normal outline-none focus:border-blue-500" placeholder="Ví dụ: 11A1" /></label><p className="max-w-xl text-xs leading-5 text-slate-500">Lớp này áp dụng khi thêm từng học sinh hoặc nhập danh sách; hồ sơ hiện có không bị đổi.</p></div>
             {!previewMode && !canProvisionStudentAccounts && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{studentAccountSchemaMissing ? "Cần áp dụng migration 20261103000100_student_username_auth.sql trên Supabase trước khi cấp tài khoản. Danh sách học sinh cũ vẫn dùng được." : "Chưa đọc được trạng thái tài khoản học sinh. Hãy kiểm tra kết nối/quyền Supabase rồi tải lại trang."}</p>}
+
+            {!previewMode && studentArchiveSchemaMissing && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Cần áp dụng migration 20261103000200_student_archive.sql để lưu trữ an toàn mà không xóa lịch sử.</p>}
             <div className="grid md:grid-cols-2 gap-4">
               <form onSubmit={addStudentManual} className="bg-white p-5 rounded-2xl border shadow-sm flex gap-2">
                 <input value={newStudentName} onChange={e => setNewStudentName(e.target.value)} maxLength={120} placeholder="Nhập họ và tên học sinh mới..." className="flex-1 border p-2.5 rounded-xl text-sm outline-none bg-slate-50/50" required /><input type="date" aria-label="Ngày sinh học sinh" value={newStudentBirthDate} onChange={(event) => setNewStudentBirthDate(event.target.value)} className="w-36 border p-2.5 rounded-xl text-xs" />
@@ -3496,31 +3565,33 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
             </div>
 
             <div className="bg-white p-6 rounded-3xl border shadow-sm space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => setShowArchivedStudents(false)} aria-pressed={!showArchivedStudents} className={"rounded-xl px-3 py-2 text-xs font-bold " + (!showArchivedStudents ? "bg-blue-700 text-white" : "border bg-white text-slate-600")}>Đang hoạt động ({activeStudents.length})</button>
+                <button type="button" onClick={() => setShowArchivedStudents(true)} aria-pressed={showArchivedStudents} className={"rounded-xl px-3 py-2 text-xs font-bold " + (showArchivedStudents ? "bg-slate-700 text-white" : "border bg-white text-slate-600")}>Đã lưu trữ ({archivedStudents.length})</button>
+              </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <div className="relative min-w-0 flex-1">
                   <Search className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400" />
                   <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Tìm kiếm tên học sinh..." className="w-full pl-11 pr-4 py-3 border rounded-xl bg-slate-50/50 outline-none text-sm" />
                 </div>
-                <label className="text-xs font-semibold text-slate-600">Lọc lớp<select value={studentClassFilter} onChange={(event) => setStudentClassFilter(event.target.value)} className="mt-1 block min-w-40 rounded-xl border bg-white px-3 py-3 text-sm"><option value="">Tất cả lớp ({students.length})</option>{studentClassOptions.map((className) => <option key={className} value={className}>{className}</option>)}</select></label>
+                <label className="text-xs font-semibold text-slate-600">Lọc lớp<select value={studentClassFilter} onChange={(event) => setStudentClassFilter(event.target.value)} className="mt-1 block min-w-40 rounded-xl border bg-white px-3 py-3 text-sm"><option value="">Tất cả lớp ({currentRoster.length})</option>{studentClassOptions.map((className) => <option key={className} value={className}>{className}</option>)}</select></label>
               </div>
-              <p className="text-xs text-slate-500">Đang hiển thị {visibleStudents.length} / {students.length} hồ sơ. Hồ sơ trùng tên vẫn giữ mã học sinh riêng.</p>
+              <p className="text-xs text-slate-500">Đang hiển thị {visibleStudents.length} / {currentRoster.length} hồ sơ{showArchivedStudents ? " đã lưu trữ" : " đang hoạt động"}. Hồ sơ trùng tên vẫn giữ mã học sinh riêng.</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {visibleStudents.map((s: any) => (
                   <div key={s.id} className="min-w-0 rounded-xl border bg-slate-50 px-3 py-2.5 text-xs group">
                     <div className="flex min-w-0 items-center justify-between gap-2">
                       <span className="min-w-0 truncate font-bold">{s.full_name}<span className="ml-1.5 rounded bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">{s.class_name || "Chưa xếp lớp"}</span></span>
                       <div className="flex shrink-0 items-center gap-1">
-                        {s.auth_user_id ? <button type="button" disabled={previewMode || !canProvisionStudentAccounts} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-amber-800 disabled:opacity-50">Cấp lại mật khẩu</button> : <button type="button" disabled={previewMode || !canProvisionStudentAccounts} title={!canProvisionStudentAccounts ? "Cần áp dụng migration tài khoản mới." : undefined} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
-                        <button type="button" aria-label={`Xóa học sinh ${s.full_name}`} onClick={() => deleteStudent(s.id)} className="rounded-md p-1 text-slate-400 hover:text-rose-600">
-                          <Trash2 className="h-3.5 w-3.5"/>
-                        </button>
+                        {s.is_active === false ? <span className="rounded-md bg-slate-200 px-1.5 py-1 text-[9px] font-bold text-slate-600">Đã lưu trữ</span> : s.auth_user_id ? <button type="button" disabled={previewMode || !canProvisionStudentAccounts} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-amber-800 disabled:opacity-50">Cấp lại mật khẩu</button> : <button type="button" disabled={previewMode || !canProvisionStudentAccounts} title={!canProvisionStudentAccounts ? "Cần áp dụng migration tài khoản mới." : undefined} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
+                        <button type="button" aria-label={(s.is_active === false ? "Khôi phục học sinh " : "Lưu trữ học sinh ") + s.full_name} title={s.is_active === false ? "Khôi phục hồ sơ" : "Lưu trữ, giữ nguyên lịch sử"} disabled={studentArchiveBusyId === s.id || studentArchiveSchemaMissing && !previewMode} onClick={() => void deleteStudent(s.id)} className={"rounded-md p-1 disabled:opacity-40 " + (s.is_active === false ? "text-blue-600 hover:bg-blue-50" : "text-slate-400 hover:text-amber-700")}>{studentArchiveBusyId === s.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin"/> : s.is_active === false ? <RotateCcw className="h-3.5 w-3.5"/> : <Archive className="h-3.5 w-3.5"/>}</button>
                       </div>
                     </div>
                     <p className="mt-1 truncate text-[10px] font-normal text-slate-500">{s.username ? `Tên đăng nhập: ${s.username}` : (s.login_email || (s.auth_user_id ? "Tài khoản đã liên kết" : "Chưa có tài khoản đăng nhập"))}</p>
                   </div>
                 ))}
                 {visibleStudents.length === 0 && (
-                  <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-slate-500">{students.length ? "Không tìm thấy học sinh phù hợp trong lớp này." : "Chưa có học sinh. Thêm tên hoặc nhập danh sách để bắt đầu."}</p>
+                  <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-slate-500">{currentRoster.length ? "Không tìm thấy học sinh phù hợp trong lớp này." : showArchivedStudents ? "Chưa có hồ sơ học sinh được lưu trữ." : "Chưa có học sinh. Thêm tên hoặc nhập danh sách để bắt đầu."}</p>
                 )}
               </div>
             </div>
