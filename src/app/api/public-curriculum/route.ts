@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { createSupabasePublicClient } from "@/lib/supabase-public";
+import { COURSES } from "@/lib/data/courses";
+import { CHAPTERS } from "@/lib/data/chapters";
+import { ACTIVITIES } from "@/lib/data/activities";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +27,31 @@ async function readAllRows<T>(
   }
 }
 
+function bundledCurriculum() {
+  return {
+    courses: COURSES.map(({ id, title, description, grade_level, subject }) => ({ id, title, description, grade_level, subject })),
+    chapters: CHAPTERS.map(({ id, title, description, course_id }) => ({ id, title, description, course_id })),
+    activities: ACTIVITIES.map((activity) => ({
+      id: activity.id,
+      code: activity.code,
+      title: activity.title,
+      description: activity.description,
+      phase: activity.phase,
+      type: activity.type,
+      duration: activity.duration,
+      status: activity.status,
+      deliverable: activity.deliverable,
+      course_id: activity.course_id,
+      chapter_id: activity.chapter_id,
+      accepting_submissions: activity.accepting_submissions,
+      deadline: activity.deadline,
+      document_url: activity.document_url,
+      video_url: activity.video_url,
+    })),
+    source: "bundled" as const,
+  };
+}
+
 export async function GET() {
   try {
     const supabase = createSupabasePublicClient();
@@ -33,12 +61,9 @@ export async function GET() {
       readAllRows((from, to) => supabase.from("activities").select("id,title,description,phase,type,duration,status,deliverable,course_id,chapter_id,accepting_submissions,deadline").in("status", ["available", "locked", "done"]).order("id").range(from, to).abortSignal(AbortSignal.timeout(4000)), "Hoạt động"),
     ]);
 
-    return NextResponse.json({ courses, chapters, activities }, { headers: cacheHeaders });
+    return NextResponse.json({ courses, chapters, activities, source: "database" }, { headers: cacheHeaders });
   } catch (error) {
     console.error("Không tải được danh mục học tập công khai:", error instanceof Error ? error.message : "unknown error");
-    return NextResponse.json(
-      { error: "Danh mục lớp học hiện chưa tải được từ cơ sở dữ liệu." },
-      { status: 503, headers: { "Cache-Control": "no-store" } },
-    );
+    return NextResponse.json(bundledCurriculum(), { headers: cacheHeaders });
   }
 }

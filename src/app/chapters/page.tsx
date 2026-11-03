@@ -79,11 +79,11 @@ export default function ChapterDashboard() {
     fetch("/api/public-curriculum", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("catalog_unavailable");
-        return response.json() as Promise<{ courses: CatalogCourse[]; chapters: CatalogChapter[]; activities: CatalogActivity[] }>;
+        return response.json() as Promise<{ courses: CatalogCourse[]; chapters: CatalogChapter[]; activities: CatalogActivity[]; source?: "database" | "bundled" }>;
       })
       .then((data) => {
         if (!active) return;
-        setCatalogError(false);
+        setCatalogError(data.source === "bundled");
         const nextCourses = Array.isArray(data.courses) ? data.courses.map((course) => ({ ...course, id: String(course.id) })) : [];
         const nextChapters = Array.isArray(data.chapters) ? data.chapters.map((chapter) => ({ ...chapter, id: String(chapter.id), course_id: String(chapter.course_id) })) : [];
         const fallbackById = new Map(ACTIVITIES.map((activity) => [activity.id, activity]));

@@ -150,6 +150,9 @@ const dashboard = await readFile(new URL("../src/app/giao-vien/TeacherDashboard.
 const groupMigration = await readFile(new URL("../supabase/migrations/20261031001100_named_groups.sql", import.meta.url), "utf8");
 const groupClassMigration = await readFile(new URL("../supabase/migrations/20261101000200_group_assignment_classes.sql", import.meta.url), "utf8");
 const groupFeedbackProtectionMigration = await readFile(new URL("../supabase/migrations/20261103000300_protect_group_teacher_feedback.sql", import.meta.url), "utf8");
+const groupSubmissionPayloadMigration = await readFile(new URL("../supabase/migrations/20261103000400_validate_group_submission_payload.sql", import.meta.url), "utf8");
+const publicCurriculumRoute = await readFile(new URL("../src/app/api/public-curriculum/route.ts", import.meta.url), "utf8");
+const studentPortalPreview = await readFile(new URL("../src/components/StudentPortalPreview.tsx", import.meta.url), "utf8");
 const privateDataMigration = await readFile(new URL("../supabase/migrations/20261031001300_private_activity_data.sql", import.meta.url), "utf8");
 const answerPrivacyMigration = await readFile(new URL("../supabase/migrations/20261031001400_protect_answer_keys.sql", import.meta.url), "utf8");
 const uniqueQuizMigration = await readFile(new URL("../supabase/migrations/20261031001500_unique_quiz_attempts.sql", import.meta.url), "utf8");
@@ -203,6 +206,17 @@ assert.match(groupMigration, /CREATE TRIGGER group_name_sync_submissions\s+AFTER
 assert.match(groupFeedbackProtectionMigration, /IF NOT public\.is_teacher\(\) THEN[\s\S]+IF TG_OP = 'INSERT' THEN[\s\S]+NEW\.teacher_feedback := NULL;[\s\S]+NEW\.teacher_feedback := OLD\.teacher_feedback/);
 assert.match(groupFeedbackProtectionMigration, /BEFORE INSERT OR UPDATE ON public\.group_submissions[\s\S]+EXECUTE FUNCTION public\.protect_group_submission_teacher_feedback/);
 assert.match(groupFeedbackProtectionMigration, /REVOKE ALL ON FUNCTION[\s\S]+FROM PUBLIC, anon, authenticated/);
+assert.match(groupSubmissionPayloadMigration, /char_length\(COALESCE\(NEW\.answer, ''\)\) > 12000/);
+assert.match(groupSubmissionPayloadMigration, /NEW\.submitted_at := now\(\)/);
+assert.match(groupSubmissionPayloadMigration, /v_prefix := 'group-submissions\/' \|\| auth\.uid\(\)::TEXT/);
+assert.ok(groupSubmissionPayloadMigration.includes("NEW.file_url !~ '^https?://[^[:space:]]+$'"));
+assert.ok(groupSubmissionPayloadMigration.includes("NEW.file_url ~* '^https?://[^/]*@'"));
+assert.match(groupSubmissionPayloadMigration, /BEFORE INSERT OR UPDATE ON public\.group_submissions/);
+assert.match(publicCurriculumRoute, /source: "bundled" as const/);
+assert.match(publicCurriculumRoute, /NextResponse\.json\(bundledCurriculum\(\), \{ headers: cacheHeaders \}\)/);
+assert.doesNotMatch(publicCurriculumRoute, /model_answer|grading_rubric/);
+assert.match(studentPortalPreview, /data\.source === "database"/);
+assert.match(studentPortalPreview, /14 mục nguồn · 11 hoạt động/);
 assert.match(groupClassMigration, /ADD COLUMN IF NOT EXISTS class_name TEXT/);
 assert.match(groupClassMigration, /CREATE OR REPLACE FUNCTION public\.create_group_assignment_for_class/);
 assert.match(groupClassMigration, /WHERE v_class_name IS NULL OR lower\(btrim\(student\.class_name\)\)/);

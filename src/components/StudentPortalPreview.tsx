@@ -9,7 +9,7 @@ import {
 import { ACTIVITIES, type Activity } from "@/lib/data/activities";
 
 type CatalogRow = Partial<Activity> & { id: number | string; phase?: string | null; status?: string | null };
-type CatalogResponse = { activities?: CatalogRow[] };
+type CatalogResponse = { activities?: CatalogRow[]; source?: "database" | "bundled" };
 type Phase = (typeof PHASES)[number];
 
 const PHASES = ["Tất cả", "Trước lớp", "Trên lớp", "Sau lớp"] as const;
@@ -100,7 +100,7 @@ export default function StudentPortalPreview() {
       .then((data) => {
         if (!active || !Array.isArray(data.activities)) return;
         setActivities(mergeActivities(data.activities));
-        setCatalogLive(data.activities.length > 0);
+        setCatalogLive(data.source === "database" && data.activities.length > 0);
         setCatalogError(false);
       })
       .catch(() => { if (active) { setCatalogLive(false); setCatalogError(true); } })
@@ -193,7 +193,7 @@ export default function StudentPortalPreview() {
               </div>
               <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-xs font-medium text-slate-300">
                 <span className="inline-flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-300" /> Xem bài không cần đăng nhập</span>
-                <span className="inline-flex items-center gap-2"><BookOpen className="h-4 w-4 text-cyan-300" /> {activities.length} bài học trên web</span>
+                <span className="inline-flex items-center gap-2"><BookOpen className="h-4 w-4 text-cyan-300" /> 14 mục nguồn · 11 hoạt động</span>
                 <span className="inline-flex items-center gap-2"><FlaskConical className="h-4 w-4 text-violet-300" /> Gộp đúng mục 8–11</span>
               </div>
             </div>
