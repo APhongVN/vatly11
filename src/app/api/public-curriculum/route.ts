@@ -28,9 +28,9 @@ export async function GET() {
   try {
     const supabase = createSupabasePublicClient();
     const [courses, chapters, activities] = await Promise.all([
-      readAllRows((from, to) => supabase.from("courses").select("id,title,description,grade_level,subject").order("id").range(from, to), "Môn học"),
-      readAllRows((from, to) => supabase.from("chapters").select("id,title,description,course_id").order("id").range(from, to), "Chương học"),
-      readAllRows((from, to) => supabase.from("activities").select("id,title,description,phase,type,duration,status,deliverable,course_id,chapter_id,accepting_submissions,deadline").in("status", ["available", "locked", "done"]).order("id").range(from, to), "Hoạt động"),
+      readAllRows((from, to) => supabase.from("courses").select("id,title,description,grade_level,subject").order("id").range(from, to).abortSignal(AbortSignal.timeout(4000)), "Môn học"),
+      readAllRows((from, to) => supabase.from("chapters").select("id,title,description,course_id").order("id").range(from, to).abortSignal(AbortSignal.timeout(4000)), "Chương học"),
+      readAllRows((from, to) => supabase.from("activities").select("id,title,description,phase,type,duration,status,deliverable,course_id,chapter_id,accepting_submissions,deadline").in("status", ["available", "locked", "done"]).order("id").range(from, to).abortSignal(AbortSignal.timeout(4000)), "Hoạt động"),
     ]);
 
     return NextResponse.json({ courses, chapters, activities }, { headers: cacheHeaders });

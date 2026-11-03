@@ -892,6 +892,7 @@ assert.match(teacherDashboardSource, /supabase\.storage\.from\(["']videos["']\)\
 const publicCurriculumClient = await readFile(new URL("../src/lib/supabase-public.ts", import.meta.url), "utf8");
 const publicCurriculumRls = await readFile(new URL("../supabase/migrations/20261101000300_public_curriculum_anon_read.sql", import.meta.url), "utf8");
 assert.match(publicCurriculumApi, /createSupabasePublicClient/);
+assert.match(publicCurriculumApi, /AbortSignal\.timeout\(4000\)/);
 assert.doesNotMatch(publicCurriculumApi, /createSupabaseAdminClient/);
 const supabaseConfigSource = await readFile(new URL("../src/lib/supabase-config.ts", import.meta.url), "utf8");
 const supabaseAdminSource = await readFile(new URL("../src/lib/supabase-admin.ts", import.meta.url), "utf8");
@@ -928,6 +929,7 @@ assert.match(activityPage, /createSupabasePublicClient/);
 assert.doesNotMatch(activityPage, /createSupabaseAdminClient/);
 assert.match(activityPage, /\.from\("activities"\)[\s\S]+\.maybeSingle\(\)/);
 assert.match(activityPage, /accepting_submissions,deadline/);
+assert.match(activityPage, /AbortSignal\.timeout\(2500\)/);
 assert.match(activityPage, /<SubmissionWindow acceptingSubmissions=\{activity\.acceptingSubmissions\} deadline=\{activity\.deadline\}>/);
 assert.match(activityPage, /<ActivityInteractions activityId=\{id\} \/><\/SubmissionWindow>/);
 assert.match(submissionWindow, /Date\.now\(\)/);

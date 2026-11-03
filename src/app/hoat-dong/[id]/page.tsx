@@ -77,6 +77,7 @@ export default async function ActivityPage({ params }: { params: Promise<{ id: s
       .from("activities")
       .select("id,title,description,phase,duration,deliverable,status,accepting_submissions,deadline")
       .eq("id", id)
+      .abortSignal(AbortSignal.timeout(2500))
       .maybeSingle();
     if (error) throw error;
     databaseActivity = data;
