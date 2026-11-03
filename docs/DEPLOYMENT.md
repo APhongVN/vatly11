@@ -1,24 +1,41 @@
-# Triển khai an toàn: Oracle VPS + Cloudflare
+# Triển khai VatLy11: Render Web Service + Supabase
 
 ## Kiến trúc đang dùng
 
-Ứng dụng hiện là Next.js full-stack: giao diện, Server Components, Proxy và hàng chục API Route Handler nằm trong cùng một tiến trình Node.js. Vì vậy không thể đặt nguyên ứng dụng lên Cloudflare Pages dưới dạng static export: static export không chạy được các API tạo tài khoản, đăng nhập, chấm bài và endpoint dùng secret server.
+VatLy11 là ứng dụng Next.js full-stack: trang server-rendered, Proxy, API xác thực, nộp bài, chấm điểm, import/export và Storage. Phải chạy bằng Node.js trên **Render Web Service** hoặc máy chủ Node tương đương; không chọn Static Site/Static Export vì các API và khóa server cần tiến trình Node. Hướng dẫn Oracle VPS bên dưới là phương án thay thế.
 
-**Cách phát hành phù hợp với mã hiện tại:** chạy toàn bộ Next.js trên Oracle VPS; dùng Cloudflare DNS/proxy, TLS và cache tài nguyên tĩnh ở phía trước. Không thay đổi cấu hình hay bucket Cloudflare R2.
 
-Nếu bắt buộc phải host frontend trên Pages, cần tách các API/auth server sang VPS, đặt toàn bộ giao diện thành frontend độc lập gọi backend theo domain riêng, thêm CORS/CSRF và kiểm tra lại từng luồng. Đây là một lần tái cấu trúc khác, chưa được bật trong repo này. Cloudflare hiện hướng dự án Next.js full-stack mới tới Workers; tài liệu Cloudflare ghi Pages dành cho static export và hướng Next.js full-stack sang Workers ([Pages Next.js](https://developers.cloudflare.com/pages/framework-guides/nextjs/), [Next.js trên Workers](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/)).
 
+## Triển khai trên Render
+
+1. Trong Render Dashboard, mở Web Service đang nối với `APhongVN/vatly11`, kiểm tra nhánh triển khai là `main` và bật Auto-Deploy nếu muốn mỗi lần push tự phát hành.
+2. Trong **Settings**, dùng Runtime `Node`; Build Command `npm ci && npm run build`; Start Command `npm start`. Không đặt Publish Directory và không chuyển service thành Static Site. Repository yêu cầu Node.js 22 trở lên.
+3. Mở **Environment** và đặt các biến sau bằng giá trị của cùng một Supabase project:
+
+   | Biến | Giá trị lấy từ đâu | Phạm vi |
+   | --- | --- | --- |
+   | `NEXT_PUBLIC_SUPABASE_URL` | Connect → Project URL | Được đưa ra trình duyệt |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Connect hoặc Settings → API Keys; dạng `sb_publishable_...` | Khóa công khai, quyền dữ liệu do RLS quyết định |
+   | `SUPABASE_SECRET_KEY` | Settings → API Keys; dạng `sb_secret_...` | Chỉ server; không thêm tiền tố `NEXT_PUBLIC_` |
+   | `GEMINI_API_KEY` | Google AI Studio | Chỉ server |
+   | `STUDENT_AUTH_EMAIL_DOMAIN` | Miền email do cô quản lý, có DNS | Dùng cho tài khoản username học sinh |
+
+4. Bấm **Save, rebuild, and deploy** sau khi thay biến. Nếu vừa đổi/thu hồi khóa Supabase cũ, phải thay đồng thời publishable key và server secret trong Render; redeploy xong mới kiểm tra.
+5. Mở **Events/Logs** để xác nhận deploy chạy `npm start` thành công. Kiểm tra `https://<ten-service>.onrender.com/api/public-curriculum`: cần trả HTTP 200 và JSON có `activities`. HTTP 503 hoặc log `Invalid API key` nghĩa là URL/key không cùng project, key cũ đã bị thu hồi, hoặc migration/RLS chưa áp dụng.
+6. Mở `/hoc-sinh` và `/hoat-dong/8` để kiểm tra nội dung học; đăng nhập giáo viên thật rồi thử tạo tài liệu, nhóm, import rubric và xuất Excel. Bản xem công khai không tạo điểm hay hồ sơ học sinh giả.
+
+Tài liệu chính thức: [Deploy Next.js trên Render](https://render.com/docs/deploy-nextjs-app), [Environment Variables của Render](https://render.com/docs/configure-environment-variables), [Supabase API Keys](https://supabase.com/docs/guides/getting-started/api-keys).
 ## Kết nối Supabase từng bước
 
 1. **Mở đúng project:** vào `https://supabase.com/dashboard`, chọn project của VatLy11 và xác nhận project ID trước khi sửa cấu hình.
-2. **Lấy URL và publishable key:** mở Connect để sao chép Project URL + publishable key; hoặc vào Project Settings → API Keys. Đặt hai giá trị này vào `.env.local` trên máy dev với tên `NEXT_PUBLIC_SUPABASE_URL` và `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Publishable key được phép ở frontend; RLS vẫn phải bảo vệ dữ liệu.
-3. **Lấy secret key riêng cho server:** trong cùng trang API Keys tạo/sao chép secret key (`sb_secret_...`) và đặt tên `SUPABASE_SECRET_KEY` trên Oracle VPS. Không thêm tiền tố `NEXT_PUBLIC_`, không dán vào source hoặc Git. Không dùng lại key từng xuất hiện công khai; hãy rotate/thu hồi key cũ trước khi phát hành.
-4. **Bật cấu hình Auth:** Authentication → Sign In / Providers → bật Email. Tắt đăng ký tự do nếu học sinh chỉ được giáo viên cấp. Học sinh mới được admin tạo với email-confirmed và buộc đổi mật khẩu tạm ở lần đăng nhập đầu.
-5. **Tạo giáo viên:** Authentication → Users → Add user; tạo hoặc mời email giáo viên. Sau khi email đã xác minh, chạy script `supabase/sql-editor/set_teacher_role.sql` trong SQL Editor để cấp `profiles.role = 'teacher'`. Không cấp vai trò giáo viên qua metadata do người dùng tự sửa.
-6. **Áp dụng schema:** trước tiên sao lưu project đang có dữ liệu. Dùng Supabase CLI đã đăng nhập, liên kết đúng project, xem danh sách migration remote, rồi đẩy các migration chưa chạy theo thứ tự. Migration username mới là `20261103000100_student_username_auth.sql`; nó thêm username, ngày sinh và giới hạn thử đăng nhập. Không chạy lại baseline lên database đã tồn tại mà chưa đối chiếu schema.
+2. **Lấy URL và publishable key:** trong cùng project, mở Connect hoặc Settings → API Keys và sao chép Project URL cùng key `sb_publishable_...`. Trên máy dev lưu thành `NEXT_PUBLIC_SUPABASE_URL` và `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` trong `.env.local`. Publishable key có thể ở frontend; RLS vẫn phải bảo vệ dữ liệu.
+3. **Lấy secret key riêng cho server:** trong cùng trang API Keys tạo/sao chép secret key (`sb_secret_...`) và đặt tên `SUPABASE_SECRET_KEY` trong Render Environment. Không thêm tiền tố `NEXT_PUBLIC_`, không dán vào source hoặc Git. Không dùng lại key từng xuất hiện công khai; hãy rotate/thu hồi key cũ trước khi phát hành.
+4. **Đồng bộ database:** sao lưu project trước khi sửa. Cài Supabase CLI, đăng nhập bằng `npx supabase login`, lấy project ref ở URL Dashboard dạng `/project/<PROJECT_REF>`, chạy `npx supabase link --project-ref <PROJECT_REF>`, xem `npx supabase migration list --remote`, rồi áp dụng migration còn thiếu bằng `npx supabase db push --remote`. Kiểm tra project ref và danh sách trước khi xác nhận.
+5. **Bật Auth:** Authentication → Sign In / Providers → bật Email. Tắt đăng ký tự do nếu chỉ giáo viên cấp học sinh. Học sinh được tạo với email-confirmed và buộc đổi mật khẩu tạm ở lần đăng nhập đầu.
+6. **Tạo giáo viên:** Authentication → Users → Add user; tạo email giáo viên và xác minh. Sau đó chạy `supabase/sql-editor/set_teacher_role.sql` trong SQL Editor để cấp `profiles.role = 'teacher'`. Không cấp vai trò giáo viên qua metadata do người dùng tự sửa. Không chạy lại baseline lên database đã tồn tại khi chưa đối chiếu schema. Hướng dẫn migration: [Deploy database migrations](https://supabase.com/docs/guides/deployment/database-migrations).
 7. **Cấu hình miền email alias:** đặt `STUDENT_AUTH_EMAIL_DOMAIN` thành miền do bạn quản lý và có DNS MX/A hợp lệ. Auth dùng `student-<username>@<miền>` nội bộ để ánh xạ username; học sinh chỉ cần nhập username. Không dùng `example.com`, `.test`, `.invalid` hay một miền không phân giải được.
-8. **Tạo file env:** sao chép `.env.example` thành `.env.local` ở máy dev; trên VPS nhập các biến qua secret manager/systemd environment. Không commit `.env.local`.
-9. **Kiểm tra kết nối:** chạy `npm run build`, mở `/giao-vien` để xem giao diện tự do; sau khi có teacher session thật, thử tạo một học sinh, sao chép credential một lần, đăng nhập học sinh và đổi mật khẩu. Tài khoản test phải được tạo trong project của bạn; không dùng tài khoản giả hoặc mật khẩu đưa lên GitHub.
+8. **Tạo file env local:** trong PowerShell chạy `Copy-Item .env.example .env.local`, mở `.env.local` bằng editor và điền URL, publishable key, Gemini key, server secret và miền email. `.env.local` được Git ignore; không dán các giá trị thật vào issue/chat hoặc commit.
+9. **Kiểm tra kết nối:** chạy `npm run build`, mở `/api/public-curriculum` và xác nhận HTTP 200. Nếu gặp `Invalid API key`, kiểm tra Project URL và publishable key cùng project, sau đó redeploy. Mở `/giao-vien`; sau khi có teacher session thật, thử tạo học sinh, giữ credential tạm an toàn, đăng nhập học sinh và đổi mật khẩu. Tài khoản test phải được tạo trong project của bạn; không dùng tài khoản giả hoặc mật khẩu đưa lên GitHub.
 
 Ví dụ triển khai migration sau khi liên kết đúng project:
 
@@ -30,7 +47,7 @@ npx supabase db push --remote
 ```
 
 Chỉ đẩy migration sau khi kiểm tra project ID và trạng thái migration remote. Supabase lưu lịch sử migration riêng với Git; không dùng `migration repair` để né lỗi schema khi chưa biết chính xác trạng thái database.
-## Oracle VPS
+## Oracle VPS (phương án thay thế Render)
 
 Cài Node.js 22+, Git và Nginx. Clone đúng ref đã kiểm tra, sau đó:
 
@@ -46,7 +63,7 @@ Tạo `.env.local` trên VPS hoặc dùng secret manager của máy chủ. Tối
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 SUPABASE_SECRET_KEY=...
 GEMINI_API_KEY=...
 STUDENT_AUTH_EMAIL_DOMAIN=vatly11.com
@@ -79,4 +96,4 @@ npm run build
 npm audit --audit-level=high
 ```
 
-Sau khi migration được áp dụng, thử với một tài khoản giáo viên thật và hai học sinh trên cửa sổ thường/ẩn danh: đăng nhập, đổi mật khẩu lần đầu, mở lại browser, logout, tạo một hồ sơ, nhập lô có một dòng lỗi, đăng nhập từng học sinh, xác nhận API từ tài khoản khác bị chặn. Kiểm tra migration/schema và service key trên máy chủ riêng; không thử production bằng cách in hoặc sao chép secret ra log.
+Sau khi migration và biến môi trường được áp dụng, thử với một tài khoản giáo viên thật và hai học sinh trên cửa sổ thường/ẩn danh: đăng nhập, đổi mật khẩu lần đầu, mở lại browser, logout, tạo hồ sơ, nhập lô có một dòng lỗi, đăng nhập từng học sinh, xác nhận API từ tài khoản khác bị chặn. Các tài khoản kiểm thử phải được tạo/xác minh trong chính Supabase của chủ dự án; mã nguồn không chứa mật khẩu mẫu. Kiểm tra key chỉ bằng trạng thái HTTP, không in hoặc sao chép secret ra log.

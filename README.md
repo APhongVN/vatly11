@@ -1,6 +1,6 @@
 # Cổng học tập Vật lí 11 · Chuyên đề Tụ điện
 
-Ứng dụng Next.js 16, Supabase và Gemini để quản lý hoạt động học, tài liệu, bài nộp, phản hồi và trao đổi trong lớp.
+Ứng dụng Next.js 16, Supabase và Gemini để quản lý hoạt động học, tài liệu, bài nộp, phản hồi và trao đổi trong lớp. Bản full-stack chạy trên Render Web Service (Node.js), không phải Static Site.
 
 ## Chạy trên máy phát triển
 
@@ -8,7 +8,7 @@
 2. Tạo `.env.local` từ `.env.example`, điền URL, publishable key và Gemini API key. Không đưa khóa vào Git; không dùng lại khóa đã từng xuất hiện trong lịch sử repository.
 3. Chạy `npm run dev` rồi mở `http://localhost:3000`.
 
-`SUPABASE_SECRET_KEY` chỉ dùng phía server cho giới hạn tần suất, chấm điểm, cấp tài khoản học sinh và một số thao tác quản trị. `SUPABASE_SERVICE_ROLE_KEY` chỉ còn là tên tương thích legacy. Chỉ đặt secret key trong secret manager trên Oracle VPS hoặc `.env.local` trên máy phát triển; không đặt ở biến `NEXT_PUBLIC_*` và không commit khóa thật.
+`SUPABASE_SECRET_KEY` chỉ dùng phía server cho giới hạn tần suất, chấm điểm, cấp tài khoản học sinh và một số thao tác quản trị. `SUPABASE_SERVICE_ROLE_KEY` chỉ còn là tên tương thích legacy. Chỉ đặt secret key trong Render Environment, secret manager trên VPS hoặc `.env.local` trên máy phát triển; không đặt ở biến `NEXT_PUBLIC_*` và không commit khóa thật.
 
 ## Cơ sở dữ liệu và phân quyền
 
@@ -20,7 +20,7 @@ Bản hiện tại có thêm các migration bắt buộc `20261031002700_rubric_
 
 Migration `20261101000200_group_assignment_classes.sql` bổ sung phạm vi lớp cho bài tập nhóm. Bài mới cần chọn một lớp hoặc tất cả lớp; bài cũ có `class_name` rỗng vẫn áp dụng cho toàn bộ danh sách. Áp dụng migration này trước khi sử dụng chức năng tạo hoặc chia lại nhóm theo lớp.
 
-Migration `20261101000300_public_curriculum_anon_read.sql` cho phép khách đọc metadata hoạt động đã phát hành bằng publishable key, giới hạn theo từng cột và RLS. Hai trang danh mục công khai không còn cần `SUPABASE_SERVICE_ROLE_KEY` chỉ để đọc nội dung; hãy áp dụng migration này để đồng bộ hoạt động do giáo viên quản lý.
+Migration `20261101000300_public_curriculum_anon_read.sql` cho phép khách đọc metadata hoạt động đã phát hành bằng publishable key, giới hạn theo từng cột và RLS. Hai trang danh mục công khai không còn cần `SUPABASE_SERVICE_ROLE_KEY` chỉ để đọc nội dung; hãy áp dụng migration này để đồng bộ hoạt động do giáo viên quản lý. Migration `20261103000200_student_archive.sql` thêm lưu trữ/khôi phục học sinh nhưng giữ hồ sơ điểm và bài nộp.
 ### Nhập và xuất ma trận chấm
 
 Giáo viên có thể nhập `.docx`, `.xlsx`, `.pdf`, `.txt`, `.md`, `.csv` hoặc ảnh PNG/JPG/WebP khi tạo bài, sửa bài hay mở chấm điểm. Công thức Word được chuyển sang dạng xem được; PDF scan và ảnh dùng route OCR có xác thực. Mỗi file tối đa 10 MB; PDF đọc tối đa 30 trang và OCR tối đa 5 trang scan; nội dung trích tối đa 20.000 ký tự. Hệ thống giữ file gốc trong Storage riêng tư để giáo viên tải lại, còn báo cáo Excel có sheet **Ma trận chấm điểm** cho bài cá nhân và nhóm. Báo cáo cũng có sheet **Thống kê theo lớp** gồm sĩ số, hoạt động, bài nộp, lượt quiz, bài nhóm, hàng chờ duyệt và điểm giáo viên trung bình tính theo học sinh (mỗi em có trọng số như nhau). Cô cần rà lại nội dung OCR/công thức trước khi chấm.
@@ -69,4 +69,4 @@ Mọi điểm AI chỉ là gợi ý; giáo viên duyệt hoặc ghi đè điểm
 
 Không đẩy một ref có khóa thật trong lịch sử Git. Nếu khóa từng bị commit hoặc push, hãy thu hồi/đổi khóa trước, sau đó làm sạch lịch sử đã công khai; xóa file ở commit mới không thu hồi khóa cũ. Chạy `scripts/check-release-secrets.ps1` trên đúng ref cần phát hành và chỉ đẩy ref đã kiểm tra; không dùng `git push --all` hoặc `--mirror` khi repository còn các worktree/ref cũ.
 
-Chi tiết triển khai Oracle VPS/Cloudflare, migration tài khoản, biến môi trường và kiểm tra phát hành: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Hướng dẫn từng bước kết nối Supabase, cấu hình Render, áp dụng migrations và kiểm tra phát hành: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
