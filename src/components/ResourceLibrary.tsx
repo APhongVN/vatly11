@@ -4,17 +4,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Activity } from "@/lib/data/activities";
 import { getResourceDownloadName } from "@/lib/resource-download.mjs";
+import { loadPreviewResources, savePreviewResourceChanges } from "@/lib/preview-resource-storage";
 import { BookOpen, Download, ExternalLink, FileText, Link2, LoaderCircle, Pencil, Search, Trash2, UploadCloud, X } from "lucide-react";
 
 type Resource = {
   id: string; title: string; description: string; resource_type: "file" | "link"; category: string;
   tags: string[]; storage_path: string | null; source_url: string | null; mime_type: string | null;
   file_size: number | null; activity_id: number | null; is_published: boolean; created_at: string;
-  /** A local-only file exists only while a teacher explores the public preview. */
+  /** The file is retained in IndexedDB while the teacher explores the public preview. */
   preview_file?: File;
 };
 const BUCKET = "learning-resources";
 const CATEGORIES = ["Bài giảng", "Phiếu bài tập", "Đề kiểm tra", "Video", "Thí nghiệm", "Tài liệu tham khảo", "Khác"];
+const PREVIEW_RESOURCES: Resource[] = [
+  { id: "preview-1", title: "Bài giảng: Điện dung và các yếu tố ảnh hưởng", description: "Tài liệu mẫu minh họa kho học liệu.", resource_type: "link", category: "Bài giảng", tags: ["tụ điện", "điện dung"], storage_path: null, source_url: "https://example.com", mime_type: null, file_size: null, activity_id: 8, is_published: true, created_at: "2026-11-01T00:00:00.000Z" },
+  { id: "preview-2", title: "Phiếu thực nghiệm tụ điện", description: "Bản mẫu hiển thị trong chế độ xem.", resource_type: "file", category: "Phiếu bài tập", tags: ["thí nghiệm"], storage_path: null, source_url: null, mime_type: "application/pdf", file_size: 245760, activity_id: 8, is_published: false, created_at: "2026-11-01T00:00:00.000Z" },
+];
 const MAX_FILE_BYTES = 100 * 1024 * 1024;
 
 function readableSize(size: number | null) {
@@ -23,10 +28,7 @@ function readableSize(size: number | null) {
 }
 
 export default function ResourceLibrary({ activities, previewMode = false }: { activities: Activity[]; previewMode?: boolean }) {
-  const [resources, setResources] = useState<Resource[]>(previewMode ? [
-    { id: "preview-1", title: "Bài giảng: Điện dung và các yếu tố ảnh hưởng", description: "Tài liệu mẫu minh họa kho học liệu.", resource_type: "link", category: "Bài giảng", tags: ["tụ điện", "điện dung"], storage_path: null, source_url: "https://example.com", mime_type: null, file_size: null, activity_id: 8, is_published: true, created_at: new Date().toISOString() },
-    { id: "preview-2", title: "Phiếu thực nghiệm tụ điện", description: "Bản mẫu hiển thị trong chế độ xem.", resource_type: "file", category: "Phiếu bài tập", tags: ["thí nghiệm"], storage_path: null, source_url: null, mime_type: "application/pdf", file_size: 245760, activity_id: 8, is_published: false, created_at: new Date().toISOString() },
-  ] : []);
+  const [resources, setResources] = useState<Resource[]>(previewMode ? PREVIEW_RESOURCES : []);
   const [files, setFiles] = useState<File[]>([]);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
@@ -38,6 +40,11 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
   const [filter, setFilter] = useState("Tất cả");
   const [sort, setSort] = useState("recent");
   const [loading, setLoading] = useState(true);
+  const [previewReady, setPreviewReady] = useState(!previewMode);
+  const [previewStorageStatus, setPreviewStorageStatus] = useState<"loading" | "saving" | "saved" | "error">(previewMode ? "loading" : "saved");
+  const previewSaveSequence = useRef(0);
+  const persistedPreviewResources = useRef(new Map<string, Resource>());
+  const previewWriteQueue = useRef(Promise.resolve());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -46,7 +53,24 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
   const inputRef = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async () => {
-    if (previewMode) { setLoading(false); return; }
+    if (previewMode) {
+      setLoading(true);
+      try {
+        const stored = await loadPreviewResources<Resource>();
+        persistedPreviewResources.current = new Map(stored.resources.map((resource) => [resource.id, resource]));
+        setResources(stored.isInitialized ? stored.resources : PREVIEW_RESOURCES);
+        setError("");
+        setPreviewStorageStatus("saved");
+      } catch (error) {
+        setResources(PREVIEW_RESOURCES);
+        setPreviewStorageStatus("error");
+        setError("Không đọc được kho tài liệu trên trình duyệt: " + (error instanceof Error ? error.message : "lỗi lưu trữ") + ".");
+      } finally {
+        setPreviewReady(true);
+        setLoading(false);
+      }
+      return;
+    }
     setLoading(true);
     try {
       const { data, error: queryError } = await supabase.from("learning_resources").select("*").order("created_at", { ascending: false }).limit(500);
@@ -59,6 +83,27 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
     }
   }, [previewMode]);
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    if (!previewMode || !previewReady) return;
+    const sequence = ++previewSaveSequence.current;
+    const snapshot = resources;
+    setPreviewStorageStatus("saving");
+    previewWriteQueue.current = previewWriteQueue.current.catch(() => {}).then(async () => {
+      const previous = persistedPreviewResources.current;
+      const currentIds = new Set(snapshot.map((resource) => resource.id));
+      const changed = snapshot.filter((resource) => previous.get(resource.id) !== resource);
+      const removed = Array.from(previous.keys()).filter((id) => !currentIds.has(id));
+      await savePreviewResourceChanges(changed, removed);
+      persistedPreviewResources.current = new Map(snapshot.map((resource) => [resource.id, resource]));
+    });
+    void previewWriteQueue.current.then(() => {
+      if (sequence === previewSaveSequence.current) setPreviewStorageStatus("saved");
+    }).catch((error: unknown) => {
+      if (sequence !== previewSaveSequence.current) return;
+      setPreviewStorageStatus("error");
+      setError("Không tự lưu được kho trên thiết bị này: " + (error instanceof Error ? error.message : "đã hết dung lượng lưu trữ") + ".");
+    });
+  }, [previewMode, previewReady, resources]);
 
   const visible = useMemo(() => resources
     .filter((item) => filter === "Tất cả" || item.category === filter)
@@ -94,7 +139,7 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
       }));
       setResources((current) => [...additions, ...current]);
       clearForm();
-      setNotice(`Đã thêm thử ${additions.length} tệp vào kho mẫu. Có thể tải lại tệp trong phiên xem trước này.`);
+      setNotice("Đã thêm " + additions.length + " tệp; hệ thống đang tự lưu chúng trên trình duyệt này.");
       setSaving(false);
       return;
     }
@@ -149,7 +194,7 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
         };
         setResources((current) => [item, ...current]);
         clearForm(); setUrl("");
-        setNotice("Đã lưu liên kết vào kho mẫu. Bấm Mở link để kiểm tra ngay.");
+        setNotice("Đã thêm liên kết vào kho; hệ thống đang tự lưu trên trình duyệt này.");
         return;
       }
       const result = await supabase.from("learning_resources").insert({
@@ -303,7 +348,7 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
       <div><p className="mb-2 text-xs font-bold uppercase tracking-[.18em] text-blue-200">Quản trị nội dung</p><h1 className="text-3xl font-black md:text-4xl">Kho học liệu</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">Tập trung tệp, video và đường dẫn; gắn vào hoạt động, phân loại bằng thẻ và kiểm soát nội dung học sinh được xem.</p></div>
       <div className="flex gap-3"><div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3"><b className="block text-2xl">{resources.length}</b><span className="text-xs text-blue-100">tài nguyên</span></div><div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3"><b className="block text-2xl">{resources.filter((item) => item.is_published).length}</b><span className="text-xs text-blue-100">đã xuất bản</span></div></div>
     </header>
-    {previewMode && <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">Chế độ xem tự do: có thể thêm, sửa, xuất bản, xóa và tải tệp mẫu ngay trên trình duyệt. Không thay đổi kho dữ liệu lớp thật.</p>}
+    {previewMode && <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">Chế độ xem tự do: tài liệu và tệp sẽ tự lưu trên trình duyệt của thiết bị này, không đồng bộ với lớp thật. Trạng thái lưu: {previewStorageStatus === "loading" ? "đang tải" : previewStorageStatus === "saving" ? "đang lưu" : previewStorageStatus === "saved" ? "đã lưu" : "lỗi lưu"}.</p>}
     {(error || notice) && <div role={error ? "alert" : "status"} className={`rounded-2xl border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{error || notice}</div>}
     <div className="grid gap-6 xl:grid-cols-[minmax(320px,.8fr)_minmax(0,1.2fr)]">
       <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
