@@ -2,24 +2,53 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen, CheckCircle2, Clock3, FlaskConical, GraduationCap, RefreshCw, Search } from "lucide-react";
+import {
+  ArrowDown, ArrowRight, BookOpen, CheckCircle2, Clock3, FlaskConical,
+  GraduationCap, RefreshCw, Search, Sparkles, Zap,
+} from "lucide-react";
 import { ACTIVITIES, type Activity } from "@/lib/data/activities";
 
 type CatalogRow = Partial<Activity> & { id: number | string; phase?: string | null; status?: string | null };
 type CatalogResponse = { activities?: CatalogRow[] };
+type Phase = (typeof PHASES)[number];
+
 const PHASES = ["Tất cả", "Trước lớp", "Trên lớp", "Sau lớp"] as const;
 
-const fromCatalogRow = (row: CatalogRow, fallbackById: Map<number, Activity>): Activity => {
+const STUDENT_GUIDE: Record<number, { title: string; summary: string; task: string }> = {
+  1: { title: "Tụ điện quanh em", summary: "Bắt đầu từ tình huống tụ điện nạp rồi phóng điện làm đèn sáng.", task: "Nêu điều em quan sát được và dự đoán vì sao đèn sáng." },
+  2: { title: "Tụ điện hoạt động như thế nào?", summary: "Tìm hiểu cấu tạo, cách tích điện, điện dung và cách ghép tụ.", task: "Xem các bài giảng ngắn và làm những câu hỏi kiểm tra trong bài." },
+  3: { title: "Điều gì làm điện dung thay đổi?", summary: "Đưa ra dự đoán về điện tích, hiệu điện thế, diện tích bản tụ và lớp điện môi.", task: "Ghi lại dự đoán ban đầu để so sánh với kết quả thí nghiệm." },
+  4: { title: "Tự khám phá bằng thí nghiệm ảo", summary: "Thay đổi diện tích, khoảng cách và điện môi để quan sát điện dung.", task: "Thử các thông số, ghi kết quả đo và lưu nhận xét vào sổ tay." },
+  5: { title: "Quan sát tụ điện thật", summary: "Theo dõi quá trình nạp và phóng điện của tụ điện trong thí nghiệm.", task: "Ghi bằng chứng quan sát được rồi đối chiếu với dự đoán của em." },
+  6: { title: "Kiểm tra nhanh trước giờ học", summary: "Ôn những ý chính về cấu tạo, điện dung, ghép tụ và năng lượng.", task: "Làm câu hỏi tự kiểm tra và ghi lại điều em còn chưa rõ." },
+  7: { title: "Trao đổi và kiểm tra dự đoán", summary: "Cùng bạn giải thích kết quả, nghe ý kiến khác và xem lại dự đoán.", task: "Nêu lí do cho lựa chọn của em và cập nhật kết luận sau thảo luận." },
+  8: { title: "Các thí nghiệm liên quan đến tụ điện", summary: "Một hoạt động tích hợp cấu tạo, điện dung, cách ghép tụ và năng lượng điện trường.", task: "Thực hiện các phần thí nghiệm theo phiếu học tập và nộp báo cáo." },
+  12: { title: "Luyện tập và thử thách", summary: "Củng cố công thức và vận dụng kiến thức vào các tình huống mới.", task: "Hoàn thành câu hỏi luyện tập, chọn mức độ phù hợp với em." },
+  13: { title: "Dự án: thiết kế nguồn điện dự phòng", summary: "Vận dụng kiến thức để đề xuất giải pháp tích trữ năng lượng cho thiết bị.", task: "Nộp báo cáo, poster hoặc video theo yêu cầu của giáo viên." },
+  14: { title: "Ôn tập sau buổi học", summary: "Nhìn lại điều em đã hiểu và luyện tập lại sau một khoảng thời gian.", task: "Hoàn thành câu hỏi tự đánh giá và bài luyện tập được giao." },
+};
+
+const statusCopy: Record<Activity["status"], { label: string; style: string }> = {
+  available: { label: "Có thể học", style: "border-emerald-200 bg-emerald-50 text-emerald-800" },
+  locked: { label: "Chưa mở", style: "border-slate-200 bg-slate-100 text-slate-500" },
+  done: { label: "Đã kết thúc", style: "border-slate-200 bg-slate-100 text-slate-500" },
+};
+
+function fromCatalogRow(row: CatalogRow, fallbackById: Map<number, Activity>): Activity | null {
   const id = Number(row.id);
+  if (!Number.isInteger(id) || id <= 0) return null;
   const fallback = fallbackById.get(id);
+  const validStatus = row.status === "available" || row.status === "locked" || row.status === "done";
+  const validPhase = row.phase === "Trước lớp" || row.phase === "Trên lớp" || row.phase === "Sau lớp";
+  const validType = row.type === "Bài giảng" || row.type === "Bài tập" || row.type === "Thí nghiệm" || row.type === "Dự án" || row.type === "Phản tư";
   return {
     id,
     code: row.code || fallback?.code || "HĐ" + String(id),
     title: row.title || fallback?.title || "Hoạt động " + String(id),
-    phase: (row.phase || fallback?.phase || "Trên lớp") as Activity["phase"],
-    type: (row.type || fallback?.type || "Bài tập") as Activity["type"],
+    phase: validPhase ? row.phase as Activity["phase"] : fallback?.phase || "Trên lớp",
+    type: validType ? row.type as Activity["type"] : fallback?.type || "Bài tập",
     duration: row.duration || fallback?.duration || "Theo hướng dẫn giáo viên",
-    status: (row.status || fallback?.status || "locked") as Activity["status"],
+    status: validStatus ? row.status as Activity["status"] : fallback?.status || "available",
     description: row.description || fallback?.description || "",
     deliverable: row.deliverable || fallback?.deliverable || "",
     course_id: row.course_id || fallback?.course_id,
@@ -29,18 +58,32 @@ const fromCatalogRow = (row: CatalogRow, fallbackById: Map<number, Activity>): A
     document_url: row.document_url || fallback?.document_url,
     video_url: row.video_url || fallback?.video_url,
   };
-};
+}
 
-const statusCopy: Record<Activity["status"], { label: string; style: string }> = {
-  available: { label: "Đang mở", style: "border-emerald-200 bg-emerald-50 text-emerald-800" },
-  locked: { label: "Chưa mở", style: "border-slate-200 bg-slate-100 text-slate-500" },
-  done: { label: "Đã đóng", style: "border-slate-200 bg-slate-100 text-slate-500" },
-};
+function mergeActivities(remoteRows: CatalogRow[]): Activity[] {
+  const fallbackById = new Map(ACTIVITIES.map((activity) => [activity.id, activity]));
+  const remoteById = new Map<number, CatalogRow>();
+  for (const row of remoteRows) {
+    const id = Number(row.id);
+    if (Number.isInteger(id) && id > 0) remoteById.set(id, row);
+  }
+  const ids = new Set([...ACTIVITIES.map((activity) => activity.id), ...remoteById.keys()]);
+  return [...ids]
+    .map((id) => fromCatalogRow(remoteById.get(id) || { id }, fallbackById))
+    .filter((activity): activity is Activity => activity !== null)
+    .sort((left, right) => left.id - right.id);
+}
+
+function displayTitle(activity: Activity) {
+  const guide = STUDENT_GUIDE[activity.id];
+  const sourceTitle = ACTIVITIES.find((item) => item.id === activity.id)?.title;
+  return guide && activity.title === sourceTitle ? guide.title : activity.title;
+}
 
 export default function StudentPortalPreview() {
   const [activities, setActivities] = useState<Activity[]>(ACTIVITIES);
   const [search, setSearch] = useState("");
-  const [phase, setPhase] = useState<(typeof PHASES)[number]>("Tất cả");
+  const [phase, setPhase] = useState<Phase>("Tất cả");
   const [catalogLive, setCatalogLive] = useState(false);
   const [catalogError, setCatalogError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -56,9 +99,8 @@ export default function StudentPortalPreview() {
       })
       .then((data) => {
         if (!active || !Array.isArray(data.activities)) return;
-        const fallbackById = new Map(ACTIVITIES.map((activity) => [activity.id, activity]));
-        setActivities(data.activities.map((row) => fromCatalogRow(row, fallbackById)));
-        setCatalogLive(true);
+        setActivities(mergeActivities(data.activities));
+        setCatalogLive(data.activities.length > 0);
         setCatalogError(false);
       })
       .catch(() => { if (active) { setCatalogLive(false); setCatalogError(true); } })
@@ -69,23 +111,65 @@ export default function StudentPortalPreview() {
   const visibleActivities = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase("vi-VN");
     return activities.filter((activity) => {
+      const guide = STUDENT_GUIDE[activity.id];
       const matchesPhase = phase === "Tất cả" || activity.phase === phase;
-      const haystack = [activity.code, activity.title, activity.description, activity.deliverable, activity.type].join(" ").toLocaleLowerCase("vi-VN");
+      const haystack = [displayTitle(activity), guide?.summary, guide?.task, activity.title, activity.description, activity.deliverable, activity.type]
+        .filter(Boolean).join(" ").toLocaleLowerCase("vi-VN");
       return matchesPhase && (!needle || haystack.includes(needle));
     });
   }, [activities, phase, search]);
-  const openCount = activities.filter((activity) => activity.status === "available").length;
-  const labCount = activities.filter((activity) => activity.type === "Thí nghiệm").length;
+
   const firstOpenActivity = activities.find((activity) => activity.status === "available");
   const mainLab = activities.find((activity) => activity.id === 8);
+  const phaseInfo: Record<Exclude<Phase, "Tất cả">, { title: string; subtitle: string; icon: typeof BookOpen }> = {
+    "Trước lớp": { title: "Chuẩn bị trước giờ học", subtitle: "Xem bài, đặt câu hỏi và tự kiểm tra kiến thức nền.", icon: BookOpen },
+    "Trên lớp": { title: "Khám phá và thực hành trên lớp", subtitle: "Thảo luận, làm thí nghiệm và luyện tập cùng lớp.", icon: FlaskConical },
+    "Sau lớp": { title: "Vận dụng và ghi nhớ", subtitle: "Làm dự án, tự đánh giá và ôn tập sau buổi học.", icon: CheckCircle2 },
+  };
+
+  const renderActivity = (activity: Activity) => {
+    const guide = STUDENT_GUIDE[activity.id];
+    const badge = statusCopy[activity.status];
+    const title = displayTitle(activity);
+    const canOpen = activity.status === "available";
+    return (
+      <article key={activity.id} className="group flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-950/5">
+        <div className="flex items-start justify-between gap-3">
+          <span className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-extrabold tracking-wide text-slate-700">BÀI {String(activity.id).padStart(2, "0")}</span>
+          <span className={"rounded-full border px-2.5 py-1 text-[11px] font-bold " + badge.style}>{badge.label}</span>
+        </div>
+        <div className="mt-4 flex-1">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
+            <span className="rounded-md bg-blue-50 px-2 py-1 text-blue-800">{activity.phase}</span>
+            <span className="inline-flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" />{activity.duration}</span>
+          </div>
+          <h3 className="mt-3 text-lg font-extrabold leading-snug text-slate-900">{title}</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-600">{guide?.summary || activity.description}</p>
+          {activity.id === 8 && <p className="mt-3 inline-flex rounded-lg bg-violet-50 px-2.5 py-1.5 text-xs font-bold text-violet-800">Đã gộp nội dung nguồn 8, 9, 10 và 11</p>}
+          {guide?.task && <div className="mt-4 rounded-xl bg-slate-50 p-3.5 text-sm leading-5 text-slate-700"><span className="font-bold text-slate-900">Em sẽ làm:</span> {guide.task}</div>}
+        </div>
+        <div className="mt-5 border-t border-slate-100 pt-4">
+          {canOpen ? (
+            <Link href={"/hoat-dong/" + activity.id} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-3 text-sm font-extrabold text-white transition hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-200">
+              Vào bài học <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          ) : <div className="rounded-xl bg-slate-100 px-4 py-3 text-center text-xs font-bold text-slate-500">{activity.status === "locked" ? "Bài chưa được mở" : "Bài đã kết thúc"}</div>}
+        </div>
+      </article>
+    );
+  };
+
+  const activitiesByPhase = phase === "Tất cả"
+    ? PHASES.slice(1).map((item) => ({ phase: item, activities: visibleActivities.filter((activity) => activity.phase === item) }))
+    : [{ phase, activities: visibleActivities }];
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
+    <main className="min-h-screen bg-[#f5f7fb] text-slate-900">
+      <header className="border-b border-slate-200/80 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 md:px-8">
           <Link href="/" className="flex items-center gap-3" aria-label="Về trang chủ Vật lí 11">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-700 font-black text-white">V11</span>
-            <span><b className="block text-sm tracking-wide">VẬT LÍ 11</b><small className="text-xs text-slate-500">Khu vực học sinh</small></span>
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-700 font-black text-white shadow-lg shadow-blue-900/15">V11</span>
+            <span><b className="block text-sm tracking-wide">VẬT LÍ 11</b><small className="text-xs text-slate-500">Không gian học tập</small></span>
           </Link>
           <Link href="/chapters" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
             Tổng quan chương <ArrowRight className="h-4 w-4" />
@@ -93,76 +177,83 @@ export default function StudentPortalPreview() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 md:py-8">
-        <section className="rounded-3xl bg-slate-950 p-6 text-white shadow-sm md:p-8">
-          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-            <div className="max-w-3xl">
-              <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-300"><GraduationCap className="h-4 w-4" /> Chương học</p>
-              <h1 className="mt-3 text-3xl font-black tracking-tight md:text-4xl">Chuyên đề Tụ điện</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Chọn bài để xem nội dung, tài liệu và yêu cầu học tập. Chương hiện có {activities.length} hoạt động; các mục nguồn 8–11 được gộp trong một hoạt động thí nghiệm.</p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                {firstOpenActivity ? <Link href={"/hoat-dong/" + firstOpenActivity.id} className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-4 py-3 text-sm font-extrabold text-slate-950 transition hover:bg-cyan-200">Bắt đầu: {firstOpenActivity.title}<ArrowRight className="h-4 w-4" /></Link> : <span className="rounded-xl border border-white/15 px-4 py-3 text-sm text-slate-300">Hiện chưa có bài học được mở.</span>}
-                {mainLab && <Link href={"/hoat-dong/" + mainLab.id} className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10"><FlaskConical className="h-4 w-4" /> Mở thí nghiệm tụ điện</Link>}
+      <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 md:px-8 md:py-9">
+        <section className="relative isolate overflow-hidden rounded-[2rem] bg-[#101c39] p-6 text-white shadow-xl shadow-blue-950/10 md:p-10">
+          <div aria-hidden="true" className="absolute -right-16 -top-24 -z-10 h-80 w-80 rounded-full bg-blue-500/25 blur-3xl" />
+          <div aria-hidden="true" className="absolute bottom-[-8rem] right-[30%] -z-10 h-64 w-64 rounded-full bg-cyan-400/15 blur-3xl" />
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-center">
+            <div>
+              <p className="inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-white/5 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-cyan-200"><GraduationCap className="h-4 w-4" /> Lộ trình học Vật lí 11</p>
+              <h1 className="mt-5 max-w-3xl text-3xl font-black leading-tight tracking-tight md:text-5xl">Chuyên đề <span className="text-cyan-300">Tụ điện</span></h1>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">Đi từ hiện tượng nạp – phóng điện, tự làm thí nghiệm, rồi dùng kiến thức để giải thích và vận dụng. Em có thể mở bài học để xem nội dung ngay.</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                {firstOpenActivity && <Link href={"/hoat-dong/" + firstOpenActivity.id} className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-5 py-3 text-sm font-extrabold text-slate-950 transition hover:bg-cyan-200">Bắt đầu học <ArrowRight className="h-4 w-4" /></Link>}
+                {mainLab && <Link href="/hoat-dong/8" className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"><FlaskConical className="h-4 w-4" /> Đến bài thí nghiệm</Link>}
+              </div>
+              <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-xs font-medium text-slate-300">
+                <span className="inline-flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-300" /> Nội dung xem tự do</span>
+                <span className="inline-flex items-center gap-2"><BookOpen className="h-4 w-4 text-cyan-300" /> {activities.length} bài học trên web</span>
+                <span className="inline-flex items-center gap-2"><FlaskConical className="h-4 w-4 text-violet-300" /> Gộp đúng mục 8–11</span>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-2 lg:min-w-[300px]">
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3"><BookOpen className="h-4 w-4 text-cyan-300" /><b className="mt-2 block text-xl">{activities.length}</b><span className="text-[10px] text-slate-300">hoạt động</span></div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3"><CheckCircle2 className="h-4 w-4 text-emerald-300" /><b className="mt-2 block text-xl">{openCount}</b><span className="text-[10px] text-slate-300">đang mở</span></div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3"><FlaskConical className="h-4 w-4 text-violet-300" /><b className="mt-2 block text-xl">{labCount}</b><span className="text-[10px] text-slate-300">thí nghiệm</span></div>
+            <div className="rounded-3xl border border-white/10 bg-white/[0.07] p-5 backdrop-blur-sm">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-200"><Sparkles className="h-4 w-4" /> Bản đồ chương</div>
+              <div className="mt-5 space-y-4">
+                {(["Trước lớp", "Trên lớp", "Sau lớp"] as const).map((item, index) => {
+                  const info = phaseInfo[item];
+                  const Icon = info.icon;
+                  const count = activities.filter((activity) => activity.phase === item).length;
+                  return <div key={item} className="flex items-center gap-3">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10 text-cyan-200"><Icon className="h-5 w-5" /></span>
+                    <div className="min-w-0 flex-1"><p className="text-sm font-bold text-white">{info.title}</p><p className="mt-0.5 text-xs text-slate-400">{count} hoạt động</p></div>
+                    <span className="text-xs font-bold text-slate-500">0{index + 1}</span>
+                  </div>;
+                })}
+              </div>
+              <div className="mt-5 rounded-2xl bg-[#0b142b] p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Công thức cần nhớ</p>
+                <p className="mt-2 text-2xl font-black tracking-wide text-white">C = <span className="text-cyan-300">Q</span>/<span className="text-amber-300">U</span></p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">Điện dung cho biết tụ điện tích được bao nhiêu điện tích ở một hiệu điện thế.</p>
+              </div>
             </div>
           </div>
         </section>
 
-        {catalogError && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"><p>{catalogLive ? "" : "Chưa tải được thay đổi mới từ lớp; đang giữ nội dung chương trình có sẵn."}</p><button type="button" disabled={isRefreshing} onClick={() => { setIsRefreshing(true); setRetryCount((count) => count + 1); }} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold disabled:opacity-50"><RefreshCw className={"h-4 w-4 " + (isRefreshing ? "animate-spin" : "")} />{isRefreshing ? "Đang tải…" : "Tải lại"}</button></div>}
+        {catalogError && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"><p>Chưa đồng bộ được thay đổi mới từ lớp. Các bài học có sẵn vẫn mở được bên dưới.</p><button type="button" disabled={isRefreshing} onClick={() => { setIsRefreshing(true); setRetryCount((count) => count + 1); }} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold disabled:opacity-50"><RefreshCw className={"h-4 w-4 " + (isRefreshing ? "animate-spin" : "")} />{isRefreshing ? "Đang tải…" : "Thử đồng bộ lại"}</button></div>}
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div><h2 className="text-lg font-extrabold">Danh sách bài học và nhiệm vụ</h2><p className="mt-1 text-sm text-slate-500">Mỗi bài có nội dung, tài liệu và yêu cầu riêng.</p></div>
-            <label className="relative block w-full lg:max-w-sm">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm tên bài hoặc nội dung…" className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
-            </label>
+        <section className="grid gap-4 md:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div><p className="text-xs font-bold uppercase tracking-wider text-blue-700">Em sẽ học gì?</p><h2 className="mt-1 text-xl font-black">Lộ trình bài học</h2><p className="mt-1 text-sm text-slate-500">Chọn một bài để mở hướng dẫn, tài liệu và hoạt động học.</p></div>
+              <label className="relative block w-full sm:max-w-xs">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm bài học…" className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+              </label>
+            </div>
+            <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Lọc theo giai đoạn">
+              {PHASES.map((item) => <button key={item} type="button" onClick={() => setPhase(item)} aria-pressed={phase === item} className={"rounded-full px-4 py-2 text-xs font-bold transition " + (phase === item ? "bg-blue-700 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50")}>{item}</button>)}
+            </div>
+            <p className="mt-3 text-xs text-slate-500">Đang hiển thị {visibleActivities.length} / {activities.length} bài{catalogLive ? " · có dữ liệu lớp mới" : " · nội dung chương trình có sẵn"}</p>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Lọc theo giai đoạn">
-            {PHASES.map((item) => <button key={item} type="button" onClick={() => setPhase(item)} aria-pressed={phase === item} className={"rounded-full px-4 py-2 text-xs font-bold transition " + (phase === item ? "bg-blue-700 text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50")}>{item}</button>)}
+          <div className="flex flex-col justify-between rounded-2xl border border-blue-100 bg-blue-50/70 p-5">
+            <div><div className="flex items-center gap-2 text-sm font-extrabold text-blue-950"><Zap className="h-4 w-4 text-amber-500" /> Mẹo học nhanh</div><p className="mt-2 text-sm leading-6 text-blue-950/75">Thử dự đoán kết quả trước khi bấm làm thí nghiệm. Sau đó so sánh dự đoán với số liệu em đo được.</p></div>
+            <Link href="/hoat-dong/4" className="mt-4 inline-flex items-center gap-2 text-sm font-extrabold text-blue-800 hover:text-blue-950">Thử phòng thí nghiệm ảo <ArrowDown className="h-4 w-4 -rotate-45" /></Link>
           </div>
-          <p className="mt-3 text-xs text-slate-500">{visibleActivities.length} / {activities.length} hoạt động {catalogLive ? "· đã tải dữ liệu lớp mới nhất" : "· nội dung chương trình có sẵn"}</p>
         </section>
 
         {visibleActivities.length === 0 ? (
-          <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-            <Search className="mx-auto h-8 w-8 text-slate-300" />
-            <h2 className="mt-3 font-bold">Không tìm thấy bài phù hợp</h2>
-            <p className="mt-1 text-sm text-slate-500">Thử từ khóa khác hoặc xóa bộ lọc.</p>
-            <button type="button" onClick={() => { setSearch(""); setPhase("Tất cả"); }} className="mt-4 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white">Xóa bộ lọc</button>
-          </section>
-        ) : (
-          <div className="space-y-3">
-            {visibleActivities.map((activity) => {
-              const badge = statusCopy[activity.status];
-              const canOpen = activity.status === "available";
-              return (
-                <article key={activity.id} className={"grid gap-4 rounded-2xl border bg-white p-4 shadow-sm md:grid-cols-[5.5rem_minmax(0,1fr)_12rem] md:items-center md:p-5 " + (activity.id === 8 ? "border-cyan-300 ring-1 ring-cyan-100" : "border-slate-200")}>
-                  <div className="flex items-center gap-2 md:flex-col md:items-start">
-                    <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-extrabold text-slate-700">{activity.code}</span>
-                    <span className={"rounded-full border px-2.5 py-1 text-[10px] font-bold " + badge.style}>{badge.label}</span>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold text-slate-500"><span className="rounded-md bg-blue-50 px-2 py-1 text-blue-800">{activity.phase}</span><span className="inline-flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" />{activity.duration}</span><span>{activity.type}</span></div>
-                    <h3 className="mt-2 text-base font-extrabold leading-snug text-slate-900">{activity.title}</h3>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">{activity.description}</p>
-                    {activity.deliverable && <p className="mt-2 text-xs leading-5 text-slate-700"><b>Cần hoàn thành:</b> {activity.deliverable}</p>}
-                  </div>
-                  <div className="md:justify-self-end md:w-full">
-                    {canOpen ? <Link href={"/hoat-dong/" + activity.id} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-800">Mở bài và tài liệu <ArrowRight className="h-4 w-4" /></Link> : <div className="rounded-xl bg-slate-100 px-4 py-3 text-center text-xs font-bold text-slate-500">{activity.status === "locked" ? "Bài chưa được mở" : "Đã kết thúc"}</div>}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
+          <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center"><Search className="mx-auto h-8 w-8 text-slate-300" /><h2 className="mt-3 font-bold">Chưa thấy bài phù hợp</h2><p className="mt-1 text-sm text-slate-500">Thử từ khóa khác hoặc xóa bộ lọc.</p><button type="button" onClick={() => { setSearch(""); setPhase("Tất cả"); }} className="mt-4 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white">Xóa bộ lọc</button></section>
+        ) : activitiesByPhase.map(({ phase: phaseName, activities: phaseActivities }) => {
+          if (phaseActivities.length === 0) return null;
+          const info = phaseInfo[phaseName as Exclude<Phase, "Tất cả">];
+          const Icon = info.icon;
+          return <section key={phaseName} className="space-y-4">
+            <div className="flex items-end justify-between gap-4"><div><div className="flex items-center gap-2 text-blue-700"><Icon className="h-5 w-5" /><span className="text-xs font-extrabold uppercase tracking-wider">{phaseName}</span></div><h2 className="mt-1 text-xl font-black text-slate-900">{info.title}</h2><p className="mt-1 text-sm text-slate-500">{info.subtitle}</p></div><span className="hidden rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-500 shadow-sm sm:inline-flex">{phaseActivities.length} bài</span></div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{phaseActivities.map(renderActivity)}</div>
+          </section>;
+        })}
 
-        <footer className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs leading-5 text-slate-600">Nội dung bài học công khai có thể xem trực tiếp. Bài nộp, điểm và trao đổi cá nhân chỉ dùng khi tài khoản học sinh được bật.</footer>
+        <footer className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between"><span className="inline-flex items-center gap-2 font-semibold"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Em có thể xem bài học và tài liệu mà không cần đăng nhập.</span><span className="text-xs text-slate-500">Bài nộp và điểm số sẽ được kết nối khi tài khoản lớp được bật.</span></footer>
       </div>
     </main>
   );

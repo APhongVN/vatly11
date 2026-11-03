@@ -8,7 +8,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   size?: "default" | "sm" | "lg" | "icon";
 }
 
-function Button({ className, variant = "default", size = "default", ...props }: ButtonProps) {
+function Button({ className, variant = "default", size = "default", type = "button", ...props }: ButtonProps) {
   const variants = {
     default: "bg-blue-600 text-white hover:bg-blue-700",
     destructive: "bg-red-500 text-white hover:bg-red-600",
@@ -27,6 +27,7 @@ function Button({ className, variant = "default", size = "default", ...props }: 
 
   return (
     <button
+      type={type}
       className={cn(
         "inline-flex items-center justify-center rounded-xl font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
         variants[variant],

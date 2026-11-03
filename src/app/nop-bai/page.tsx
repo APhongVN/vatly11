@@ -375,16 +375,9 @@ function NopBaiContent() {
                   </p>
                   <p className="text-blue-700 mt-0.5">Chụp ảnh bài làm của em rồi bấm nút bên cạnh để AI chuyển thành văn bản và công thức LaTeX!</p>
                 </div>
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                  <button
-                    type="button"
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-2 cursor-pointer w-full justify-center"
+                <div>
+                  <input id="submission-image-input" type="file" accept="image/*" onChange={handleFileChange} className="sr-only" />
+                  <button type="button" onClick={() => document.getElementById("submission-image-input")?.click()} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-2 cursor-pointer w-full justify-center"
                   >
                     <Camera className="w-4 h-4" /> {file ? "Đổi ảnh khác" : "Chọn ảnh bài làm"}
                   </button>
