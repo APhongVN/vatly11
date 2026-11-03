@@ -44,7 +44,7 @@ const rubricUploadMimeType = (file: File) => {
 };
 const loadTeacherStudentRoster = async () => {
   const withAccountFields = await supabase.from("students")
-    .select("id,full_name,class_name,auth_user_id,login_email").order("full_name").limit(1000);
+    .select("id,full_name,class_name,auth_user_id,login_email,username,birth_date").order("full_name").limit(1000);
   if (!withAccountFields.error) return { ...withAccountFields, accountFieldsReady: true, accountSchemaMissing: false };
   if (withAccountFields.error.code !== "42703" && withAccountFields.error.code !== "PGRST204") {
     return { ...withAccountFields, accountFieldsReady: false, accountSchemaMissing: false };
@@ -191,6 +191,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
   // Sinh viên
   const [newStudentName, setNewStudentName] = useState("");
+  const [newStudentBirthDate, setNewStudentBirthDate] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [studentClassName, setStudentClassName] = useState("11A1");
   const [studentClassFilter, setStudentClassFilter] = useState("");
@@ -201,8 +202,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [isSavingStudents, setIsSavingStudents] = useState(false);
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [accountStudent, setAccountStudent] = useState<any>(null);
-  const [accountEmail, setAccountEmail] = useState("");
-  const [studentAccountCredentials, setStudentAccountCredentials] = useState<{ email: string; password: string; studentName: string } | null>(null);
+  const [studentAccountCredentials, setStudentAccountCredentials] = useState<Array<{ username: string; password: string; studentName: string }> | null>(null);
   const [studentAccountError, setStudentAccountError] = useState("");
   const [studentAccountNotice, setStudentAccountNotice] = useState("");
   const [isCreatingStudentAccount, setIsCreatingStudentAccount] = useState(false);
@@ -391,7 +391,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     if (previewMode) { router.push("/"); return; }
     localStorage.removeItem('teacher_session');
     await supabase.auth.signOut();
-    router.push("/login");
+    router.replace("/giao-vien");
   };
 
   // --- QUẢN LÝ BÀI HỌC CÁ NHÂN & GỘP BÀI ---
@@ -1461,43 +1461,36 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     if (isAddingStudent) return;
     const formattedName = formatVietnameseName(newStudentName);
     const className = studentClassName.normalize("NFC").trim();
-    if (!className || className.length > 40) {
-      alert("Tên lớp cần dài từ 1 đến 40 ký tự.");
-      return;
-    }
-    if (formattedName.length < 3 || formattedName.length > 120) {
-      alert("Họ tên học sinh cần dài từ 3 đến 120 ký tự.");
-      return;
-    }
-
+    if (!className || className.length > 40) { alert("Tên lớp cần dài từ 1 đến 40 ký tự."); return; }
+    if (formattedName.length < 3 || formattedName.length > 120) { alert("Họ tên học sinh cần dài từ 3 đến 120 ký tự."); return; }
     const exists = hasStudentInClass(students, formattedName, className);
-    if (exists && !confirm(`Lớp ${className} đã có hồ sơ tên "${formattedName}". Nếu đây là hai học sinh khác nhau, cô vẫn có thể tạo hồ sơ riêng. Tiếp tục?`)) return;
+    if (exists && !confirm(`Lớp ${className} đã có hồ sơ tên "${formattedName}". Nếu đây là hai học sinh khác nhau, tiếp tục?`)) return;
 
     if (previewMode) {
       const student = { id: `preview-student-${Date.now()}`, full_name: formattedName, class_name: className };
       setStudents((current) => [...current, student].sort(sortVietnameseNames));
-      setNewStudentName(""); setPreviewNotice(`Đã thêm ${formattedName} vào danh sách mẫu.`);
+      setNewStudentName(""); setNewStudentBirthDate(""); setPreviewNotice(`Đã thêm ${formattedName} vào danh sách mẫu.`);
       return;
     }
 
     setIsAddingStudent(true);
     try {
-      const { data, error } = await supabase.from("students")
-        .insert({ full_name: formattedName, class_name: className })
-        .select("id,full_name,class_name").single();
-      if (error || !data) throw new Error(error?.message || "Cơ sở dữ liệu chưa trả về bản ghi đã lưu.");
-      setStudents((current) => current.some((student) => student.id === data.id)
-        ? current
-        : [...current, data].sort(sortVietnameseNames));
-      setNewStudentName("");
-      alert(`Đã lưu học sinh: ${formattedName}`);
+      const response = await fetch("/api/teacher/students", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ full_name: formattedName, class_name: className, birth_date: newStudentBirthDate || null }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Không tạo được học sinh.");
+      setStudents((current) => [...current.filter((student) => student.id !== result.student.id), result.student].sort(sortVietnameseNames));
+      setAccountStudent({ full_name: formattedName });
+      setStudentAccountCredentials([{ username: result.credentials.username, password: result.credentials.password, studentName: formattedName }]);
+      setStudentAccountNotice("Tài khoản đã được tạo. Mật khẩu chỉ hiển thị một lần; hãy sao chép hoặc in phiếu cho học sinh.");
+      setStudentAccountError("");
+      setNewStudentName(""); setNewStudentBirthDate("");
     } catch (error: unknown) {
-      alert("Không lưu được học sinh: " + (error instanceof Error ? error.message : "Lỗi kết nối cơ sở dữ liệu."));
-    } finally {
-      setIsAddingStudent(false);
-    }
+      alert("Không tạo được học sinh và tài khoản: " + (error instanceof Error ? error.message : "Lỗi kết nối máy chủ."));
+    } finally { setIsAddingStudent(false); }
   };
-
   // Hàm trích xuất và chuẩn hóa danh sách tên từ mảng chuỗi
   const processAndSortNames = (rawList: string[]): string[] => {
     const validNames: string[] = [];
@@ -1607,60 +1600,65 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     if (!className || className.length > 40) { alert("Tên lớp cần dài từ 1 đến 40 ký tự."); return; }
     if (previewMode) {
       const duplicateNames = importPreviewNames.filter((name) => hasStudentInClass(students, name, className));
-      if (duplicateNames.length && !confirm(`${duplicateNames.length} tên đã có hồ sơ trong lớp ${className}. Nếu đây là các học sinh khác nhau, tiếp tục để tạo mã hồ sơ riêng cho từng em?`)) return;
+      if (duplicateNames.length && !confirm(`${duplicateNames.length} tên đã có hồ sơ trong lớp ${className}. Tạo hồ sơ riêng cho các em này?`)) return;
       const incoming = importPreviewNames.map((full_name, index) => ({ id: `preview-import-${Date.now()}-${index}`, full_name, class_name: className }));
       setStudents((current) => [...current, ...incoming].sort(sortVietnameseNames));
       setShowImportModal(false); setImportPreviewNames([]); setPasteNamesText("");
-      setPreviewNotice(`Đã thêm thử ${incoming.length} học sinh từ danh sách vào lớp mẫu.`);
+      setPreviewNotice(`Đã thêm thử ${incoming.length} học sinh vào lớp mẫu.`);
       return;
     }
+    const duplicateNames = importPreviewNames.filter((name) => hasStudentInClass(students, name, className));
+    if (duplicateNames.length && !confirm(`${duplicateNames.length} tên đã có hồ sơ trong lớp ${className}. Nếu là học sinh khác nhau, hãy tiếp tục tạo tài khoản riêng?`)) return;
+    if (importPreviewNames.length > 500) { alert("Mỗi lượt tối đa 500 học sinh."); return; }
+
     setIsSavingStudents(true);
     try {
-      // Lọc bỏ những tên đã có trong DB
-      const duplicateNames = importPreviewNames.filter((name) => hasStudentInClass(students, name, className));
-      if (duplicateNames.length && !confirm(`${duplicateNames.length} tên đã có hồ sơ trong lớp ${className}. Nếu đây là các học sinh khác nhau, tiếp tục để tạo mã hồ sơ riêng cho từng em?`)) return;
-      const newToAdd = importPreviewNames;
-
-      if (newToAdd.length > 500) {
-        alert("Mỗi lượt chỉ nhập tối đa 500 học sinh. Hãy chia danh sách thành nhiều lượt.");
-        return;
+      const allResults: Array<{ ok: boolean; student?: any; credentials?: { username: string; password: string }; error?: string; index: number }> = [];
+      let importFatalError = "";
+      for (let offset = 0; offset < importPreviewNames.length; offset += 100) {
+        const batch = importPreviewNames.slice(offset, offset + 100);
+        try {
+          const response = await fetch("/api/teacher/students/bulk", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ class_name: className, students: batch.map((full_name) => ({ full_name })) }),
+          });
+          const result = await response.json();
+          if (!response.ok) {
+            const reason = result.error || `Không nhập được lượt ${Math.floor(offset / 100) + 1}.`;
+            allResults.push(...batch.map((_name, index) => ({ index: offset + index, ok: false, error: reason })));
+            if ([401, 403, 429].includes(response.status)) { importFatalError = reason; break; }
+            continue;
+          }
+          allResults.push(...result.results.map((row: any) => ({ ...row, index: offset + row.index })));
+        } catch (batchError) {
+          const reason = batchError instanceof Error ? batchError.message : "Mất kết nối khi nhập lô này.";
+          allResults.push(...batch.map((_name, index) => ({ index: offset + index, ok: false, error: reason })));
+          importFatalError = reason;
+          break;
+        }
       }
-
-      if (newToAdd.length === 0) {
-        alert("Toàn bộ học sinh trong danh sách đều đã có trong cơ sở dữ liệu!");
-        setShowImportModal(false);
-        setIsSavingStudents(false);
-        return;
-      }
-
-      const inserts = newToAdd.map(name => ({
-        full_name: name,
-        class_name: className
-      }));
-
-      const { data: insertedStudents, error } = await supabase.from("students")
-        .insert(inserts)
-        .select("id,full_name,class_name");
-      if (error) throw new Error(error.message);
-      if (!insertedStudents || insertedStudents.length !== newToAdd.length) {
-        throw new Error("Cơ sở dữ liệu không xác nhận đủ số học sinh đã lưu. Hãy tải lại danh sách trước khi thử lại.");
-      }
-
+      const successful = allResults.filter((row) => row.ok && row.student && row.credentials);
+      const failed = allResults.filter((row) => !row.ok);
+      const newStudents = successful.map((row) => row.student);
       setStudents((current) => {
-        const existingIds = new Set(current.map((student) => student.id));
-        return [...current, ...insertedStudents.filter((student) => !existingIds.has(student.id))].sort(sortVietnameseNames);
+        const ids = new Set(current.map((student) => student.id));
+        return [...current, ...newStudents.filter((student) => !ids.has(student.id))].sort(sortVietnameseNames);
       });
-      alert(`✅ Đã lưu và hiển thị ${insertedStudents.length} học sinh vào lớp học!`);
-      setShowImportModal(false);
-      setImportPreviewNames([]);
-      setPasteNamesText("");
-    } catch (err: unknown) {
-      alert("Lỗi lưu danh sách: " + (err instanceof Error ? err.message : "Lỗi kết nối cơ sở dữ liệu."));
-    } finally {
-      setIsSavingStudents(false);
-    }
+      if (successful.length) {
+        setAccountStudent({ full_name: `${successful.length} tài khoản học sinh` });
+        setStudentAccountCredentials(successful.map((row) => ({ username: row.credentials!.username, password: row.credentials!.password, studentName: row.student.full_name })));
+        setStudentAccountNotice(`Đã tạo ${successful.length} tài khoản. Mật khẩu chỉ hiển thị trong phiên này; hãy sao chép hoặc in ngay.`);
+        setStudentAccountError("");
+      }
+      setShowImportModal(false); setImportPreviewNames([]); setPasteNamesText("");
+      if (failed.length || importFatalError) {
+        const summary = failed.slice(0, 8).map((row) => `Dòng ${row.index + 1}: ${row.error || "lỗi không xác định"}`).join("\n");
+        alert(`Đã tạo ${successful.length}/${allResults.length} tài khoản. ${failed.length} dòng lỗi.${importFatalError ? `\n${importFatalError}` : ""}${summary ? `\n${summary}` : ""}${failed.length > 8 ? "\n…" : ""}`);
+      } else if (!successful.length) alert("Không có tài khoản nào được tạo.");
+    } catch (error: unknown) {
+      alert("Lỗi nhập danh sách: " + (error instanceof Error ? error.message : "Lỗi kết nối máy chủ."));
+    } finally { setIsSavingStudents(false); }
   };
-
   const deleteStudent = async (id: string) => {
     const student = students.find((item) => item.id === id);
     if (previewMode) {
@@ -1675,9 +1673,8 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
 
   const openStudentAccountModal = (student: any) => {
-    if (previewMode || !canProvisionStudentAccounts || student.auth_user_id) return;
+    if (previewMode || !canProvisionStudentAccounts) return;
     setAccountStudent(student);
-    setAccountEmail("");
     setStudentAccountCredentials(null);
     setStudentAccountError("");
     setStudentAccountNotice("");
@@ -1685,36 +1682,31 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
   const createStudentAccount = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (previewMode || !canProvisionStudentAccounts || !accountStudent || isCreatingStudentAccount) return;
+    if (previewMode || !canProvisionStudentAccounts || !accountStudent?.id || isCreatingStudentAccount) return;
     setIsCreatingStudentAccount(true);
     setStudentAccountError("");
     setStudentAccountNotice("");
     try {
       const response = await fetch("/api/teacher/student-accounts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId: accountStudent.id, email: accountEmail.trim() }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: accountStudent.id }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Không cấp được tài khoản.");
-      setStudentAccountCredentials({ email: result.email, password: result.password, studentName: result.studentName });
-      setStudentAccountNotice("Mật khẩu tạm chỉ hiển thị lần này. Hãy sao chép và gửi riêng cho học sinh.");
+      setStudentAccountCredentials([{ username: result.credentials.username, password: result.credentials.password, studentName: accountStudent.full_name }]);
+      setStudentAccountNotice("Mật khẩu tạm chỉ hiển thị trong lần này. Hãy sao chép hoặc in và gửi riêng cho học sinh.");
       await fetchData();
     } catch (accountError) {
       setStudentAccountError(accountError instanceof Error ? accountError.message : "Không cấp được tài khoản học sinh.");
-    } finally {
-      setIsCreatingStudentAccount(false);
-    }
+    } finally { setIsCreatingStudentAccount(false); }
   };
 
   const closeStudentAccountModal = () => {
     setAccountStudent(null);
-    setAccountEmail("");
     setStudentAccountCredentials(null);
     setStudentAccountError("");
     setStudentAccountNotice("");
-  };
-  const handleExcelUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  };  const handleExcelUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     handleSmartFileUpload(event);
   };
   // --- TRẮC NGHIỆM & CHAT ---
@@ -2021,7 +2013,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     }
 
     const roster = workbook.addWorksheet("Danh sách học sinh");
-    styleSheet(roster, "Danh sách học sinh", "Tình trạng tài khoản, tiến độ cá nhân và bài nhóm được ghép theo mã hồ sơ thành viên.", ["STT", "Mã học sinh", "Họ và tên", "Lớp", "Email đăng nhập", "Tài khoản", "Bài nộp cá nhân", "Bài nộp nhóm", "Hồ sơ hoạt động", "Lượt trắc nghiệm", "Điểm GV TB (cá nhân + nhóm)", "AI gần nhất", "Hoạt động gần nhất"], [8, 38, 28, 16, 30, 16, 16, 15, 17, 15, 24, 15, 21]);
+    styleSheet(roster, "Danh sách học sinh", "Tình trạng tài khoản, tiến độ cá nhân và bài nhóm được ghép theo mã hồ sơ thành viên.", ["STT", "Mã học sinh", "Họ và tên", "Lớp", "Tên đăng nhập", "Tài khoản", "Bài nộp cá nhân", "Bài nộp nhóm", "Hồ sơ hoạt động", "Lượt trắc nghiệm", "Điểm GV TB (cá nhân + nhóm)", "AI gần nhất", "Hoạt động gần nhất"], [8, 38, 28, 16, 30, 16, 16, 15, 17, 15, 24, 15, 21]);
     reportStudents.forEach((student: any, index: number) => {
       const studentSubmissions = submissionsByStudent.get(String(student.id)) || [];
       const studentEvidence = evidenceByStudent.get(String(student.id)) || [];
@@ -2031,7 +2023,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       const aiSuggestions = [...studentSubmissions, ...studentEvidence, ...studentGroupSubmissions].filter((record: any) => aiScoreText(record.ai_score) !== null).sort((a: any, b: any) => new Date(b.updated_at || b.submitted_at || 0).getTime() - new Date(a.updated_at || a.submitted_at || 0).getTime());
       const latestDates = [...studentSubmissions.map((record: any) => record.submitted_at), ...studentEvidence.map((record: any) => record.updated_at), ...studentQuizzes.map((record: any) => record.created_at), ...studentGroupSubmissions.map((record: any) => record.submitted_at)].filter(Boolean).map((date) => new Date(date as string).getTime()).filter(Number.isFinite);
       const lastActivity = latestDates.length ? new Date(Math.max(...latestDates)) : null;
-      roster.addRow([index + 1, formulaSafe(student.id), formulaSafe(student.full_name), formulaSafe(classNameOf(student)), formulaSafe(student.login_email || ""), student.auth_user_id ? "Đã cấp" : "Chưa cấp", studentSubmissions.length, studentGroupSubmissions.length, studentEvidence.length, studentQuizzes.length, official.length ? official.reduce((sum, score) => sum + score, 0) / official.length : null, aiSuggestions.length ? aiScoreText(aiSuggestions[0].ai_score) : null, lastActivity]);
+      roster.addRow([index + 1, formulaSafe(student.id), formulaSafe(student.full_name), formulaSafe(classNameOf(student)), formulaSafe(student.username || ""), student.auth_user_id ? "Đã cấp" : "Chưa cấp", studentSubmissions.length, studentGroupSubmissions.length, studentEvidence.length, studentQuizzes.length, official.length ? official.reduce((sum, score) => sum + score, 0) / official.length : null, aiSuggestions.length ? aiScoreText(aiSuggestions[0].ai_score) : null, lastActivity]);
     });
     styleDataRows(roster, [11, 12], [13]);
 
@@ -3487,11 +3479,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
             </div>
 
             <div className="flex flex-wrap items-end gap-3 rounded-2xl border bg-white p-4 shadow-sm"><label className="min-w-[220px] flex-1 text-xs font-bold text-slate-700">Lớp áp dụng cho học sinh mới<input value={studentClassName} onChange={(event) => setStudentClassName(event.target.value)} maxLength={40} required className="mt-1 w-full rounded-xl border px-3 py-2.5 text-sm font-normal outline-none focus:border-blue-500" placeholder="Ví dụ: 11A1" /></label><p className="max-w-xl text-xs leading-5 text-slate-500">Lớp này áp dụng khi thêm từng học sinh hoặc nhập danh sách; hồ sơ hiện có không bị đổi.</p></div>
-            {!previewMode && !canProvisionStudentAccounts && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{studentAccountSchemaMissing ? "Cần áp dụng migration 20261031002600_student_account_provisioning.sql trên Supabase trước khi cấp tài khoản. Danh sách học sinh cũ vẫn dùng được." : "Chưa đọc được trạng thái tài khoản học sinh. Hãy kiểm tra kết nối/quyền Supabase rồi tải lại trang."}</p>}
+            {!previewMode && !canProvisionStudentAccounts && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{studentAccountSchemaMissing ? "Cần áp dụng migration 20261103000100_student_username_auth.sql trên Supabase trước khi cấp tài khoản. Danh sách học sinh cũ vẫn dùng được." : "Chưa đọc được trạng thái tài khoản học sinh. Hãy kiểm tra kết nối/quyền Supabase rồi tải lại trang."}</p>}
             <div className="grid md:grid-cols-2 gap-4">
               <form onSubmit={addStudentManual} className="bg-white p-5 rounded-2xl border shadow-sm flex gap-2">
-                <input value={newStudentName} onChange={e => setNewStudentName(e.target.value)} maxLength={120} placeholder="Nhập họ và tên học sinh mới..." className="flex-1 border p-2.5 rounded-xl text-sm outline-none bg-slate-50/50" required />
-                <button disabled={isAddingStudent} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-5 py-2.5 rounded-xl text-xs font-bold">{isAddingStudent ? "Đang lưu…" : "Thêm ngay"}</button>
+                <input value={newStudentName} onChange={e => setNewStudentName(e.target.value)} maxLength={120} placeholder="Nhập họ và tên học sinh mới..." className="flex-1 border p-2.5 rounded-xl text-sm outline-none bg-slate-50/50" required /><input type="date" aria-label="Ngày sinh học sinh" value={newStudentBirthDate} onChange={(event) => setNewStudentBirthDate(event.target.value)} className="w-36 border p-2.5 rounded-xl text-xs" />
+                <button disabled={isAddingStudent || (!previewMode && !canProvisionStudentAccounts)} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-5 py-2.5 rounded-xl text-xs font-bold">{isAddingStudent ? "Đang lưu…" : "Thêm ngay"}</button>
               </form>
               <div className="bg-white p-5 rounded-2xl border shadow-sm flex flex-col justify-center gap-3">
                 <span className="text-xs font-bold text-slate-600">Nhập danh sách học sinh</span>
@@ -3499,7 +3491,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                   <input type="file" accept=".xlsx,.csv,.txt" onChange={handleExcelUpload} aria-label="Chọn Excel, CSV hoặc TXT chứa danh sách học sinh" className="min-w-0 flex-1 text-xs file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-emerald-100 file:text-emerald-700 file:font-semibold" />
                   <button type="button" onClick={() => setShowPasteModal(true)} className="shrink-0 rounded-lg border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50">Dán danh sách</button>
                 </div>
-                <p className="text-[11px] text-slate-500">Lớp áp dụng: <strong>{studentClassName || "chưa nhập"}</strong>. Excel: mỗi học sinh ở một ô. CSV: cột “Họ và tên” (hoặc Họ/Tên). TXT: một họ tên mỗi dòng. Có bước xem lại trước khi lưu.</p>
+                <p className="text-[11px] text-slate-500">Lớp áp dụng: <strong>{studentClassName || "chưa nhập"}</strong>. Excel/CSV: tên mỗi dòng hoặc cột “Họ và tên”. TXT: một họ tên mỗi dòng. Tạo tài khoản tự động, tối đa 500 dòng mỗi lượt; mật khẩu chỉ hiện một lần.</p>
               </div>
             </div>
 
@@ -3518,13 +3510,13 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                     <div className="flex min-w-0 items-center justify-between gap-2">
                       <span className="min-w-0 truncate font-bold">{s.full_name}<span className="ml-1.5 rounded bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">{s.class_name || "Chưa xếp lớp"}</span></span>
                       <div className="flex shrink-0 items-center gap-1">
-                        {s.auth_user_id ? <span className="rounded-md bg-emerald-100 px-1.5 py-1 text-[9px] font-bold text-emerald-800">Đã cấp</span> : <button type="button" disabled={previewMode || !canProvisionStudentAccounts} title={!canProvisionStudentAccounts ? "Cần cập nhật schema Supabase trước khi cấp tài khoản." : undefined} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
+                        {s.auth_user_id ? <button type="button" disabled={previewMode || !canProvisionStudentAccounts} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-amber-800 disabled:opacity-50">Cấp lại mật khẩu</button> : <button type="button" disabled={previewMode || !canProvisionStudentAccounts} title={!canProvisionStudentAccounts ? "Cần áp dụng migration tài khoản mới." : undefined} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
                         <button type="button" aria-label={`Xóa học sinh ${s.full_name}`} onClick={() => deleteStudent(s.id)} className="rounded-md p-1 text-slate-400 hover:text-rose-600">
                           <Trash2 className="h-3.5 w-3.5"/>
                         </button>
                       </div>
                     </div>
-                    <p className="mt-1 truncate text-[10px] font-normal text-slate-500">{s.login_email || (s.auth_user_id ? "Tài khoản đã liên kết" : "Chưa có tài khoản đăng nhập")}</p>
+                    <p className="mt-1 truncate text-[10px] font-normal text-slate-500">{s.username ? `Tên đăng nhập: ${s.username}` : (s.login_email || (s.auth_user_id ? "Tài khoản đã liên kết" : "Chưa có tài khoản đăng nhập"))}</p>
                   </div>
                 ))}
                 {visibleStudents.length === 0 && (
@@ -3534,14 +3526,13 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
             </div>
             {accountStudent && (
               <div className="fixed inset-0 z-[85] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeStudentAccountModal(); }}>
-                <section role="dialog" aria-modal="true" aria-labelledby="student-account-title" className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-                  <div className="flex items-start justify-between gap-4"><div><h3 id="student-account-title" className="text-xl font-black text-slate-900">Cấp tài khoản học sinh</h3><p className="mt-1 text-sm text-slate-500">{accountStudent.full_name} · tài khoản được gắn với hồ sơ lớp này.</p></div><button type="button" aria-label="Đóng" onClick={closeStudentAccountModal} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
+                <section role="dialog" aria-modal="true" aria-labelledby="student-account-title" className="student-credentials-print w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+                  <div className="flex items-start justify-between gap-4"><div><h3 id="student-account-title" className="text-xl font-black text-slate-900">Thông tin đăng nhập học sinh</h3><p className="mt-1 text-sm text-slate-500">{accountStudent.full_name} · mật khẩu được tạo ngẫu nhiên và không lưu trong cơ sở dữ liệu.</p></div><button type="button" aria-label="Đóng" onClick={closeStudentAccountModal} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
                   {studentAccountError && <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{studentAccountError}</p>}
-                  {studentAccountCredentials ? <div className="mt-5 space-y-3"><p className="rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">Tài khoản đã được tạo. Mật khẩu tạm chỉ hiển thị trong lần này; học sinh phải đổi mật khẩu khi đăng nhập lần đầu.</p><dl className="space-y-2 rounded-xl border p-4 text-sm"><div><dt className="text-xs text-slate-500">Email</dt><dd className="break-all font-semibold">{studentAccountCredentials.email}</dd></div><div><dt className="text-xs text-slate-500">Mật khẩu tạm</dt><dd className="break-all font-mono font-bold">{studentAccountCredentials.password}</dd></div></dl><button type="button" onClick={() => void navigator.clipboard.writeText(`${studentAccountCredentials.email}\n${studentAccountCredentials.password}`).then(() => setStudentAccountNotice("Đã sao chép thông tin đăng nhập.")).catch(() => setStudentAccountNotice("Không sao chép tự động được; hãy chép thông tin đang hiển thị."))} className="w-full rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white">Sao chép thông tin đăng nhập</button><p role="status" className="text-xs text-slate-500">{studentAccountNotice}</p></div> : <form onSubmit={createStudentAccount} className="mt-5 space-y-4"><label className="block text-sm font-semibold text-slate-700">Email học sinh<input type="email" required maxLength={254} autoComplete="off" value={accountEmail} onChange={(event) => setAccountEmail(event.target.value)} placeholder="hoc.sinh@example.com" className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-600" /></label><p className="text-xs leading-5 text-slate-500">Hệ thống tạo mật khẩu tạm ngẫu nhiên và không lưu mật khẩu vào danh sách. Chỉ cô xem được một lần sau khi tạo.</p><div className="flex justify-end gap-2"><button type="button" onClick={closeStudentAccountModal} disabled={isCreatingStudentAccount} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-50">Hủy</button><button type="submit" disabled={isCreatingStudentAccount || previewMode || !canProvisionStudentAccounts} className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isCreatingStudentAccount ? "Đang cấp tài khoản…" : "Tạo tài khoản"}</button></div></form>}
+                  {studentAccountCredentials ? <div className="mt-5 space-y-3"><p className="rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">Hãy lưu lại ngay. Mật khẩu chỉ hiển thị trong lần này; học sinh phải đổi mật khẩu khi đăng nhập lần đầu.</p><div className="max-h-72 space-y-2 overflow-auto rounded-xl border p-3">{studentAccountCredentials.map((credential, index) => <dl key={`${credential.username}-${index}`} className="grid grid-cols-[1fr_1fr] gap-2 border-b pb-2 text-xs last:border-0"><div><dt className="text-slate-500">{credential.studentName}</dt><dd className="font-semibold">{credential.username}</dd></div><div><dt className="text-slate-500">Mật khẩu tạm</dt><dd className="break-all font-mono font-bold">{credential.password}</dd></div></dl>)}</div><div className="student-credentials-no-print flex flex-wrap gap-2"><button type="button" onClick={() => void navigator.clipboard.writeText(studentAccountCredentials.map((item) => `${item.studentName}\t${item.username}\t${item.password}`).join("\n")).then(() => setStudentAccountNotice("Đã sao chép toàn bộ thông tin đăng nhập.")).catch(() => setStudentAccountNotice("Không sao chép tự động được; hãy chép thông tin đang hiển thị."))} className="flex-1 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white">Sao chép danh sách</button><button type="button" onClick={() => window.print()} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700">In / lưu PDF</button></div><p role="status" className="text-xs text-slate-500">{studentAccountNotice}</p></div> : <form onSubmit={createStudentAccount} className="mt-5 space-y-4"><p className="text-sm leading-6 text-slate-600">Tạo mới hoặc cấp lại mật khẩu tạm cho hồ sơ. Khi cấp lại, mật khẩu cũ không còn dùng được và học sinh cần đổi mật khẩu sau khi đăng nhập.</p><div className="flex justify-end gap-2"><button type="button" onClick={closeStudentAccountModal} disabled={isCreatingStudentAccount} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-50">Hủy</button><button type="submit" disabled={isCreatingStudentAccount || previewMode || !canProvisionStudentAccounts} className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isCreatingStudentAccount ? "Đang tạo…" : accountStudent.auth_user_id ? "Cấp lại mật khẩu" : "Tạo tài khoản"}</button></div></form>}
                 </section>
               </div>
-            )}
-            {showPasteModal && (
+            )}            {showPasteModal && (
               <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowPasteModal(false); }}>
                 <section role="dialog" aria-modal="true" aria-labelledby="paste-students-title" className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
                   <div className="flex items-start justify-between gap-4">

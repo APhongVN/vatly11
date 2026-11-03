@@ -8,13 +8,13 @@
 2. Tạo `.env.local` từ `.env.example`, điền URL, publishable key và Gemini API key. Không đưa khóa vào Git; không dùng lại khóa đã từng xuất hiện trong lịch sử repository.
 3. Chạy `npm run dev` rồi mở `http://localhost:3000`.
 
-`SUPABASE_SECRET_KEY` chỉ dùng phía server cho giới hạn tần suất, chấm điểm, cấp tài khoản học sinh và một số thao tác quản trị. `SUPABASE_SERVICE_ROLE_KEY` chỉ còn là tên tương thích legacy. Chỉ đặt secret key trong secret manager của Render hoặc `.env.local` trên máy phát triển; không đặt ở biến `NEXT_PUBLIC_*` và không commit khóa thật.
+`SUPABASE_SECRET_KEY` chỉ dùng phía server cho giới hạn tần suất, chấm điểm, cấp tài khoản học sinh và một số thao tác quản trị. `SUPABASE_SERVICE_ROLE_KEY` chỉ còn là tên tương thích legacy. Chỉ đặt secret key trong secret manager trên Oracle VPS hoặc `.env.local` trên máy phát triển; không đặt ở biến `NEXT_PUBLIC_*` và không commit khóa thật.
 
 ## Cơ sở dữ liệu và phân quyền
 
 Migration nằm trong `supabase/migrations`. Trước khi áp dụng lên project đang có dữ liệu, sao lưu database và đối chiếu schema thật; migration baseline không tự hợp nhất dữ liệu trùng hoặc xóa dữ liệu cũ. Thử trên bản sao trước khi áp dụng production.
 
-Có thể áp dụng migration qua Supabase CLI sau khi liên kết đúng project bằng `npx supabase link`, rồi chạy `npx supabase db push`. Render chỉ triển khai mã ứng dụng; việc cập nhật schema Supabase là bước riêng. Sau khi chạy migration, kiểm tra Auth, RLS, Storage buckets và luồng tải tài liệu.
+Có thể áp dụng migration qua Supabase CLI sau khi liên kết đúng project bằng `npx supabase link`, rồi chạy `npx supabase db push`. Việc cập nhật schema Supabase là bước riêng. Sau khi chạy migration, kiểm tra Auth, RLS, Storage buckets và luồng tải tài liệu.
 
 Bản hiện tại có thêm các migration bắt buộc `20261031002700_rubric_document_import.sql`, `20261031002800_teacher_final_feedback.sql` và `20261031002900_submission_api_rate_limit.sql`. Chúng lần lượt lưu tệp gốc của ma trận chấm điểm, tách nhận xét cuối của giáo viên và bảo vệ các route nộp bài qua giới hạn tần suất phía server. Áp dụng toàn bộ theo thứ tự số trước khi mở tài khoản/lớp học thật.
 
@@ -28,7 +28,7 @@ Giáo viên có thể nhập `.docx`, `.xlsx`, `.pdf`, `.txt`, `.md`, `.csv` ho�
 ### Cấp tài khoản
 
 - Giáo viên: tạo người dùng trong Supabase Auth, xác minh email rồi chạy script `supabase/sql-editor/set_teacher_role.sql` trong SQL Editor sau khi thay placeholder bằng email đã xác minh. Ứng dụng không cho phép người dùng tự đăng ký vai trò giáo viên.
-- Học sinh: nhập danh sách tên ở trang giáo viên, sau đó chọn **Cấp tài khoản** trên từng hồ sơ. Tính năng yêu cầu migration `20261031002600_student_account_provisioning.sql` và `SUPABASE_SECRET_KEY` chỉ cấu hình phía server (legacy `SUPABASE_SERVICE_ROLE_KEY` cũng được hỗ trợ). Mật khẩu tạm ngẫu nhiên chỉ hiển thị một lần; học sinh phải đổi sang mật khẩu riêng trước khi vào lớp.
+- Học sinh: nhập danh sách tên ở trang giáo viên, sau đó chọn **Cấp tài khoản** trên từng hồ sơ. Tính năng yêu cầu migration `20261103000100_student_username_auth.sql` và `SUPABASE_SECRET_KEY` chỉ cấu hình phía server (legacy `SUPABASE_SERVICE_ROLE_KEY` cũng được hỗ trợ). Hệ thống tạo username không trùng và mật khẩu ngẫu nhiên chỉ hiển thị một lần; học sinh đổi mật khẩu ở lần đăng nhập đầu. Có thể tạo một em hoặc nhập hàng loạt; từng dòng lỗi được báo riêng.
 - Tài khoản học sinh Auth có sẵn cần được giáo viên xác minh rồi liên kết đúng `students.auth_user_id`; không liên kết chỉ dựa trên tên hiển thị.
 
 Ví dụ liên kết tài khoản đã xác minh trong SQL Editor:
@@ -68,3 +68,5 @@ Mọi điểm AI chỉ là gợi ý; giáo viên duyệt hoặc ghi đè điểm
 ## Điều kiện phát hành an toàn
 
 Không đẩy một ref có khóa thật trong lịch sử Git. Nếu khóa từng bị commit hoặc push, hãy thu hồi/đổi khóa trước, sau đó làm sạch lịch sử đã công khai; xóa file ở commit mới không thu hồi khóa cũ. Chạy `scripts/check-release-secrets.ps1` trên đúng ref cần phát hành và chỉ đẩy ref đã kiểm tra; không dùng `git push --all` hoặc `--mirror` khi repository còn các worktree/ref cũ.
+
+Chi tiết triển khai Oracle VPS/Cloudflare, migration tài khoản, biến môi trường và kiểm tra phát hành: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).

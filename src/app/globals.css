@@ -57,3 +57,19 @@ body {
 @media (max-width: 640px) {
   .home-glow { filter: blur(32px); opacity: .45; }
 }
+
+@media print {
+  body * { visibility: hidden !important; }
+  .student-credentials-print,
+  .student-credentials-print * { visibility: visible !important; }
+  .student-credentials-print {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+  .student-credentials-no-print { display: none !important; }
+}
