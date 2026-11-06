@@ -18,6 +18,7 @@ VatLy11 là ứng dụng Next.js full-stack: trang server-rendered, Proxy, API x
    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Connect hoặc Settings → API Keys; dạng `sb_publishable_...` | Khóa công khai, quyền dữ liệu do RLS quyết định |
    | `SUPABASE_SECRET_KEY` | Settings → API Keys; dạng `sb_secret_...` | Chỉ server; không thêm tiền tố `NEXT_PUBLIC_` |
    | `GEMINI_API_KEY` | Google AI Studio | Chỉ server |
+   | `GEMINI_MODELS` (tuỳ chọn) | Id model Gemini cách nhau bằng dấu phẩy, thử theo thứ tự | Chỉ server; để trống dùng danh sách mặc định trong `src/lib/gemini-config.ts` |
    | `STUDENT_AUTH_EMAIL_DOMAIN` | Miền email do cô quản lý, có DNS | Dùng cho tài khoản username học sinh |
 
 4. Bấm **Save, rebuild, and deploy** sau khi thay biến. Nếu vừa đổi/thu hồi khóa Supabase cũ, phải thay đồng thời publishable key và server secret trong Render; redeploy xong mới kiểm tra.
