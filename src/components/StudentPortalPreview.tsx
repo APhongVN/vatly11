@@ -15,17 +15,17 @@ type Phase = (typeof PHASES)[number];
 const PHASES = ["Tất cả", "Trước lớp", "Trên lớp", "Sau lớp"] as const;
 
 const STUDENT_GUIDE: Record<number, { title: string; summary: string; task: string }> = {
-  1: { title: "Tụ điện quanh em", summary: "Bắt đầu từ tình huống tụ điện nạp rồi phóng điện làm đèn sáng.", task: "Nêu điều em quan sát được và dự đoán vì sao đèn sáng." },
-  2: { title: "Tụ điện hoạt động như thế nào?", summary: "Tìm hiểu cấu tạo, cách tích điện, điện dung và cách ghép tụ.", task: "Xem các bài giảng ngắn và làm những câu hỏi kiểm tra trong bài." },
-  3: { title: "Điều gì làm điện dung thay đổi?", summary: "Đưa ra dự đoán về điện tích, hiệu điện thế, diện tích bản tụ và lớp điện môi.", task: "Ghi lại dự đoán ban đầu để so sánh với kết quả thí nghiệm." },
-  4: { title: "Tự khám phá bằng thí nghiệm ảo", summary: "Thay đổi diện tích, khoảng cách và điện môi để quan sát điện dung.", task: "Thử các thông số, ghi kết quả đo và lưu nhận xét vào sổ tay." },
-  5: { title: "Quan sát tụ điện thật", summary: "Theo dõi quá trình nạp và phóng điện của tụ điện trong thí nghiệm.", task: "Ghi bằng chứng quan sát được rồi đối chiếu với dự đoán của em." },
-  6: { title: "Kiểm tra nhanh trước giờ học", summary: "Ôn những ý chính về cấu tạo, điện dung, ghép tụ và năng lượng.", task: "Làm câu hỏi tự kiểm tra và ghi lại điều em còn chưa rõ." },
-  7: { title: "Trao đổi và kiểm tra dự đoán", summary: "Cùng bạn giải thích kết quả, nghe ý kiến khác và xem lại dự đoán.", task: "Nêu lí do cho lựa chọn của em và cập nhật kết luận sau thảo luận." },
-  8: { title: "Các thí nghiệm liên quan đến tụ điện", summary: "Một hoạt động tích hợp cấu tạo, điện dung, cách ghép tụ và năng lượng điện trường.", task: "Thực hiện các phần thí nghiệm theo phiếu học tập và nộp báo cáo." },
-  12: { title: "Luyện tập và thử thách", summary: "Củng cố công thức và vận dụng kiến thức vào các tình huống mới.", task: "Hoàn thành câu hỏi luyện tập, chọn mức độ phù hợp với em." },
-  13: { title: "Dự án: thiết kế nguồn điện dự phòng", summary: "Vận dụng kiến thức để đề xuất giải pháp tích trữ năng lượng cho thiết bị.", task: "Nộp báo cáo, poster hoặc video theo yêu cầu của giáo viên." },
-  14: { title: "Ôn tập sau buổi học", summary: "Nhìn lại điều em đã hiểu và luyện tập lại sau một khoảng thời gian.", task: "Hoàn thành câu hỏi tự đánh giá và bài luyện tập được giao." },
+  1: { title: "Vì sao đèn LED sáng sau khi ngắt nguồn?", summary: "Quan sát tụ được nạp, ngắt khỏi nguồn rồi mới nối LED. Hãy dự đoán hiện tượng trước khi xem kết quả.", task: "Chọn dự đoán, giải thích ngắn gọn và đặt một câu hỏi về điều bài học cần làm rõ." },
+  2: { title: "4 video ngắn: từ cấu tạo đến năng lượng", summary: "Tìm hiểu ứng dụng, cấu tạo và nạp phóng, quan hệ Q–U, cách ghép tụ và năng lượng.", task: "Xem đủ 4 video, dừng ở checkpoint và ghi điều em còn chưa rõ." },
+  3: { title: "Đặt 4 giả thuyết có thể kiểm chứng", summary: "Dự đoán quan hệ Q–U và ảnh hưởng của diện tích bản tụ S, khoảng cách d, điện môi εr đến C.", task: "Ghi riêng HYP-Q-U, HYP-C-S, HYP-C-D và HYP-C-EPS trước khi làm thí nghiệm." },
+  4: { title: "Thử 6 mô phỏng có kiểm soát", summary: "Thay đổi S, d và εr để khảo sát điện dung; quan sát U, Q và đồ thị Q–U.", task: "Mỗi lần chỉ đổi một yếu tố, ghi số liệu vào sổ tay rồi nêu kết luận từ bằng chứng." },
+  5: { title: "Đối chiếu dự đoán với thí nghiệm thật", summary: "Quan sát quá trình nạp, ngắt nguồn và tụ phóng điện làm LED sáng rồi tắt.", task: "Viết đủ ba phần Prediction – Evidence – Revision: dự đoán, bằng chứng nhìn thấy và điều em điều chỉnh." },
+  6: { title: "Tự kiểm tra 10 câu trước giờ học", summary: "Ôn cấu tạo, điện tích, điện dung, ghép tụ và năng lượng qua bài kiểm tra sẵn sàng.", task: "Trả lời 10 câu, sau đó ghi một điểm em còn vướng để cô biết khi vào lớp." },
+  7: { title: "Bình chọn, thảo luận cặp, rồi bình chọn lại", summary: "Trả lời 3 câu hỏi tại lớp, xem phân bố ẩn danh và thảo luận với bạn trước khi chọn lại.", task: "Lưu lựa chọn ban đầu, thảo luận ít nhất 2 phút, chọn lại và nêu lí do nếu em đổi ý." },
+  8: { title: "Các thí nghiệm liên quan đến tụ điện", summary: "Một hoạt động tích hợp cấu tạo và nạp phóng; điện dung theo S, d, εr; ghép nối tiếp/song song; năng lượng qua đồ thị U–Q.", task: "Làm đủ 4 phần theo phiếu, ghi dự đoán, số liệu hoặc bằng chứng, phép tính và kết luận của nhóm." },
+  12: { title: "16 câu thử thách và bài tập 4 mức", summary: "Củng cố kiến thức bằng Capacitor Challenge, sau đó chọn bài từ tính điện tích cơ bản đến thiết kế mạch ghép tụ.", task: "Làm 16 câu, rồi chọn mức phù hợp và trình bày cách giải các câu vận dụng." },
+  13: { title: "Thiết kế nguồn dự phòng 12 V", summary: "Dùng catalogue tụ điện giả lập để đề xuất phương án đáp ứng thiết bị 12 V và tối thiểu 0.10 J năng lượng dự trữ hữu dụng.", task: "Nộp báo cáo, poster hoặc video; kiểm tra Umax, giải thích cách ghép và tính cơ sở năng lượng." },
+  14: { title: "Tự phản tư và luyện tập giãn cách", summary: "Nhìn lại điều em đã hiểu, nhận diện quan niệm đã thay đổi và ôn tập sau buổi học.", task: "Trả lời 4 câu phản tư; quay lại làm 8 bài D1–D8 sau một tuần để kiểm tra khả năng ghi nhớ." },
 };
 
 const statusCopy: Record<Activity["status"], { label: string; style: string }> = {

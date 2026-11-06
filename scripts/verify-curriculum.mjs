@@ -217,6 +217,10 @@ assert.match(publicCurriculumRoute, /NextResponse\.json\(bundledCurriculum\(\), 
 assert.doesNotMatch(publicCurriculumRoute, /model_answer|grading_rubric/);
 assert.match(studentPortalPreview, /data\.source === "database"/);
 assert.match(studentPortalPreview, /14 mục nguồn · 11 hoạt động/);
+assert.match(studentPortalPreview, /HYP-Q-U, HYP-C-S, HYP-C-D và HYP-C-EPS/);
+assert.match(studentPortalPreview, /Prediction – Evidence – Revision/);
+assert.match(studentPortalPreview, /0\.10 J/);
+assert.match(studentPortalPreview, /D1–D8 sau một tuần/);
 assert.match(groupClassMigration, /ADD COLUMN IF NOT EXISTS class_name TEXT/);
 assert.match(groupClassMigration, /CREATE OR REPLACE FUNCTION public\.create_group_assignment_for_class/);
 assert.match(groupClassMigration, /WHERE v_class_name IS NULL OR lower\(btrim\(student\.class_name\)\)/);
@@ -977,7 +981,7 @@ assert.match(guestPortalComponentText, /Chuyên đề <span className="text-cyan
 assert.match(guestPortalComponentText, /mergeActivities\(remoteRows: CatalogRow\[\]\)/);
 assert.match(guestPortalComponentText, /ACTIVITIES\.map\(\(activity\) => activity\.id\), \.\.\.remoteById\.keys\(\)/);
 assert.match(guestPortalComponentText, /Các thí nghiệm liên quan đến tụ điện/);
-assert.match(guestPortalComponentText, /Tụ điện quanh em/);
+assert.match(guestPortalComponentText, /Vì sao đèn LED sáng sau khi ngắt nguồn/);
 assert.match(guestPortalComponentText, /Em có thể xem bài học và tài liệu mà không cần đăng nhập/);
 assert.doesNotMatch(guestPortalComponentText, /Học theo từng hoạt động, hiểu đến bản chất/);
 assert.match(guestPortalComponentText, /Xóa bộ lọc/);
