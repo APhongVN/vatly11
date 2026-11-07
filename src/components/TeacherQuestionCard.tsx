@@ -10,6 +10,9 @@ type StudentQuestion = {
   status: string;
   teacher_response: string | null;
   created_at: string;
+  attachment_path?: string | null;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
   students?: { full_name?: string; class_name?: string } | null;
 };
 
@@ -77,6 +80,11 @@ export default function TeacherQuestionCard({
       </div>
 
       <p className="text-sm leading-6 text-slate-800 whitespace-pre-line break-words">{question.content}</p>
+      {question.attachment_path ? (
+        <a href={`/api/files?bucket=class-work&path=${encodeURIComponent(question.attachment_path)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 underline">📎 {question.attachment_name || "Tệp đính kèm của học sinh"}</a>
+      ) : question.attachment_url ? (
+        <a href={question.attachment_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 underline">🔗 Liên kết đính kèm của học sinh</a>
+      ) : null}
       <p className="text-[10px] text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3" /> Gửi lúc: {formatDateTime(question.created_at)}</p>
 
       <div className="space-y-2">

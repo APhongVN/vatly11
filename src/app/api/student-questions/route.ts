@@ -13,6 +13,32 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+// Tệp đính kèm chỉ hợp lệ khi thuộc tiền tố private của chính học sinh đang đăng nhập.
+function normalizeQuestionAttachmentPath(value: string, userId: string): string | null {
+  if (!value) return null;
+  const candidate = value.trim();
+  if (candidate.length > 512) return null;
+  const prefix = `question-attachments/${userId}/`;
+  if (candidate.startsWith(prefix) && /^[A-Za-z0-9._ -]{1,255}$/.test(candidate.slice(prefix.length))) {
+    return candidate;
+  }
+  return null;
+}
+
+// Liên kết ngoài chỉ chấp nhận http(s), không kèm username/password.
+function normalizeQuestionLink(value: string): string | null {
+  if (!value) return null;
+  const candidate = value.trim();
+  if (candidate.length > 2000) return null;
+  try {
+    const url = new URL(candidate);
+    if ((url.protocol !== "https:" && url.protocol !== "http:") || url.username || url.password) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 export async function GET() {
   const access = await authorizeApi(["student", "teacher"], 40, "student-question");
   if ("response" in access) return access.response;
@@ -21,7 +47,7 @@ export async function GET() {
     if (access.profile.role === "teacher") {
       const { data, error } = await access.supabase
         .from("student_questions")
-        .select("id,student_id,students(full_name,class_name),topic,content,status,teacher_response,responded_at,created_at,updated_at")
+        .select("id,student_id,students(full_name,class_name),topic,content,status,teacher_response,responded_at,created_at,updated_at,attachment_path,attachment_url,attachment_name")
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -38,7 +64,7 @@ export async function GET() {
 
     const { data, error } = await access.supabase
       .from("student_questions")
-      .select("id,topic,content,status,teacher_response,responded_at,created_at,updated_at")
+      .select("id,topic,content,status,teacher_response,responded_at,created_at,updated_at,attachment_path,attachment_url,attachment_name")
       .eq("student_id", student.id)
       .order("created_at", { ascending: false })
       .limit(200);
@@ -71,6 +97,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Câu hỏi cần dài từ 5 đến 1500 ký tự." }, { status: 400 });
     }
 
+    // Mục 1: đính kèm tệp private do chính học sinh tải lên, hoặc liên kết http(s).
+    const rawAttachment = typeof body.attachmentPath === "string" ? body.attachmentPath.trim() : "";
+    const rawLink = typeof body.attachmentUrl === "string" ? body.attachmentUrl.trim() : "";
+    const attachmentPath = normalizeQuestionAttachmentPath(rawAttachment, access.user.id);
+    const attachmentUrl = normalizeQuestionLink(rawLink);
+    if (rawAttachment && !attachmentPath) {
+      return NextResponse.json({ error: "Đường dẫn tệp đính kèm không hợp lệ." }, { status: 400 });
+    }
+    if (rawLink && !attachmentUrl) {
+      return NextResponse.json({ error: "Liên kết đính kèm phải là địa chỉ http(s) hợp lệ." }, { status: 400 });
+    }
+    if (attachmentPath && attachmentUrl) {
+      return NextResponse.json({ error: "Chỉ đính kèm một tệp hoặc một liên kết." }, { status: 400 });
+    }
+    const attachmentName = typeof body.attachmentName === "string" ? body.attachmentName.trim().slice(0, 200) : "";
+
     const { data: student, error: studentError } = await access.supabase
       .from("students")
       .select("id")
@@ -81,8 +123,16 @@ export async function POST(request: Request) {
 
     const { data: question, error } = await access.supabase
       .from("student_questions")
-      .insert({ student_id: student.id, topic, content, status: "unanswered" })
-      .select("id,topic,content,status,created_at")
+      .insert({
+        student_id: student.id,
+        topic,
+        content,
+        status: "unanswered",
+        attachment_path: attachmentPath || null,
+        attachment_url: attachmentUrl || null,
+        attachment_name: attachmentName || null,
+      })
+      .select("id,topic,content,status,created_at,attachment_path,attachment_url,attachment_name")
       .single();
     if (error || !question) {
       console.error("Không thể lưu câu hỏi", { code: error?.code });

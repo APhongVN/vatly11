@@ -40,6 +40,8 @@ export default function HocSinhPage() {
   const [myEvidence, setMyEvidence] = useState<any[]>([]);
   const [newQuestionTopic, setNewQuestionTopic] = useState("");
   const [newQuestionContent, setNewQuestionContent] = useState("");
+  const [questionFile, setQuestionFile] = useState<File | null>(null);
+  const [questionLink, setQuestionLink] = useState("");
   const [questionSubmitting, setQuestionSubmitting] = useState(false);
   const router = useRouter();
 
@@ -128,17 +130,43 @@ export default function HocSinhPage() {
     if (questionSubmitting) return;
     if (!newQuestionTopic) { alert("Em hãy chọn một chủ đề cho câu hỏi."); return; }
     if (newQuestionContent.trim().length < 5) { alert("Câu hỏi cần dài tối thiểu 5 ký tự."); return; }
+    if (questionFile && questionLink.trim()) { alert("Em chỉ đính kèm một tệp hoặc một liên kết."); return; }
     setQuestionSubmitting(true);
     try {
+      let attachmentPath = "";
+      let attachmentName = "";
+      if (questionFile) {
+        if (questionFile.size > MAX_CHAT_ATTACHMENT_BYTES) throw new Error("Tệp đính kèm tối đa 100 MB.");
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Phiên đăng nhập hết hạn. Em hãy đăng nhập lại.");
+        const contentType = chatAttachmentMimeType(questionFile);
+        const safeName = questionFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const path = `question-attachments/${user.id}/${Date.now()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage.from("class-work").upload(path, questionFile, { upsert: false, contentType });
+        if (uploadError) throw uploadError;
+        attachmentPath = path;
+        attachmentName = questionFile.name;
+      }
       const response = await fetch("/api/student-questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: newQuestionTopic, content: newQuestionContent }),
+        body: JSON.stringify({
+          topic: newQuestionTopic,
+          content: newQuestionContent,
+          attachmentPath,
+          attachmentUrl: questionLink.trim(),
+          attachmentName,
+        }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Không gửi được câu hỏi.");
+      if (!response.ok) {
+        if (attachmentPath) await supabase.storage.from("class-work").remove([attachmentPath]);
+        throw new Error(result.error || "Không gửi được câu hỏi.");
+      }
       setNewQuestionTopic("");
       setNewQuestionContent("");
+      setQuestionFile(null);
+      setQuestionLink("");
       await fetchMyQuestions();
     } catch (error) {
       alert(error instanceof Error ? error.message : "Không gửi được câu hỏi.");
@@ -730,6 +758,26 @@ export default function HocSinhPage() {
                     className="border border-slate-300 rounded-xl p-2.5 text-xs bg-white outline-none focus:ring-2 focus:ring-indigo-400 resize-y"
                   />
                 </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className="text-[10px] font-semibold text-slate-600">Đính kèm ảnh/video/tài liệu (tối đa 100 MB)
+                    <input
+                      type="file"
+                      accept={CHAT_ATTACHMENT_ACCEPT}
+                      onChange={(e) => { setQuestionFile(e.target.files?.[0] || null); if (e.target.files?.[0]) setQuestionLink(""); }}
+                      className="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-1.5 text-[10px]"
+                    />
+                    {questionFile ? <span className="mt-1 block text-[10px] text-indigo-700">Đã chọn: {questionFile.name} <button type="button" onClick={() => setQuestionFile(null)} className="ml-1 font-bold text-rose-600">×</button></span> : null}
+                  </label>
+                  <label className="text-[10px] font-semibold text-slate-600">Hoặc dán liên kết (Google Drive, YouTube…)
+                    <input
+                      type="url"
+                      value={questionLink}
+                      onChange={(e) => { setQuestionLink(e.target.value); if (e.target.value.trim()) setQuestionFile(null); }}
+                      placeholder="https://…"
+                      className="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-2 text-[11px]"
+                    />
+                  </label>
+                </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-[10px] text-slate-400">{newQuestionContent.trim().length}/1500 ký tự</span>
                   <button
@@ -761,6 +809,11 @@ export default function HocSinhPage() {
                           <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusMeta.cls}`}>{statusMeta.label}</span>
                         </div>
                         <p className="text-xs text-slate-800 whitespace-pre-line break-words">{q.content}</p>
+                        {q.attachment_path ? (
+                          <a href={attachmentHref(q.attachment_path)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 underline">📎 {q.attachment_name || "Tệp đính kèm"}</a>
+                        ) : q.attachment_url ? (
+                          <a href={q.attachment_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 underline">🔗 Liên kết đính kèm</a>
+                        ) : null}
                         <p className="text-[10px] text-slate-400">Gửi lúc: {formatTime(q.created_at)}</p>
                         {q.teacher_response ? (
                           <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-2.5 text-xs text-indigo-950 whitespace-pre-line">
