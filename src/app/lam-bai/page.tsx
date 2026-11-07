@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Clock, Trophy, Loader2 } from "lucide-react";
@@ -20,6 +20,7 @@ function QuizContent() {
   const [score, setScore] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const startedAtRef = useRef<number | null>(null);
 
   const handleSubmit = useCallback(async (autoSubmit = false) => {
     if (submitting || submitted || !quizId) return;
@@ -29,7 +30,7 @@ function QuizContent() {
       const response = await fetch("/api/quiz-submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quizId: Number(quizId), answers }),
+        body: JSON.stringify({ quizId: Number(quizId), answers, timeSpent: startedAtRef.current ? Math.max(0, Math.round((Date.now() - startedAtRef.current) / 1000)) : null }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Không nộp được bài.");
@@ -79,6 +80,7 @@ function QuizContent() {
         setQuiz(qz);
         setQuestions(qs);
         setTimeLeft(qz.time_limit * 60);
+        startedAtRef.current = Date.now();
       } else {
         setLoadError("Không tìm thấy bài trắc nghiệm hoặc bài chưa có câu hỏi.");
       }

@@ -10,11 +10,14 @@ export async function POST(request: Request) {
 
   try {
     const rawBody = await readBoundedRequestText(request, 16_000);
-    const body = JSON.parse(rawBody) as { quizId?: unknown; answers?: unknown };
+    const body = JSON.parse(rawBody) as { quizId?: unknown; answers?: unknown; timeSpent?: unknown };
     const quizId = Number(body.quizId);
     if (!Number.isInteger(quizId) || !body.answers || typeof body.answers !== "object" || Array.isArray(body.answers)) {
       return NextResponse.json({ error: "Thông tin bài làm không hợp lệ." }, { status: 400 });
     }
+    // Mục 7: thời gian làm bài do client đo; giới hạn trong khoảng hợp lệ (0–4 giờ).
+    const rawTimeSpent = Number(body.timeSpent);
+    const timeSpent = Number.isInteger(rawTimeSpent) && rawTimeSpent >= 0 && rawTimeSpent <= 14_400 ? rawTimeSpent : null;
 
     const { data: quiz } = await access.supabase.from("quizzes").select("id,activity_id").eq("id", quizId).maybeSingle();
     if (!quiz) return NextResponse.json({ error: "Không tìm thấy bài trắc nghiệm." }, { status: 404 });
@@ -66,6 +69,8 @@ export async function POST(request: Request) {
       quiz_id: quizId,
       student_id: student.id,
       score,
+      started_at: new Date(Date.now() - (timeSpent ?? 0) * 1000).toISOString(),
+      time_spent_seconds: timeSpent,
     });
     if (saveError) {
       if (saveError.code === "23505") {

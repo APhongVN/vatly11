@@ -163,8 +163,10 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const activeStudents = students.filter((student) => student.is_active !== false);
   const archivedStudents = students.filter((student) => student.is_active === false);
   const [submissions, setSubmissions] = useState<any[]>([]);
+  const [activityEvidence, setActivityEvidence] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [quizzes, setQuizzes] = useState<any[]>([]);
+  const [quizSubmissions, setQuizSubmissions] = useState<any[]>([]);
   const [isChatMuted, setIsChatMuted] = useState(false);
   const [isDeletionBlocked, setIsDeletionBlocked] = useState(false);
   const [studentQuestions, setStudentQuestions] = useState<any[]>([]);
@@ -250,6 +252,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   const [isSavingStudents, setIsSavingStudents] = useState(false);
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [accountStudent, setAccountStudent] = useState<any>(null);
+  const [detailStudent, setDetailStudent] = useState<any>(null);
   const [studentAccountCredentials, setStudentAccountCredentials] = useState<Array<{ username: string; password: string; studentName: string }> | null>(null);
   const [studentAccountError, setStudentAccountError] = useState("");
   const [studentAccountNotice, setStudentAccountNotice] = useState("");
@@ -408,6 +411,10 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
       if (subs) setSubmissions(subs);
       if (msgs) setMessages([...msgs].reverse());
       if (qzs) setQuizzes(qzs);
+      const { data: quizSubs } = await supabase.from("quiz_submissions").select("id,quiz_id,student_id,score,created_at,time_spent_seconds,students(full_name,class_name)").order("created_at", { ascending: false }).limit(2000);
+      if (quizSubs) setQuizSubmissions(quizSubs);
+      const { data: evidenceRows } = await supabase.from("activity_evidence").select("id,student_id,activity_id,score,score_max,completed_at,teacher_score,teacher_feedback,graded_at,updated_at,ai_score,ai_feedback").order("updated_at", { ascending: false }).limit(3000);
+      if (evidenceRows) setActivityEvidence(evidenceRows);
       if (setting) { setIsChatMuted(setting.is_muted); setIsDeletionBlocked(Boolean((setting as any).deletion_blocked)); }
       if (gActs) setGroupAssignments(gActs);
       if (gSubs) setGroupSubmissions(gSubs);
@@ -2045,7 +2052,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
         readAllActivityRubricRows(),
         readAllReportRows((from, to) => supabase.from("submissions").select("*").order("id").range(from, to), "Bài nộp cá nhân"),
         readAllReportRows((from, to) => supabase.from("activity_evidence").select("id,student_id,activity_id,evidence,score,score_max,completed_at,created_at,updated_at,ai_score,ai_feedback,ai_strengths,ai_weaknesses,teacher_score,teacher_feedback,graded_at,students(full_name,class_name)").order("id").range(from, to), "Sổ tay hoạt động"),
-        readAllReportRows((from, to) => supabase.from("quiz_submissions").select("id,quiz_id,student_id,score,created_at,students(full_name,class_name),quizzes(title,activity_id)").order("id").range(from, to), "Kết quả trắc nghiệm"),
+        readAllReportRows((from, to) => supabase.from("quiz_submissions").select("id,quiz_id,student_id,score,created_at,time_spent_seconds,students(full_name,class_name),quizzes(title,activity_id)").order("id").range(from, to), "Kết quả trắc nghiệm"),
         readAllReportRows((from, to) => supabase.from("group_assignments").select("*").order("id").range(from, to), "Bài tập nhóm"),
         readAllReportRows((from, to) => supabase.from("group_assignment_groups").select("id,assignment_id,group_number,group_name,group_assignment_members(id,student_id,students(full_name,class_name))").order("id").range(from, to), "Phân nhóm"),
         readAllReportRows((from, to) => supabase.from("group_submissions").select("*").order("id").range(from, to), "Bài nộp nhóm"),
@@ -3763,6 +3770,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                       </div>
                     </div>
                     <p className="mt-1 truncate text-[10px] font-normal text-slate-500">{s.student_code ? `Mã SV: ${s.student_code} · ` : ""}{s.username ? `Đăng nhập: ${s.username}` : (s.login_email || (s.auth_user_id ? "Tài khoản đã liên kết" : "Chưa có tài khoản đăng nhập"))}</p>
+                    <button type="button" onClick={() => setDetailStudent(s)} className="mt-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-700 hover:bg-indigo-100">Xem chi tiết bài làm</button>
                   </div>
                 ))}
                 {visibleStudents.length === 0 && (
@@ -3770,6 +3778,41 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                 )}
               </div>
             </div>
+            {detailStudent && (() => {
+              const studentEvidence = activityEvidence.filter((row) => row.student_id === detailStudent.id);
+              const studentSubs = submissions.filter((row) => row.student_id === detailStudent.id);
+              const studentQuiz = quizSubmissions.filter((row) => row.student_id === detailStudent.id);
+              const totalActivities = activities.length || 11;
+              const doneActivities = new Set(studentEvidence.filter((row) => row.completed_at).map((row) => row.activity_id)).size;
+              const avgTeacherScore = (() => {
+                const values = studentEvidence.map((row) => Number(row.teacher_score)).filter((value) => Number.isFinite(value));
+                return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+              })();
+              return <div className="fixed inset-0 z-[88] flex items-center justify-center bg-slate-950/60 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailStudent(null); }}>
+                <section role="dialog" aria-modal="true" className="max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+                  <div className="flex items-start justify-between gap-4">
+                    <div><h3 className="text-xl font-black text-slate-900">{detailStudent.full_name}</h3><p className="mt-1 text-sm text-slate-500">{detailStudent.class_name || "Chưa xếp lớp"}{detailStudent.student_code ? ` · Mã SV: ${detailStudent.student_code}` : ""}</p></div>
+                    <button type="button" aria-label="Đóng" onClick={() => setDetailStudent(null)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center"><p className="text-2xl font-black text-blue-700">{doneActivities}/{totalActivities}</p><p className="text-[11px] text-slate-500">Hoạt động đã hoàn thành</p></div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center"><p className="text-2xl font-black text-emerald-700">{avgTeacherScore === null ? "—" : avgTeacherScore.toFixed(2)}</p><p className="text-[11px] text-slate-500">Điểm GV trung bình</p></div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center"><p className="text-2xl font-black text-amber-700">{studentSubs.length}</p><p className="text-[11px] text-slate-500">Bài nộp cá nhân</p></div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center"><p className="text-2xl font-black text-indigo-700">{studentQuiz.length}</p><p className="text-[11px] text-slate-500">Lượt trắc nghiệm</p></div>
+                  </div>
+                  <h4 className="mt-5 font-bold text-slate-900">Hoạt động học tập</h4>
+                  <div className="mt-2 overflow-x-auto rounded-xl border border-slate-200"><table className="w-full text-left text-xs"><thead className="bg-slate-50 text-slate-600"><tr><th className="px-2 py-2 font-bold">Hoạt động</th><th className="px-2 py-2 font-bold">Trạng thái</th><th className="px-2 py-2 font-bold">Điểm</th></tr></thead><tbody>
+                    {activities.map((activity) => {
+                      const evidence = studentEvidence.find((row) => row.activity_id === activity.id);
+                      const submitted = Boolean(evidence?.completed_at);
+                      const score = evidence?.teacher_score ?? evidence?.score;
+                      return <tr key={activity.id} className="border-t border-slate-100"><td className="px-2 py-2">{activity.title}</td><td className="px-2 py-2">{submitted ? <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Đã làm</span> : <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">Chưa làm</span>}</td><td className="px-2 py-2 font-bold">{score === null || score === undefined ? "—" : Number(score).toFixed(2)}</td></tr>;
+                    })}
+                  </tbody></table></div>
+                  <div className="mt-5 flex justify-end"><button type="button" onClick={() => setDetailStudent(null)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Đóng</button></div>
+                </section>
+              </div>;
+            })}
             {accountStudent && (
               <div className="fixed inset-0 z-[85] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeStudentAccountModal(); }}>
                 <section role="dialog" aria-modal="true" aria-labelledby="student-account-title" className="student-credentials-print w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
@@ -3812,6 +3855,58 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                 </h2>
                 <p className="text-slate-500 text-sm mt-1">Soạn câu hỏi thủ công hoặc ra lệnh cho AI biên soạn bộ câu hỏi hoàn chỉnh chỉ trong 5 giây.</p>
               </div>
+            </div>
+
+            {/* Mục 7: Bảng thống kê từng bài trắc nghiệm */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-lg font-bold text-slate-900">Thống kê bài trắc nghiệm</h3>
+                <span className="text-xs text-slate-500">{quizzes.length} bài · {quizSubmissions.length} lượt làm</span>
+              </div>
+              {quizzes.length === 0 ? (
+                <p className="mt-3 rounded-xl border border-dashed p-4 text-center text-sm text-slate-500">Chưa có bài trắc nghiệm nào. Hãy tạo bài ở phần dưới.</p>
+              ) : (
+                <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full min-w-[640px] text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-600"><tr>
+                      <th className="px-3 py-2 font-bold">Bài trắc nghiệm</th>
+                      <th className="px-3 py-2 font-bold">Thời gian</th>
+                      <th className="px-3 py-2 font-bold">Đã làm</th>
+                      <th className="px-3 py-2 font-bold">Điểm TB</th>
+                      <th className="px-3 py-2 font-bold">Thời gian làm TB</th>
+                      <th className="px-3 py-2 font-bold">Chi tiết</th>
+                    </tr></thead>
+                    <tbody>
+                      {quizzes.map((quiz: any) => {
+                        const attempts = quizSubmissions.filter((row: any) => row.quiz_id === quiz.id);
+                        const scores = attempts.map((row: any) => Number(row.score)).filter((score) => Number.isFinite(score));
+                        const avgScore = scores.length ? scores.reduce((sum, value) => sum + value, 0) / scores.length : null;
+                        const times = attempts.map((row: any) => Number(row.time_spent_seconds)).filter((value) => Number.isFinite(value));
+                        const avgTime = times.length ? Math.round(times.reduce((sum, value) => sum + value, 0) / times.length) : null;
+                        return (
+                          <tr key={quiz.id} className="border-t border-slate-100">
+                            <td className="px-3 py-2 font-semibold text-slate-800">{quiz.title || `Bài ${quiz.id}`}</td>
+                            <td className="px-3 py-2">{quiz.time_limit ? `${quiz.time_limit} phút` : "—"}</td>
+                            <td className="px-3 py-2">{attempts.length} em</td>
+                            <td className="px-3 py-2 font-bold text-emerald-700">{avgScore === null ? "Chưa có" : avgScore.toFixed(2)}</td>
+                            <td className="px-3 py-2">{avgTime === null ? "Chưa có" : `${Math.floor(avgTime / 60)} phút ${avgTime % 60} giây`}</td>
+                            <td className="px-3 py-2"><details className="inline-block"><summary className="cursor-pointer font-bold text-blue-700">Xem {attempts.length} em</summary>
+                              <div className="mt-2 max-h-40 space-y-1 overflow-auto">
+                                {attempts.length === 0 ? <p className="text-slate-400">Chưa có ai làm.</p> : attempts.map((row: any) => (
+                                  <div key={row.id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1">
+                                    <span>{row.students?.full_name || "Học sinh"}{row.students?.class_name ? <span className="text-slate-400"> · {row.students.class_name}</span> : null}</span>
+                                    <span className="font-bold text-slate-700">{Number(row.score).toFixed(2)} đ · {Number(row.time_spent_seconds) || "—"}s</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </details></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             {/* KHỐI AI GENERATE QUIZ */}
