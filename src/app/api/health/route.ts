@@ -22,10 +22,13 @@ async function probeSupabase(): Promise<Dependency> {
     return { name: "supabase", status: "missing", detail: "NEXT_PUBLIC_SUPABASE_URL or key not set" };
   }
   try {
-    // Supabase's documented liveness endpoint; does not require table access.
+    // Supabase's documented liveness endpoint. It still needs the apikey header,
+    // otherwise it answers 401 and would look unhealthy. Mobile/office networks in
+    // this project can be slow, so allow a generous timeout.
     const res = await fetch(`${url.replace(/\/$/, "")}/auth/v1/health`, {
       method: "GET",
-      signal: AbortSignal.timeout(5000),
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) {
       return { name: "supabase", status: "unreachable", detail: `health endpoint returned ${res.status}` };
