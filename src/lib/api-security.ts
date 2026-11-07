@@ -17,7 +17,8 @@ type RateLimitBucket =
   | "student-account"
   | "account-password"
   | "submission"
-  | "group-submission";
+  | "group-submission"
+  | "student-question";
 
 export async function authorizeApi(allowedRoles: Role[], rateLimit: number, bucket: RateLimitBucket) {
   const supabase = await createServerSupabaseClient();

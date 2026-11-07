@@ -52,6 +52,7 @@ Desktop.ini
 
 # Supabase
 .supabase/temp
+supabase/.temp
 # local worktrees and credentials
 .kilo/
 

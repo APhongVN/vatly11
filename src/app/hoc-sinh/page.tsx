@@ -16,6 +16,7 @@ import { filterSubmissionsForStudentGroups } from "@/lib/group-submissions.mjs";
 import { isMessageFromUser } from "@/lib/chat-identity.mjs";
 import ActivityResources from "@/components/ActivityResources";
 import StudentPortalPreview from "@/components/StudentPortalPreview";
+import { QUESTION_TOPICS } from "@/lib/student-questions.mjs";
 
 const attachmentHref = (value: string) => value.startsWith("http") || value.startsWith("blob:") ? value : `/api/files?bucket=${value.startsWith("chat/") || value.startsWith("submissions/") || value.startsWith("group-submissions/") || value.startsWith("group-rubrics/") ? "class-work" : "videos"}&path=${encodeURIComponent(value)}`;
 
@@ -34,6 +35,10 @@ export default function HocSinhPage() {
   const [now, setNow] = useState(new Date());
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isChatMuted, setIsChatMuted] = useState(false);
+  const [myQuestions, setMyQuestions] = useState<any[]>([]);
+  const [newQuestionTopic, setNewQuestionTopic] = useState("");
+  const [newQuestionContent, setNewQuestionContent] = useState("");
+  const [questionSubmitting, setQuestionSubmitting] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -100,7 +105,43 @@ export default function HocSinhPage() {
     if (qzs) setQuizzes(qzs);
     const { data: setting } = await supabase.from('chat_settings').select('is_muted').eq('id', 1).single();
     if (setting) setIsChatMuted(setting.is_muted);
+    await fetchMyQuestions();
   }
+
+  const fetchMyQuestions = async () => {
+    try {
+      const response = await fetch("/api/student-questions", { cache: "no-store" });
+      if (!response.ok) return;
+      const result = await response.json();
+      setMyQuestions(Array.isArray(result.questions) ? result.questions : []);
+    } catch {
+      // Góc hỏi đáp là phần phụ; lỗi tải không nên chặn phần học tập chính.
+    }
+  };
+
+  const handleQuestionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (questionSubmitting) return;
+    if (!newQuestionTopic) { alert("Em hãy chọn một chủ đề cho câu hỏi."); return; }
+    if (newQuestionContent.trim().length < 5) { alert("Câu hỏi cần dài tối thiểu 5 ký tự."); return; }
+    setQuestionSubmitting(true);
+    try {
+      const response = await fetch("/api/student-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: newQuestionTopic, content: newQuestionContent }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Không gửi được câu hỏi.");
+      setNewQuestionTopic("");
+      setNewQuestionContent("");
+      await fetchMyQuestions();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Không gửi được câu hỏi.");
+    } finally {
+      setQuestionSubmitting(false);
+    }
+  };
 
   const handleLogout = async () => {
     localStorage.removeItem('student_session');
@@ -621,7 +662,87 @@ export default function HocSinhPage() {
 
         {/* 6. TAB HỎI ĐÁP & CHAT */}
         {activeTab === 'chat' && (
-          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 h-[75vh] flex flex-col max-w-4xl mx-auto overflow-hidden animate-in fade-in">
+          <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in">
+
+            {/* --- GÓC HỎI ĐÁP: CÂU HỎI CỦA TÔI --- */}
+            <section className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="p-4 border-b bg-indigo-50">
+                <h2 className="font-bold text-sm text-indigo-900 flex items-center gap-2">
+                  <HelpCircle className="w-4 h-4" /> Góc hỏi đáp · Câu hỏi của tôi ({myQuestions.length})
+                </h2>
+                <p className="text-[11px] text-indigo-700/80 mt-0.5">Chọn chủ đề, gửi câu hỏi và theo dõi trạng thái xử lý của giáo viên.</p>
+              </div>
+
+              <form onSubmit={handleQuestionSubmit} className="p-4 border-b bg-slate-50/60 space-y-2">
+                <div className="grid gap-2 sm:grid-cols-[220px_1fr]">
+                  <select
+                    value={newQuestionTopic}
+                    onChange={(e) => setNewQuestionTopic(e.target.value)}
+                    aria-label="Chủ đề câu hỏi"
+                    className="border border-slate-300 rounded-xl p-2.5 text-xs bg-white outline-none focus:ring-2 focus:ring-indigo-400"
+                  >
+                    <option value="">— Chọn chủ đề —</option>
+                    {QUESTION_TOPICS.map((topic: { id: string; label: string }) => (
+                      <option key={topic.id} value={topic.id}>{topic.label}</option>
+                    ))}
+                  </select>
+                  <textarea
+                    value={newQuestionContent}
+                    onChange={(e) => setNewQuestionContent(e.target.value)}
+                    rows={2}
+                    maxLength={1500}
+                    placeholder="Nhập câu hỏi của em về bài Tụ điện…"
+                    aria-label="Nội dung câu hỏi"
+                    className="border border-slate-300 rounded-xl p-2.5 text-xs bg-white outline-none focus:ring-2 focus:ring-indigo-400 resize-y"
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] text-slate-400">{newQuestionContent.trim().length}/1500 ký tự</span>
+                  <button
+                    type="submit"
+                    disabled={questionSubmitting}
+                    className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5"
+                  >
+                    <Send className="w-3.5 h-3.5" /> {questionSubmitting ? "Đang gửi…" : "Gửi câu hỏi"}
+                  </button>
+                </div>
+              </form>
+
+              <div className="p-4 space-y-3 max-h-80 overflow-y-auto bg-white">
+                {myQuestions.length === 0 ? (
+                  <p className="text-center text-xs text-slate-400 py-6">Em chưa gửi câu hỏi nào. Câu hỏi sẽ được lưu và giáo viên phản hồi tại đây.</p>
+                ) : (
+                  myQuestions.map((q) => {
+                    const statusMeta =
+                      q.status === "resolved"
+                        ? { label: "Đã giải quyết", cls: "bg-emerald-100 text-emerald-800 border-emerald-200" }
+                        : q.status === "answered"
+                        ? { label: "Đã trả lời", cls: "bg-blue-100 text-blue-800 border-blue-200" }
+                        : { label: "Chưa trả lời", cls: "bg-amber-100 text-amber-800 border-amber-200" };
+                    const topicLabel = QUESTION_TOPICS.find((t: { id: string }) => t.id === q.topic)?.label || q.topic;
+                    return (
+                      <article key={q.id} className="border border-slate-200 rounded-2xl p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-indigo-700">{topicLabel}</span>
+                          <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusMeta.cls}`}>{statusMeta.label}</span>
+                        </div>
+                        <p className="text-xs text-slate-800 whitespace-pre-line break-words">{q.content}</p>
+                        <p className="text-[10px] text-slate-400">Gửi lúc: {formatTime(q.created_at)}</p>
+                        {q.teacher_response ? (
+                          <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-2.5 text-xs text-indigo-950 whitespace-pre-line">
+                            <span className="font-bold block mb-0.5">Phản hồi của giáo viên:</span>
+                            {q.teacher_response}
+                          </div>
+                        ) : null}
+                      </article>
+                    );
+                  })
+                )}
+              </div>
+            </section>
+
+            {/* --- KÊNH CHAT LỚP --- */}
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 h-[65vh] flex flex-col overflow-hidden">
             <div className="p-4 border-b bg-slate-900 text-white flex justify-between items-center">
               <div>
                 <h2 className="font-bold text-sm">Kênh hỏi đáp môn Vật lí 11</h2>
@@ -678,6 +799,7 @@ export default function HocSinhPage() {
               </button>
             </form>
           </div>
+            </div>
         )}
       </div>
     </main>

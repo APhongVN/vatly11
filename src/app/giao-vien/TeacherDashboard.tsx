@@ -15,14 +15,16 @@ import {
   Save, X, Plus, Clock, Layers, BookOpen, Shuffle, RefreshCw, Camera,
   Sparkles, CheckSquare, Square, Merge, AlertTriangle, ExternalLink,
   ChevronRight, LayoutDashboard, PlusCircle, BarChart3, TrendingUp,
-  BrainCircuit, Award, Lightbulb, AlertCircle, FileSpreadsheet, ClipboardList, FolderOpen, Menu
+  BrainCircuit, Award, Lightbulb, AlertCircle, FileSpreadsheet, ClipboardList, FolderOpen, Menu, HelpCircle
 } from "lucide-react";
+import { QUESTION_TOPICS, QUESTION_STATUS_IDS } from "@/lib/student-questions.mjs";
 import TeacherHome from "@/components/TeacherHome";
 import CurriculumManager from "@/components/CurriculumManager";
 import ResourceLibrary from "@/components/ResourceLibrary";
 import ActivityEvidencePanel from "@/components/ActivityEvidencePanel";
 import CapacitanceLabSettings from "@/components/CapacitanceLabSettings";
 import RubricEditor from "@/components/RubricEditor";
+import QuestionCard from "@/components/TeacherQuestionCard";
 import { formatVietnameseName, getFirstName, sortVietnameseNames, isHeaderOrInvalidCell } from "@/lib/vietnameseName";
 import { ACTIVITIES } from "@/lib/data/activities";
 import { extractStudentNamesFromText } from "@/lib/student-import.mjs";
@@ -164,6 +166,13 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [messages, setMessages] = useState<any[]>([]);
   const [quizzes, setQuizzes] = useState<any[]>([]);
   const [isChatMuted, setIsChatMuted] = useState(false);
+  const [studentQuestions, setStudentQuestions] = useState<any[]>([]);
+  const [questionLoading, setQuestionLoading] = useState(false);
+  const [questionSaving, setQuestionSaving] = useState<string | null>(null);
+  const [questionFilter, setQuestionFilter] = useState<string>("all");
+  const pendingQuestionCount = studentQuestions.filter((q) => q.status === "unanswered").length;
+  const questionTopicLabel = (id: string) => QUESTION_TOPICS.find((t: { id: string; label: string }) => t.id === id)?.label || id;
+  const questionStatusLabel = (id: string) => (id === "resolved" ? "Đã giải quyết" : id === "answered" ? "Đã trả lời" : "Chưa trả lời");
 
   // Helpers
   const getAvatar = (name: string) => (name ? name.split(' ').pop()?.charAt(0).toUpperCase() || "?" : "?");
@@ -408,12 +417,64 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     }
   }, [previewMode, selectedGradingAct, setIsChatMuted]);
 
+  const loadStudentQuestions = useCallback(async () => {
+    if (previewMode) {
+      setStudentQuestions([
+        { id: "demo-question-1", students: { full_name: "Nguyễn Minh Anh", class_name: "11A1" }, topic: "capacitance", content: "Cô ơi, điện dung có phụ thuộc vào hiệu điện thế không ạ?", status: "unanswered", teacher_response: null, created_at: new Date().toISOString() },
+        { id: "demo-question-2", students: { full_name: "Trần Gia Bảo", class_name: "11A1" }, topic: "energy", content: "Năng lượng tụ điện tính bằng công thức nào ạ?", status: "answered", teacher_response: "Em xem lại phần III và công thức W = 1/2 C U² nhé.", created_at: new Date().toISOString() },
+      ]);
+      return;
+    }
+    setQuestionLoading(true);
+    try {
+      const response = await fetch("/api/student-questions", { cache: "no-store" });
+      if (!response.ok) return;
+      const result = await response.json();
+      setStudentQuestions(Array.isArray(result.questions) ? result.questions : []);
+    } catch {
+      // Không chặn bảng điều khiển nếu route hỏi đáp tạm lỗi.
+    } finally {
+      setQuestionLoading(false);
+    }
+  }, [previewMode]);
+
+  const respondToQuestion = async (questionId: string, response: string, nextStatus: string) => {
+    if (previewMode) {
+      setStudentQuestions((current) => current.map((q) => q.id === questionId ? { ...q, teacher_response: response, status: nextStatus } : q));
+      return;
+    }
+    setQuestionSaving(questionId);
+    try {
+      const payload: Record<string, string> = { status: nextStatus };
+      if (response.trim()) payload.teacher_response = response;
+      const res = await fetch(`/api/student-questions/${questionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Không lưu được phản hồi.");
+      await loadStudentQuestions();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Không lưu được phản hồi.");
+    } finally {
+      setQuestionSaving(null);
+    }
+  };
+
   useEffect(() => {
     if (previewMode) { void fetchData(); return; }
     void fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [fetchData, previewMode]);
+
+  useEffect(() => {
+    void loadStudentQuestions();
+    if (previewMode) return;
+    const timer = window.setInterval(() => void loadStudentQuestions(), 45000);
+    return () => window.clearInterval(timer);
+  }, [loadStudentQuestions, previewMode]);
 
   useEffect(() => {
     if (previewMode) return;
@@ -2472,6 +2533,14 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
               >
                 <MessageSquare className="w-4 h-4 text-blue-400" /> Kênh thảo luận ({messages.length})
               </button>
+              <button
+                onClick={() => navigateToTab('student_questions')}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
+                  activeTab === 'student_questions' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
+                }`}
+              >
+                <HelpCircle className="w-4 h-4 text-indigo-400" /> Góc hỏi đáp ({pendingQuestionCount})
+              </button>
             </div>
           </div>
         </div>
@@ -3725,6 +3794,55 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                   Lưu bài trắc nghiệm
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 11. TAB GÓC HỎI ĐÁP (CÂU HỎI HỌC SINH) */}
+        {activeTab === 'student_questions' && (
+          <div className="space-y-6 max-w-5xl animate-in fade-in">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 flex items-center gap-2">
+                  <HelpCircle className="w-7 h-7 text-indigo-600" /> Góc hỏi đáp · Câu hỏi của học sinh
+                </h1>
+                <p className="text-xs text-slate-500 mt-1">Đọc câu hỏi, gửi phản hồi và cập nhật trạng thái xử lý. Học sinh thấy phản hồi ngay trong mục “Câu hỏi của tôi”.</p>
+              </div>
+              <button onClick={() => void loadStudentQuestions()} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50">
+                <RefreshCw className={`w-4 h-4 ${questionLoading ? "animate-spin" : ""}`} /> Tải lại
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {[{ id: "all", label: `Tất cả (${studentQuestions.length})` }].concat(
+                QUESTION_STATUS_IDS.map((id: string) => ({ id, label: `${questionStatusLabel(id)} (${studentQuestions.filter((q) => q.status === id).length})` })),
+              ).map((chip) => (
+                <button
+                  key={chip.id}
+                  onClick={() => setQuestionFilter(chip.id)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-all ${
+                    questionFilter === chip.id ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
+                  }`}
+                >{chip.label}</button>
+              ))}
+            </div>
+
+            <div className="space-y-4">
+              {questionLoading && studentQuestions.length === 0 ? (
+                <p className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">Đang tải câu hỏi…</p>
+              ) : (questionFilter === "all" ? studentQuestions : studentQuestions.filter((q) => q.status === questionFilter)).length === 0 ? (
+                <p className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">Chưa có câu hỏi nào trong mục này. Dữ liệu sẽ được cập nhật sau khi học sinh gửi câu hỏi.</p>
+              ) : (
+                (questionFilter === "all" ? studentQuestions : studentQuestions.filter((q) => q.status === questionFilter)).map((q) => (
+                  <QuestionCard
+                    key={q.id}
+                    question={q}
+                    saving={questionSaving === q.id}
+                    topicLabel={questionTopicLabel(q.topic)}
+                    onRespond={(response, status) => void respondToQuestion(q.id, response, status)}
+                  />
+                ))
+              )}
             </div>
           </div>
         )}
