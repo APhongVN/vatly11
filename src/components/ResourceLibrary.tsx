@@ -51,6 +51,9 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
   const [editingId, setEditingId] = useState<string | null>(null);
   const [openingResourceId, setOpeningResourceId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Mục 9: theo dõi dung lượng kho tài liệu (free tier Supabase mặc định 1 GB).
+  const [storageTotalBytes, setStorageTotalBytes] = useState(0);
+  const STORAGE_QUOTA_BYTES = 1 * 1024 * 1024 * 1024;
 
   const refresh = useCallback(async () => {
     if (previewMode) {
@@ -75,7 +78,9 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
     try {
       const { data, error: queryError } = await supabase.from("learning_resources").select("*").order("created_at", { ascending: false }).limit(500);
       if (queryError) throw new Error(queryError.message);
-      setResources((data || []) as Resource[]);
+      const loadedResources = (data || []) as Resource[];
+      setResources(loadedResources);
+      setStorageTotalBytes(loadedResources.reduce((sum, item) => sum + (Number(item.file_size) || 0), 0));
     } catch (error) {
       setError(`Chưa tải được kho học liệu: ${error instanceof Error ? error.message : "lỗi kết nối"}. Kiểm tra migration và quyền tài khoản giáo viên.`);
     } finally {
@@ -349,6 +354,18 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
       <div className="flex gap-3"><div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3"><b className="block text-2xl">{resources.length}</b><span className="text-xs text-blue-100">tài nguyên</span></div><div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3"><b className="block text-2xl">{resources.filter((item) => item.is_published).length}</b><span className="text-xs text-blue-100">đã xuất bản</span></div></div>
     </header>
     {previewMode && <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">Chế độ xem tự do: tài liệu và tệp sẽ tự lưu trên trình duyệt của thiết bị này, không đồng bộ với lớp thật. Trạng thái lưu: {previewStorageStatus === "loading" ? "đang tải" : previewStorageStatus === "saving" ? "đang lưu" : previewStorageStatus === "saved" ? "đã lưu" : "lỗi lưu"}.</p>}
+    {!previewMode && (() => {
+      const pct = Math.min(100, Math.round((storageTotalBytes / STORAGE_QUOTA_BYTES) * 100));
+      const tone = pct >= 90 ? "border-rose-300 bg-rose-50 text-rose-900" : pct >= 80 ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-white text-slate-700";
+      const barTone = pct >= 90 ? "bg-rose-600" : pct >= 80 ? "bg-amber-500" : "bg-emerald-600";
+      return <div className={`rounded-2xl border px-4 py-3 text-sm ${tone}`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="font-semibold">Dung lượng kho: {readableSize(storageTotalBytes)} / ~1 GB ({pct}%)</span>
+          {pct >= 90 ? <span className="font-bold">⚠️ Sắp hết dung lượng! Hãy xóa bớt tệp cũ hoặc nâng gói Supabase Storage.</span> : pct >= 80 ? <span className="font-bold">Đã dùng trên 80% dung lượng miễn phí.</span> : <span className="text-xs opacity-80">Còn nhiều dung lượng trống.</span>}
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200"><div className={`h-full ${barTone} transition-all`} style={{ width: pct + "%" }} /></div>
+      </div>;
+    })()}
     {(error || notice) && <div role={error ? "alert" : "status"} className={`rounded-2xl border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{error || notice}</div>}
     <div className="grid gap-6 xl:grid-cols-[minmax(320px,.8fr)_minmax(0,1.2fr)]">
       <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
