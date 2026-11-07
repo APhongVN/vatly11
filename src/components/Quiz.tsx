@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { READINESS_TOPICS } from "@/lib/readiness-check.mjs";
 
-type Q = { id: string; question: string; options: string[] };
+type Q = { id: string; question: string; options: string[]; hint?: string };
 function renderPeerHistogram(questions: Q[], results: Array<{ questionId: string; first: number[] | null; second: number[] | null }> | null, phase: "first" | "second") {
   if (!results) return null;
   return <div className="space-y-3 rounded-xl border border-violet-200 bg-white p-4 text-left">
@@ -39,6 +39,8 @@ export default function Quiz({ activityId, questions }: { activityId: number; qu
   const [muddyTopics, setMuddyTopics] = useState<string[]>([]);
   const [muddyPoint, setMuddyPoint] = useState("");
   const [confidence, setConfidence] = useState<"sure" | "partial" | "unsure">("partial");
+  const [hintCount, setHintCount] = useState(0);
+  const [showHint, setShowHint] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -151,7 +153,17 @@ export default function Quiz({ activityId, questions }: { activityId: number; qu
       }
       const response = await fetch("/api/activity-evidence", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activityId, complete: true, evidence: { kind: "quiz", answers: finalAnswers, ...(activityId === 7 ? { firstAnswers: initialAnswers } : {}) } }),
+        body: JSON.stringify({
+          activityId,
+          complete: true,
+          evidence: {
+            kind: "quiz",
+            answers: finalAnswers,
+            attemptsCount: 1,
+            hintCount,
+            ...(activityId === 7 ? { firstAnswers: initialAnswers } : {}),
+          },
+        }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Không lưu được kết quả.");
@@ -256,6 +268,15 @@ export default function Quiz({ activityId, questions }: { activityId: number; qu
       {activityId === 7 && phase === "second-vote" && renderPeerHistogram(questions, pollResults, "second")}
       <h3 className="text-lg font-bold text-slate-900">{question?.question}</h3>
       <div className="space-y-2">{question?.options.map((option, index) => <label key={index} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm transition ${selected === index ? "border-blue-600 bg-blue-50" : "border-slate-200 hover:bg-slate-50"}`}><input type="radio" name={`activity-${activityId}-${phase}-${question.id}`} checked={selected === index} onChange={() => setSelected(index)} /><span>{option}</span></label>)}</div>
+      {activityId !== 6 && question?.hint ? (
+        <div className="space-y-2">
+          <button type="button" onClick={() => { setShowHint((current) => !current); if (!showHint) setHintCount((count) => count + 1); }} className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100">
+            {showHint ? "Ẩn gợi ý" : "Xem gợi ý"}
+          </button>
+          {showHint ? <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Gợi ý: {question.hint}</p> : null}
+          {hintCount > 0 ? <p className="text-[10px] text-slate-500">Đã dùng gợi ý {hintCount} lần.</p> : null}
+        </div>
+      ) : null}
       {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
       <button type="button" onClick={advance} disabled={selected === null || saving} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin"/> : null}{saving ? (activityId === 6 ? "Đang lưu…" : "Đang chấm và lưu…") : current + 1 < questions.length ? "Câu tiếp theo →" : phase === "first-vote" ? "Hoàn tất bình chọn lần 1" : phase === "second-vote" ? "Nộp bình chọn lần 2" : activityId === 6 ? "Tiếp tục phiếu tự nhận diện" : "Nộp bài và xem điểm"}</button>
       {activityId === 6 ? <p className="text-xs text-slate-500">Khảo sát không chấm điểm; câu trả lời chỉ giúp giáo viên chọn nội dung cần giảng kỹ hơn.</p> : <p className="text-xs text-slate-500">Đáp án được chấm ở máy chủ. Mỗi học sinh chỉ nộp một kết quả chính thức cho hoạt động này.</p>}

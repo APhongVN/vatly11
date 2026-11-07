@@ -37,17 +37,30 @@ export default function TeacherQuestionCard({
   saving,
   topicLabel,
   onRespond,
+  onSuggest,
 }: {
   question: StudentQuestion;
   saving: boolean;
   topicLabel: string;
   onRespond: (response: string, status: string) => void;
+  onSuggest: (questionId: string) => Promise<string | null>;
 }) {
   const [draft, setDraft] = useState(question.teacher_response || "");
+  const [suggesting, setSuggesting] = useState(false);
   const studentName = question.students?.full_name || "Học sinh";
   const className = question.students?.class_name || "";
   const hasResponse = Boolean((draft || "").trim());
   const availableStatuses = QUESTION_STATUS_IDS.filter((id: string) => id !== "unanswered");
+
+  const requestSuggestion = async () => {
+    setSuggesting(true);
+    try {
+      const suggestion = await onSuggest(question.id);
+      if (suggestion) setDraft(suggestion);
+    } finally {
+      setSuggesting(false);
+    }
+  };
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
@@ -67,7 +80,13 @@ export default function TeacherQuestionCard({
       <p className="text-[10px] text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3" /> Gửi lúc: {formatDateTime(question.created_at)}</p>
 
       <div className="space-y-2">
-        <label htmlFor={`resp-${question.id}`} className="text-xs font-bold text-slate-600">Phản hồi của giáo viên</label>
+        <div className="flex items-center justify-between gap-2">
+          <label htmlFor={`resp-${question.id}`} className="text-xs font-bold text-slate-600">Phản hồi của giáo viên</label>
+          <button type="button" onClick={() => void requestSuggestion()} disabled={suggesting}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50 px-2.5 py-1 text-[10px] font-bold text-violet-700 hover:bg-violet-100 disabled:opacity-40">
+            {suggesting ? "Đang gợi ý…" : "Gợi ý AI"}
+          </button>
+        </div>
         <textarea
           id={`resp-${question.id}`}
           value={draft}

@@ -36,6 +36,7 @@ export default function HocSinhPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isChatMuted, setIsChatMuted] = useState(false);
   const [myQuestions, setMyQuestions] = useState<any[]>([]);
+  const [myEvidence, setMyEvidence] = useState<any[]>([]);
   const [newQuestionTopic, setNewQuestionTopic] = useState("");
   const [newQuestionContent, setNewQuestionContent] = useState("");
   const [questionSubmitting, setQuestionSubmitting] = useState(false);
@@ -103,6 +104,8 @@ export default function HocSinhPage() {
 
     const { data: qzs } = await supabase.from('quizzes').select('*').order('id');
     if (qzs) setQuizzes(qzs);
+    const { data: ev } = await supabase.from('activity_evidence').select('activity_id,score,score_max,completed_at,first_attempt_correct,correct_after_hint,attempts_count,hint_count,review_topics').eq('student_id', student.id).order('updated_at', { ascending: false });
+    if (ev) setMyEvidence(ev);
     const { data: setting } = await supabase.from('chat_settings').select('is_muted').eq('id', 1).single();
     if (setting) setIsChatMuted(setting.is_muted);
     await fetchMyQuestions();
@@ -607,6 +610,36 @@ export default function HocSinhPage() {
                 <Trophy className="w-8 h-8 text-emerald-600"/> Kết quả & Góp ý từ Giáo viên
               </h1>
               <p className="text-xs text-slate-500 mt-1">Xem lại điểm số, nhận xét chi tiết của AI và đáp án mẫu.</p>
+            </div>
+
+            {/* 4.8 Kết quả học tập: 4 chỉ số theo dõi từ dữ liệu thật */}
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-6 md:p-8 space-y-4">
+              <h2 className="font-bold text-base text-slate-900">Kết quả học tập của em</h2>
+              {myEvidence.length === 0 ? (
+                <p className="text-slate-400 text-center py-8 text-xs">Chưa có dữ liệu. Các chỉ số sẽ được cập nhật sau khi em hoàn thành hoạt động trắc nghiệm.</p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {(() => {
+                    const answeredTotal = myEvidence.filter((record) => record.completed_at).length;
+                    const firstAttemptCorrect = myEvidence.filter((record) => record.first_attempt_correct === true).length;
+                    const correctAfterHint = myEvidence.filter((record) => record.correct_after_hint === true).length;
+                    const totalHints = myEvidence.reduce((sum, record) => sum + (Number(record.hint_count) || 0), 0);
+                    const cards = [
+                      { label: "Số hoạt động đã làm", value: answeredTotal, tone: "text-blue-700" },
+                      { label: "Đúng ngay lần đầu", value: firstAttemptCorrect, tone: "text-emerald-700" },
+                      { label: "Đúng sau khi dùng gợi ý", value: correctAfterHint, tone: "text-indigo-700" },
+                      { label: "Số lần dùng gợi ý", value: totalHints, tone: "text-amber-700" },
+                    ];
+                    return cards.map((card) => (
+                      <div key={card.label} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-center">
+                        <p className={`text-2xl font-black tabular-nums ${card.tone}`}>{card.value}</p>
+                        <p className="mt-1 text-[11px] font-semibold text-slate-600">{card.label}</p>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              )}
+              <p className="text-[10px] text-slate-400">Các chỉ số chỉ đếm từ dữ liệu thật do website ghi nhận; không hiển thị số liệu mẫu.</p>
             </div>
 
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-6 md:p-8 space-y-4">

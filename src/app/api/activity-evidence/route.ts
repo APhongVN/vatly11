@@ -364,6 +364,8 @@ export async function POST(request: Request) {
     }
     let score: number | null = null;
     let scoreMax: number | null = null;
+    // 4.8 Chỉ số kết quả học tập (đúng lần đầu, đúng sau gợi ý, số lần thử, gợi ý).
+    const payloadMetrics: Record<string, unknown> = {};
     if (activityId === 6) {
       if (!complete || !isValidReadinessEvidence(evidence)) return NextResponse.json({ error: "Hãy hoàn tất khảo sát và ghi rõ nội dung em còn băn khoăn." }, { status: 400 });
     } else if (QUIZ_ACTIVITY_IDS.has(activityId)) {
@@ -376,6 +378,22 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Thiếu câu trả lời ở vòng bình chọn đầu." }, { status: 400 });
       }
       scoreMax = Object.keys(evidence.answers).length;
+      // 4.8 Chỉ số kết quả: đúng lần đầu, đúng sau gợi ý, số lần thử, số lần dùng gợi ý.
+      // Client gửi attemptsCount/hintCount; máy chủ tính firstAttemptCorrect từ
+      // việc so sánh lần trả lời đầu (nếu có) với đáp án.
+      const attemptsCount = Number(evidence.attemptsCount);
+      const hintCount = Number(evidence.hintCount);
+      const safeAttempts = Number.isInteger(attemptsCount) && attemptsCount >= 1 && attemptsCount <= 50 ? attemptsCount : 1;
+      const safeHints = Number.isInteger(hintCount) && hintCount >= 0 && hintCount <= 50 ? hintCount : 0;
+      const firstAttemptAnswers = isRecord(evidence.firstAnswers) ? evidence.firstAnswers : evidence.answers;
+      const firstAttemptCorrect = scoreActivityQuiz(activityId, firstAttemptAnswers as Record<string, number>) === score;
+      const correctAfterHint = safeHints > 0 && score > 0;
+      evidence = { ...evidence, attemptsCount: safeAttempts, hintCount: safeHints };
+      // Ghi chỉ số vào payload dưới dạng cột riêng để thống kê nhanh.
+      payloadMetrics.first_attempt_correct = firstAttemptCorrect;
+      payloadMetrics.correct_after_hint = correctAfterHint;
+      payloadMetrics.attempts_count = safeAttempts;
+      payloadMetrics.hint_count = safeHints;
     } else if (LAB_ACTIVITY_IDS.has(activityId)) {
       const { data: labSettingsRow, error: settingsError } = await access.supabase.from("capacitance_lab_settings").select("*").eq("id", 1).maybeSingle();
       if (settingsError) return NextResponse.json({ error: "Chưa tải được cấu hình thí nghiệm. Hãy áp dụng migration 20261031002300." }, { status: 503 });
@@ -448,6 +466,7 @@ export async function POST(request: Request) {
       score_max: scoreMax,
       completed_at: complete ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
+      ...payloadMetrics,
     };
     const savedResult = ONE_ATTEMPT_ACTIVITY_IDS.has(activityId)
       ? await admin.from("activity_evidence").insert(payload).select("activity_id,evidence,score,score_max,completed_at,updated_at").single()

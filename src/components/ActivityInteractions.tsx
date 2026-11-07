@@ -1,11 +1,17 @@
 "use client";
 
+"use client";
+
 import { HD12_QUESTIONS, HD6_PREQUIZ, HD7_PEER } from "@/lib/data/questions";
 import VirtualLab from "@/components/VirtualLab";
 import Quiz from "@/components/Quiz";
 import ActivityResponseForm from "@/components/ActivityResponseForm";
 import ActivityMicroteaching from "@/components/ActivityMicroteaching";
 import ProjectSubmissionForm from "@/components/ProjectSubmissionForm";
+import PhetGuideVideo from "@/components/PhetGuideVideo";
+import StatementGame from "@/components/StatementGame";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 const integratedStages = [
   ["Cấu tạo, tích điện và phóng điện", "Quan sát hai bản dẫn, điện môi, trạng thái nối/ngắt nguồn và đường phóng qua tải."],
@@ -14,11 +20,28 @@ const integratedStages = [
   ["Năng lượng điện trường", "Đọc đồ thị U=f(Q), xác định công tích điện và liên hệ diện tích dưới đồ thị."],
 ];
 
+function StatementGameLoader() {
+  const [statements, setStatements] = useState<any[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.from("game_statements").select("id,statement,is_false,explanation,topic").order("display_order", { ascending: true });
+        if (!cancelled && data) setStatements(data);
+      } catch {
+        // Trò chơi là phần bổ sung; lỗi tải không chặn phần học chính.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  return <StatementGame statements={statements} />;
+}
+
 export default function ActivityInteractions({ activityId }: { activityId: number }) {
-  if (activityId === 4) return <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-7"><h2 className="mb-4 text-xl font-extrabold">Phòng thí nghiệm ảo · Q và U</h2><VirtualLab activityId={activityId} /></section>;
+  if (activityId === 4) return <section className="space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-7"><h2 className="mb-4 text-xl font-extrabold">Phòng thí nghiệm ảo · Q và U</h2><PhetGuideVideo /><div className="mt-6"><VirtualLab activityId={activityId} /></div></section>;
   if (activityId === 6) return <Quiz activityId={6} questions={HD6_PREQUIZ} />;
   if (activityId === 7) return <Quiz activityId={7} questions={HD7_PEER} />;
-  if (activityId === 12) return <Quiz activityId={12} questions={HD12_QUESTIONS} />;
+  if (activityId === 12) return <section className="space-y-4 rounded-3xl border border-emerald-100 bg-emerald-50/60 p-5 md:p-7"><div><h2 className="text-xl font-extrabold">Luyện tập – củng cố – vận dụng gần</h2><p className="mt-1 text-sm text-slate-600">Hoàn thành bài trắc nghiệm và trò chơi “Truy tìm phát biểu sai”.</p></div><Quiz activityId={12} questions={HD12_QUESTIONS} /><StatementGameLoader /></section>;
   if (activityId === 1) return <section className="rounded-3xl border border-blue-100 bg-blue-50 p-5 md:p-7"><h2 className="text-xl font-extrabold text-blue-950">Tình huống mở đầu</h2><p className="mt-3 leading-7 text-slate-700">Một tụ điện được nạp qua nguồn, sau đó ngắt nguồn hoàn toàn và nối với LED. Hãy dự đoán điều gì xảy ra, giải thích bằng hiểu biết hiện tại và viết câu hỏi em muốn bài học trả lời.</p><div className="mt-4 grid gap-3 md:grid-cols-3">{["Dự đoán hiện tượng", "Giải thích ban đầu", "Câu hỏi nghiên cứu"].map((item, index) => <div key={item} className="rounded-xl border border-blue-100 bg-white p-4"><span className="text-xs font-bold text-blue-700">CÂU {index + 1}</span><h3 className="mt-1 font-bold">{item}</h3><p className="mt-1 text-xs text-slate-500">Ghi lại suy nghĩ ban đầu; chưa cần đúng hoàn toàn.</p></div>)}</div><ActivityResponseForm activityId={activityId} /></section>;
   if (activityId === 2) return <ActivityMicroteaching />;
   if (activityId === 3) return <section className="rounded-3xl border border-violet-100 bg-violet-50 p-5 md:p-7"><h2 className="text-xl font-extrabold">Bốn giả thuyết cần dự đoán</h2><ol className="mt-4 list-inside list-decimal space-y-3 text-sm leading-6 text-slate-700"><li>Khi tăng U trên cùng một tụ, Q thay đổi thế nào?</li><li>Diện tích bản tụ S ảnh hưởng C ra sao?</li><li>Khoảng cách d giữa hai bản ảnh hưởng C thế nào?</li><li>Điện môi εr làm thay đổi C ra sao?</li></ol><p className="mt-4 rounded-xl bg-white p-3 text-xs text-slate-600">Hãy lưu lại dự đoán trước khi xem bằng chứng thực nghiệm.</p><ActivityResponseForm activityId={activityId} /></section>;

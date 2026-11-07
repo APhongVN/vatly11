@@ -462,6 +462,27 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
     }
   };
 
+  // 4.7 Gợi ý AI: chỉ giáo viên gọi; kết quả chỉ điền vào ô phản hồi để giáo viên
+  // kiểm tra và chỉnh sửa trước khi gửi phản hồi chính thức.
+  const suggestQuestionAnswer = async (questionId: string): Promise<string | null> => {
+    const question = studentQuestions.find((item) => item.id === questionId);
+    if (!question) return null;
+    if (previewMode) return "Gợi ý mẫu: hãy xem lại phần kiến thức liên quan rồi trả lời lại em.";
+    try {
+      const res = await fetch("/api/student-questions/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: question.content, topic: questionTopicLabel(question.topic) }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Không đề xuất được câu trả lời.");
+      return result.suggestion || null;
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Không đề xuất được câu trả lời.");
+      return null;
+    }
+  };
+
   useEffect(() => {
     if (previewMode) { void fetchData(); return; }
     void fetchData();
@@ -3840,6 +3861,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                     saving={questionSaving === q.id}
                     topicLabel={questionTopicLabel(q.topic)}
                     onRespond={(response, status) => void respondToQuestion(q.id, response, status)}
+                    onSuggest={(questionId) => suggestQuestionAnswer(questionId)}
                   />
                 ))
               )}
