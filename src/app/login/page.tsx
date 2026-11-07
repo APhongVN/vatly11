@@ -11,7 +11,23 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [classes, setClasses] = useState<string[]>([]);
+  const [selectedClass, setSelectedClass] = useState("");
+  const [classesLoading, setClassesLoading] = useState(false);
   const router = useRouter();
+
+  // Mục 11: tải danh sách lớp để học sinh chọn trước khi đăng nhập.
+  useEffect(() => {
+    if (role !== "student" || classes.length) return;
+    let cancelled = false;
+    setClassesLoading(true);
+    fetch("/api/public-classes", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data) => { if (!cancelled) setClasses(Array.isArray(data.classes) ? data.classes : []); })
+      .catch(() => { if (!cancelled) setClasses([]); })
+      .finally(() => { if (!cancelled) setClassesLoading(false); });
+    return () => { cancelled = true; };
+  }, [role, classes.length]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,6 +35,7 @@ export default function LoginPage() {
     setError("");
     try {
       if (role === "student") {
+        if (!selectedClass) throw new Error("Em hãy chọn lớp của mình trước khi đăng nhập.");
         const username = email.trim().toLocaleLowerCase("en-US");
         if (!/^[a-z0-9]{3,32}$/.test(username)) {
           throw new Error("Tên đăng nhập chỉ gồm 3–32 chữ cái không dấu hoặc chữ số.");
@@ -26,7 +43,7 @@ export default function LoginPage() {
         const response = await fetch("/api/auth/student-login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify({ username, password, className: selectedClass }),
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Tên đăng nhập hoặc mật khẩu không đúng.");
@@ -140,7 +157,14 @@ export default function LoginPage() {
           </form>
         ) : (
           <form onSubmit={handleLogin} className="space-y-4">
-            <p className="text-sm text-slate-600">Đăng nhập bằng tài khoản lớp đã được giáo viên cấp.</p>
+            <p className="text-sm text-slate-600">Chọn lớp rồi đăng nhập bằng tài khoản lớp đã được giáo viên cấp. Nếu chọn sai lớp, hệ thống sẽ báo không đúng.</p>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">Lớp của em</label>
+            <div className="relative"><Sparkles className="w-5 h-5 absolute left-3.5 top-3 text-slate-400" />
+              <select value={selectedClass} onChange={(event) => setSelectedClass(event.target.value)} disabled={classesLoading} className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-sm bg-white" required>
+                <option value="">{classesLoading ? "Đang tải danh sách lớp…" : "— Chọn lớp —"}</option>
+                {classes.map((className) => <option key={className} value={className}>{className}</option>)}
+              </select>
+            </div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">Tên đăng nhập</label>
             <div className="relative"><Mail className="w-5 h-5 absolute left-3.5 top-3 text-slate-400" /><input type="text" autoComplete="username" inputMode="text" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nguyenvanan" className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-sm" required /></div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">Mật khẩu</label>

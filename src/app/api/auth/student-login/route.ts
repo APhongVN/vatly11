@@ -9,12 +9,16 @@ const noStore = { "Cache-Control": "no-store, max-age=0", Pragma: "no-cache" };
 export async function POST(request: Request) {
   try {
     const raw = await readBoundedRequestText(request, 4_000);
-    let body: { username?: unknown; password?: unknown };
+    let body: { username?: unknown; password?: unknown; className?: unknown };
     try { body = JSON.parse(raw) as typeof body; } catch { return NextResponse.json({ error: "Tên đăng nhập hoặc mật khẩu không đúng." }, { status: 401, headers: noStore }); }
     const username = typeof body.username === "string" ? normalizeStudentUsername(body.username) : "";
     const password = typeof body.password === "string" ? body.password : "";
+    const className = typeof body.className === "string" ? body.className.normalize("NFC").trim() : "";
     if (username.length < 3 || username.length > 32 || password.length < 8 || password.length > 128) {
       return NextResponse.json({ error: "Tên đăng nhập hoặc mật khẩu không đúng." }, { status: 401, headers: noStore });
+    }
+    if (!className || className.length > 40) {
+      return NextResponse.json({ error: "Hãy chọn lớp trước khi đăng nhập." }, { status: 400, headers: noStore });
     }
 
     const forwarded = request.headers.get("cf-connecting-ip") || request.headers.get("x-real-ip") || null;
@@ -42,6 +46,11 @@ export async function POST(request: Request) {
     if (lookupError || !student || signInError || !signedIn.user || !student.auth_user_id || signedIn.user.id !== student.auth_user_id) {
       if (!signInError) await supabase.auth.signOut();
       return NextResponse.json({ error: "Tên đăng nhập hoặc mật khẩu không đúng." }, { status: 401, headers: noStore });
+    }
+    // Mục 11: học sinh phải đăng nhập đúng lớp của mình.
+    if (String(student.class_name ?? "").normalize("NFC").trim().toLocaleLowerCase("vi") !== className.toLocaleLowerCase("vi")) {
+      await supabase.auth.signOut();
+      return NextResponse.json({ error: `Tài khoản này không thuộc lớp ${className}. Hãy chọn đúng lớp rồi thử lại.` }, { status: 403, headers: noStore });
     }
     const { data: profile, error: profileError } = await admin.from("profiles")
       .select("role,must_change_password").eq("id", signedIn.user.id).maybeSingle();
