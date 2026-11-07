@@ -19,12 +19,13 @@ export async function POST(request: Request) {
     }
     const rows = body.students.map((item) => {
       if (!item || typeof item !== "object") return null;
-      const value = item as { full_name?: unknown; birth_date?: unknown };
+      const value = item as { full_name?: unknown; birth_date?: unknown; student_code?: unknown };
       const fullName = typeof value.full_name === "string" ? value.full_name.normalize("NFC").trim() : "";
+      const studentCode = value.student_code === undefined || value.student_code === null ? "" : String(value.student_code).trim().slice(0, 40);
       const birthDate = value.birth_date === undefined || value.birth_date === null || value.birth_date === "" ? null : value.birth_date;
       if (fullName.length < 3 || fullName.length > 120) return null;
       if (birthDate !== null && (typeof birthDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(birthDate) || Number.isNaN(Date.parse(`${birthDate}T00:00:00Z`)))) return null;
-      return { fullName, birthDate };
+      return { fullName, birthDate, studentCode };
     });
     if (rows.some((row) => row === null)) return NextResponse.json({ error: "Có học sinh thiếu họ tên hợp lệ hoặc ngày sinh sai định dạng." }, { status: 400 });
 
@@ -32,8 +33,8 @@ export async function POST(request: Request) {
     const results: Array<{ index: number; ok: boolean; student?: unknown; credentials?: unknown; error?: string }> = [];
     // Giới hạn song song để lô lớn không làm quá tải Auth.
     for (let offset = 0; offset < rows.length; offset += 4) {
-      const group = rows.slice(offset, offset + 4) as Array<{ fullName: string; birthDate: string | null }>;
-      const settled = await Promise.allSettled(group.map((row) => provisionStudentAccount(admin, { fullName: row.fullName, className, birthDate: row.birthDate })));
+      const group = rows.slice(offset, offset + 4) as Array<{ fullName: string; birthDate: string | null; studentCode: string }>;
+      const settled = await Promise.allSettled(group.map((row) => provisionStudentAccount(admin, { fullName: row.fullName, className, birthDate: row.birthDate, studentCode: row.studentCode })));
       settled.forEach((result, localIndex) => {
         const index = offset + localIndex;
         if (result.status === "fulfilled") {

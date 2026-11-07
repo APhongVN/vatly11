@@ -44,10 +44,11 @@ export function clientAddressRateLimitHash(ip: string) {
 }
 export async function provisionStudentAccount(
   admin: AdminClient,
-  input: { fullName: string; className: string; birthDate?: string | null; studentId?: string },
+  input: { fullName: string; className: string; birthDate?: string | null; studentId?: string; studentCode?: string | null },
 ) {
   const fullName = input.fullName.normalize("NFC").trim();
   const className = input.className.normalize("NFC").trim();
+  const studentCode = typeof input.studentCode === "string" ? input.studentCode.normalize("NFC").trim().slice(0, 40) : "";
   let existing: { id: string; full_name: string; class_name: string; auth_user_id: string | null; username: string | null; login_email: string | null; is_active?: boolean } | null = null;
 
   if (input.studentId) {
@@ -99,6 +100,7 @@ export async function provisionStudentAccount(
         full_name: sourceName,
         class_name: targetClass,
         birth_date: input.birthDate || null,
+        student_code: studentCode || null,
         username,
         login_email: email,
       }).select("id").single();
@@ -108,7 +110,7 @@ export async function provisionStudentAccount(
       }
       studentId = inserted.id;
     } else {
-      const { error: reserveError } = await adminClient.from("students").update({ username, login_email: email }).eq("id", studentId);
+      const { error: reserveError } = await adminClient.from("students").update({ username, login_email: email, ...(studentCode ? { student_code: studentCode } : {}) }).eq("id", studentId);
       if (reserveError) {
         if (reserveError.code === "23505") { lastError = reserveError; continue; }
         throw new Error("Không cập nhật được thông tin tài khoản học sinh.");

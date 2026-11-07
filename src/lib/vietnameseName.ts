@@ -1,6 +1,33 @@
 /**
  * Tiện ích chuẩn hóa và sắp xếp Họ Tên tiếng Việt
  */
+const NAME_ALLOWED_PATTERN = /^[\p{L}\s'.-]+$/u;
+
+// Ký tự hợp lệ cho họ tên: chỉ chữ cái (kể cả tiếng Việt có dấu), khoảng trắng,
+// dấu nháy đơn, dấu chấm và gạch nối. Không cho chữ số và ký tự đặc biệt.
+export function hasInvalidNameCharacters(rawName: string): boolean {
+  if (!rawName) return true;
+  return !NAME_ALLOWED_PATTERN.test(rawName);
+}
+
+export function containsDigit(rawName: string): boolean {
+  return /\d/.test(rawName ?? "");
+}
+
+/**
+ * Làm sạch tên người dùng nhập: bỏ chữ số và ký tự đặc biệt, gộp khoảng trắng,
+ * rồi chuẩn hóa viết hoa. Trả về chuỗi rỗng nếu không còn ký tự hợp lệ.
+ * Ví dụ: "nguyễn văn a1!" -> "Nguyễn Văn A"
+ */
+export function sanitizePersonName(rawName: string): string {
+  if (!rawName) return "";
+  const stripped = String(rawName)
+    .normalize("NFC")
+    .replace(/[^\p{L}\s'.-]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return formatVietnameseName(stripped);
+}
 
 // Viết hoa chữ cái đầu tiên của từng từ (Title Case)
 export function formatVietnameseName(rawName: string): string {

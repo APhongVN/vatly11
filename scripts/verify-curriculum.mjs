@@ -6,7 +6,7 @@ import { normalizeGeneratedQuiz } from "../src/lib/ai-quiz-validation.mjs";
 import { readBoundedRequestText } from "../src/lib/read-bounded-request.mjs";
 import { chatAttachmentMimeType, isInlineChatImage, MAX_CHAT_ATTACHMENT_BYTES } from "../src/lib/chat-attachments.mjs";
 import { filterSubmissionsForStudentGroups, renameGroupInSubmissions } from "../src/lib/group-submissions.mjs";
-import { extractStudentNamesFromText } from "../src/lib/student-import.mjs";
+import { extractStudentNamesFromText, extractStudentRowsFromText } from "../src/lib/student-import.mjs";
 import { filterStudentRoster, getStudentClassNames, hasStudentInClass } from "../src/lib/student-roster.mjs";
 import { getResourceDownloadName } from "../src/lib/resource-download.mjs";
 import { scoreActivityQuiz } from "../src/lib/activity-quiz.mjs";
@@ -312,7 +312,11 @@ const guestStudentRouteText = await readFile(new URL("../src/app/giao-vien/Teach
 assert.match(guestStudentRouteText, /showImportModal &&/);
 assert.match(guestStudentRouteText, /showPasteModal &&/);
 assert.match(guestStudentRouteText, /setShowPasteModal\(true\)/);
-assert.match(guestStudentRouteText, /extractStudentNamesFromText\(text\)/);
+assert.match(guestStudentRouteText, /extractStudentRowsFromText\(text\)/);
+assert.deepEqual(extractStudentRowsFromText("Họ và tên\tMã số sinh viên\nNguyễn Văn An\tSV01\nTrần Thị Bình\tSV02"), [
+  { fullName: "Nguyễn Văn An", studentCode: "SV01" },
+  { fullName: "Trần Thị Bình", studentCode: "SV02" },
+], "CSV import must read the student code column when present.");
 assert.match(guestStudentRouteText, /isAddingStudent/);
 assert.match(guestStudentRouteText, /fetch\("\/api\/teacher\/students"/);
 assert.match(guestStudentRouteText, /fetch\("\/api\/teacher\/students\/bulk"/);

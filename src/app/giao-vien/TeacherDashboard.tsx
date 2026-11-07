@@ -25,9 +25,9 @@ import ActivityEvidencePanel from "@/components/ActivityEvidencePanel";
 import CapacitanceLabSettings from "@/components/CapacitanceLabSettings";
 import RubricEditor from "@/components/RubricEditor";
 import QuestionCard from "@/components/TeacherQuestionCard";
-import { formatVietnameseName, getFirstName, sortVietnameseNames, isHeaderOrInvalidCell } from "@/lib/vietnameseName";
+import { formatVietnameseName, getFirstName, sortVietnameseNames, isHeaderOrInvalidCell, containsDigit, hasInvalidNameCharacters } from "@/lib/vietnameseName";
 import { ACTIVITIES } from "@/lib/data/activities";
-import { extractStudentNamesFromText } from "@/lib/student-import.mjs";
+import { extractStudentNamesFromText, extractStudentRowsFromText } from "@/lib/student-import.mjs";
 import { filterStudentRoster, getStudentClassNames, hasStudentInClass } from "@/lib/student-roster.mjs";
 import { splitExcelCellText } from "@/lib/excel-cell-content.mjs";
 import { extractRubricFile } from "@/lib/rubric-import.mjs";
@@ -48,7 +48,7 @@ const isMissingStudentSchemaField = (error: { code?: string } | null) => error?.
 
 const loadTeacherStudentRoster = async () => {
   const completeRoster = await supabase.from("students")
-    .select("id,full_name,class_name,auth_user_id,login_email,username,birth_date,is_active").order("full_name").limit(1000);
+    .select("id,full_name,class_name,auth_user_id,login_email,username,birth_date,is_active,student_code,password_changed").order("full_name").limit(1000);
   if (!completeRoster.error) {
     return { ...completeRoster, accountFieldsReady: true, accountSchemaMissing: false, archiveSchemaMissing: false };
   }
@@ -61,7 +61,7 @@ const loadTeacherStudentRoster = async () => {
   if (!accountRoster.error) {
     return {
       ...accountRoster,
-      data: (accountRoster.data || []).map((student) => ({ ...student, is_active: true })),
+      data: (accountRoster.data || []).map((student) => ({ ...student, is_active: true, student_code: null, password_changed: false })),
       accountFieldsReady: true,
       accountSchemaMissing: false,
       archiveSchemaMissing: true,
@@ -242,6 +242,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [showArchivedStudents, setShowArchivedStudents] = useState(false);
   const [studentArchiveBusyId, setStudentArchiveBusyId] = useState<string | null>(null);
   const [importPreviewNames, setImportPreviewNames] = useState<string[]>([]);
+const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   const [showImportModal, setShowImportModal] = useState(false);
   const [pasteNamesText, setPasteNamesText] = useState("");
   const [showPasteModal, setShowPasteModal] = useState(false);
@@ -1582,6 +1583,9 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const addStudentManual = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isAddingStudent) return;
+    // Mục 3: chặn chữ số và ký tự đặc biệt trong họ tên.
+    if (containsDigit(newStudentName)) { alert("Họ tên học sinh không được chứa chữ số."); return; }
+    if (hasInvalidNameCharacters(newStudentName.trim())) { alert("Họ tên chỉ được chứa chữ cái, khoảng trắng, dấu nháy đơn, dấu chấm hoặc gạch nối."); return; }
     const formattedName = formatVietnameseName(newStudentName);
     const className = studentClassName.normalize("NFC").trim();
     if (!className || className.length > 40) { alert("Tên lớp cần dài từ 1 đến 40 ký tự."); return; }
@@ -1616,10 +1620,18 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   };
   // Hàm trích xuất và chuẩn hóa danh sách tên từ mảng chuỗi
   const processAndSortNames = (rawList: string[]): string[] => {
-    const validNames: string[] = [];
+    const rows = processAndSortNameRows(rawList.map((fullName) => ({ fullName, studentCode: "" })));
+    setImportPreviewCodes(rows.map((row) => row.studentCode));
+    return rows.map((row) => row.fullName);
+  };
+
+  // Chuẩn hóa danh sách {fullName, studentCode}: làm sạch, loại tên rác/trùng, sắp xếp A-Z theo tên.
+  const processAndSortNameRows = (rawRows: Array<{ fullName: string; studentCode: string }>): Array<{ fullName: string; studentCode: string }> => {
+    const valid: Array<{ fullName: string; studentCode: string }> = [];
     const seen = new Set<string>();
 
-    rawList.forEach((raw) => {
+    rawRows.forEach((row) => {
+      const raw = row.fullName;
       if (!raw || typeof raw !== "string") return;
       const clean = raw.trim();
       if (clean.length < 3) return;
@@ -1627,17 +1639,17 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
 
       const formatted = formatVietnameseName(clean);
       if (formatted.length > 120) return;
-      // Kiểm tra có ít nhất 2 từ (Họ + Tên)
+      // Mục 3: bỏ các tên còn chứa chữ số hoặc ký tự đặc biệt.
+      if (containsDigit(formatted) || hasInvalidNameCharacters(formatted)) return;
       const words = formatted.split(/\s+/);
       if (words.length >= 2 && !seen.has(formatted.toLowerCase())) {
         seen.add(formatted.toLowerCase());
-        validNames.push(formatted);
+        valid.push({ fullName: formatted, studentCode: (row.studentCode || "").trim().slice(0, 40) });
       }
     });
 
     // Sắp xếp theo TÊN (First Name) theo bảng chữ cái tiếng Việt
-    // Ví dụ: Đỗ Thanh Phong -> lấy P so sánh với Nguyễn Văn An -> lấy A
-    return validNames.sort(sortVietnameseNames);
+    return valid.sort((a, b) => sortVietnameseNames(a.fullName, b.fullName));
   };
 
   // Xử lý tệp Excel / TXT / CSV thông minh
@@ -1659,14 +1671,24 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         const sheet = workbook.worksheets[0];
         if (!sheet) throw new Error("Tệp không có trang tính nào.");
         if (sheet.rowCount > 2_000) throw new Error("Tệp Excel danh sách chỉ nhận tối đa 2.000 dòng. Hãy chia danh sách thành nhiều lượt.");
-        const candidateStrings: string[] = [];
+        // Mục 4: đọc theo cột để nhận cả họ tên và mã số sinh viên (nếu có).
+        const rowsArray: string[][] = [];
         let processedCells = 0;
-        sheet.eachRow((row) => row.eachCell((cell) => {
-          processedCells += 1;
-          if (processedCells > 20_000) throw new Error("Tệp Excel danh sách chỉ nhận tối đa 20.000 ô có dữ liệu. Hãy chia danh sách thành nhiều lượt.");
-          if (cell.text.trim()) candidateStrings.push(cell.text);
-        }));
-        const sortedList = processAndSortNames(candidateStrings);
+        sheet.eachRow((row) => {
+          const cells: string[] = [];
+          row.eachCell({ includeEmpty: true }, (cell) => {
+            processedCells += 1;
+            if (processedCells > 20_000) throw new Error("Tệp Excel danh sách chỉ nhận tối đa 20.000 ô có dữ liệu. Hãy chia danh sách thành nhiều lượt.");
+            cells.push(cell.text.trim());
+          });
+          if (cells.some((value) => value)) rowsArray.push(cells);
+        });
+        // Chuyển bảng Excel thành văn bản phân cách TAB để dùng chung bộ trích xuất.
+        const tabText = rowsArray.map((cells) => cells.join("\t")).join("\n");
+        const parsedRows = extractStudentRowsFromText(tabText);
+        const sortedRows = processAndSortNameRows(parsedRows);
+        setImportPreviewCodes(sortedRows.map((row) => row.studentCode));
+        const sortedList = sortedRows.map((row) => row.fullName);
         if (sortedList.length === 0) { alert("Không tìm thấy danh sách tên học sinh hợp lệ trong tệp Excel này!"); return; }
         setImportPreviewNames(sortedList);
         setShowImportModal(true);
@@ -1680,8 +1702,10 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       reader.onload = (evt) => {
         try {
           const text = evt.target?.result as string;
-          const lines = extractStudentNamesFromText(text);
-          const sortedList = processAndSortNames(lines);
+          const parsedRows = extractStudentRowsFromText(text);
+          const sortedRows = processAndSortNameRows(parsedRows);
+          setImportPreviewCodes(sortedRows.map((row) => row.studentCode));
+          const sortedList = sortedRows.map((row) => row.fullName);
           if (sortedList.length === 0) {
             alert("Không tìm thấy danh sách tên học sinh hợp lệ trong tệp văn bản này!");
             return;
@@ -1726,7 +1750,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       if (duplicateNames.length && !confirm(`${duplicateNames.length} tên đã có hồ sơ trong lớp ${className}. Tạo hồ sơ riêng cho các em này?`)) return;
       const incoming = importPreviewNames.map((full_name, index) => ({ id: `preview-import-${Date.now()}-${index}`, full_name, class_name: className }));
       setStudents((current) => [...current, ...incoming].sort(sortVietnameseNames));
-      setShowImportModal(false); setImportPreviewNames([]); setPasteNamesText("");
+      setShowImportModal(false); setImportPreviewNames([]); setImportPreviewCodes([]); setPasteNamesText("");
       setPreviewNotice(`Đã thêm thử ${incoming.length} học sinh vào lớp mẫu.`);
       return;
     }
@@ -1743,7 +1767,13 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         try {
           const response = await fetch("/api/teacher/students/bulk", {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ class_name: className, students: batch.map((full_name) => ({ full_name })) }),
+            body: JSON.stringify({
+              class_name: className,
+              students: batch.map((full_name, localIndex) => ({
+                full_name,
+                student_code: importPreviewCodes[offset + localIndex] || "",
+              })),
+            }),
           });
           const result = await response.json();
           if (!response.ok) {
@@ -1773,7 +1803,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         setStudentAccountNotice(`Đã tạo ${successful.length} tài khoản. Mật khẩu chỉ hiển thị trong phiên này; hãy sao chép hoặc in ngay.`);
         setStudentAccountError("");
       }
-      setShowImportModal(false); setImportPreviewNames([]); setPasteNamesText("");
+      setShowImportModal(false); setImportPreviewNames([]); setImportPreviewCodes([]); setPasteNamesText("");
       if (failed.length || importFatalError) {
         const summary = failed.slice(0, 8).map((row) => `Dòng ${row.index + 1}: ${row.error || "lỗi không xác định"}`).join("\n");
         alert(`Đã tạo ${successful.length}/${allResults.length} tài khoản. ${failed.length} dòng lỗi.${importFatalError ? `\n${importFatalError}` : ""}${summary ? `\n${summary}` : ""}${failed.length > 8 ? "\n…" : ""}`);
@@ -1782,6 +1812,51 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
       alert("Lỗi nhập danh sách: " + (error instanceof Error ? error.message : "Lỗi kết nối máy chủ."));
     } finally { setIsSavingStudents(false); }
   };
+  // Mục 5: xuất Excel toàn bộ danh sách tài khoản để giáo viên gửi về lớp.
+  // Chỉ xuất username; với mật khẩu, nếu học sinh đã đổi thì ghi rõ "Đã đổi mật khẩu"
+  // thay vì để lộ mật khẩu (bảo mật). Mật khẩu tạm đã tạo xem được ở phiên cấp tài khoản.
+  const exportStudentAccountsExcel = async (roster: any[]) => {
+    if (!roster.length) { alert("Chưa có học sinh để xuất."); return; }
+    try {
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = "VatLy11";
+      workbook.created = new Date();
+      const sheet = workbook.addWorksheet("Danh sách tài khoản");
+      sheet.columns = [
+        { header: "STT", key: "index", width: 6 },
+        { header: "Mã số sinh viên", key: "studentCode", width: 18 },
+        { header: "Họ và tên", key: "fullName", width: 28 },
+        { header: "Lớp", key: "className", width: 10 },
+        { header: "Tên đăng nhập", key: "username", width: 24 },
+        { header: "Trạng thái mật khẩu", key: "passwordState", width: 22 },
+        { header: "Tài khoản", key: "accountState", width: 16 },
+      ];
+      sheet.getRow(1).font = { bold: true };
+      roster.forEach((student, index) => {
+        sheet.addRow({
+          index: index + 1,
+          studentCode: student.student_code || "",
+          fullName: student.full_name || "",
+          className: student.class_name || "",
+          username: student.username || "",
+          passwordState: student.password_changed ? "Đã đổi mật khẩu" : (student.auth_user_id ? "Mật khẩu tạm (xem phiên cấp)" : "Chưa cấp"),
+          accountState: student.auth_user_id ? "Đã cấp" : "Chưa cấp",
+        });
+      });
+      sheet.eachRow((row) => row.eachCell((cell) => { cell.font = { ...(cell.font || {}), name: "Arial" }; }));
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `danh-sach-tai-khoan-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      alert("Không xuất được file Excel: " + (error instanceof Error ? error.message : "lỗi không xác định."));
+    }
+  };
+
   const deleteStudent = async (id: string) => {
     const student = students.find((item) => item.id === id);
     if (!student || studentArchiveBusyId) return;
@@ -3628,11 +3703,19 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
         {/* 9. TAB SINH VIÊN */}
         {activeTab === 'students' && (
           <div className="space-y-6 max-w-5xl animate-in fade-in">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-wrap justify-between items-center gap-3">
               <div>
                 <h2 className="text-3xl font-extrabold text-slate-900">Danh sách Học sinh ({activeStudents.length})</h2>
                 <p className="text-slate-500 text-sm mt-1">Quản lý tài khoản học sinh, thêm từng em hoặc nhập hàng loạt từ Excel.</p>
               </div>
+              <button
+                type="button"
+                onClick={() => exportStudentAccountsExcel(activeStudents)}
+                disabled={activeStudents.length === 0}
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-40"
+              >
+                <FileSpreadsheet className="h-4 w-4" /> Xuất Excel tài khoản
+              </button>
             </div>
 
             <div className="flex flex-wrap items-end gap-3 rounded-2xl border bg-white p-4 shadow-sm"><label className="min-w-[220px] flex-1 text-xs font-bold text-slate-700">Lớp áp dụng cho học sinh mới<input value={studentClassName} onChange={(event) => setStudentClassName(event.target.value)} maxLength={40} required className="mt-1 w-full rounded-xl border px-3 py-2.5 text-sm font-normal outline-none focus:border-blue-500" placeholder="Ví dụ: 11A1" /></label><p className="max-w-xl text-xs leading-5 text-slate-500">Lớp này áp dụng khi thêm từng học sinh hoặc nhập danh sách; hồ sơ hiện có không bị đổi.</p></div>
@@ -3673,11 +3756,11 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
                     <div className="flex min-w-0 items-center justify-between gap-2">
                       <span className="min-w-0 truncate font-bold">{s.full_name}<span className="ml-1.5 rounded bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">{s.class_name || "Chưa xếp lớp"}</span></span>
                       <div className="flex shrink-0 items-center gap-1">
-                        {s.is_active === false ? <span className="rounded-md bg-slate-200 px-1.5 py-1 text-[9px] font-bold text-slate-600">Đã lưu trữ</span> : s.auth_user_id ? <button type="button" disabled={previewMode || !canProvisionStudentAccounts} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-amber-800 disabled:opacity-50">Cấp lại mật khẩu</button> : <button type="button" disabled={previewMode || !canProvisionStudentAccounts} title={!canProvisionStudentAccounts ? "Cần áp dụng migration tài khoản mới." : undefined} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
+                        {s.is_active === false ? <span className="rounded-md bg-slate-200 px-1.5 py-1 text-[9px] font-bold text-slate-600">Đã lưu trữ</span> : s.password_changed ? <span title="Học sinh đã tự đổi mật khẩu; giáo viên không xem được mật khẩu." className="rounded-md bg-emerald-100 px-1.5 py-1 text-[9px] font-bold text-emerald-700">Đã đổi mật khẩu</span> : s.auth_user_id ? <button type="button" disabled={previewMode || !canProvisionStudentAccounts} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-amber-800 disabled:opacity-50">Cấp lại mật khẩu</button> : <button type="button" disabled={previewMode || !canProvisionStudentAccounts} title={!canProvisionStudentAccounts ? "Cần áp dụng migration tài khoản mới." : undefined} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
                         <button type="button" aria-label={(s.is_active === false ? "Khôi phục học sinh " : "Lưu trữ học sinh ") + s.full_name} title={s.is_active === false ? "Khôi phục hồ sơ" : "Lưu trữ, giữ nguyên lịch sử"} disabled={studentArchiveBusyId === s.id || studentArchiveSchemaMissing && !previewMode} onClick={() => void deleteStudent(s.id)} className={"rounded-md p-1 disabled:opacity-40 " + (s.is_active === false ? "text-blue-600 hover:bg-blue-50" : "text-slate-400 hover:text-amber-700")}>{studentArchiveBusyId === s.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin"/> : s.is_active === false ? <RotateCcw className="h-3.5 w-3.5"/> : <Archive className="h-3.5 w-3.5"/>}</button>
                       </div>
                     </div>
-                    <p className="mt-1 truncate text-[10px] font-normal text-slate-500">{s.username ? `Tên đăng nhập: ${s.username}` : (s.login_email || (s.auth_user_id ? "Tài khoản đã liên kết" : "Chưa có tài khoản đăng nhập"))}</p>
+                    <p className="mt-1 truncate text-[10px] font-normal text-slate-500">{s.student_code ? `Mã SV: ${s.student_code} · ` : ""}{s.username ? `Đăng nhập: ${s.username}` : (s.login_email || (s.auth_user_id ? "Tài khoản đã liên kết" : "Chưa có tài khoản đăng nhập"))}</p>
                   </div>
                 ))}
                 {visibleStudents.length === 0 && (
@@ -3708,9 +3791,9 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
             {showImportModal && (
               <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/55 p-4" role="presentation">
                 <section role="dialog" aria-modal="true" aria-labelledby="import-students-title" className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
-                  <div className="flex items-start justify-between gap-4"><div><h3 id="import-students-title" className="text-xl font-black text-slate-900">Kiểm tra danh sách trước khi lưu</h3><p className="mt-1 text-sm text-slate-500">Tìm thấy {importPreviewNames.length} tên học sinh. Lớp đích: {studentClassName || "chưa nhập"}. Tên lặp trong tệp đã được gộp.{importPreviewNames.length > 500 ? " Mỗi lượt tối đa 500 học sinh; hãy chia danh sách nhỏ hơn." : ""}</p></div><button type="button" aria-label="Đóng" onClick={() => { setShowImportModal(false); setImportPreviewNames([]); }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
+                  <div className="flex items-start justify-between gap-4"><div><h3 id="import-students-title" className="text-xl font-black text-slate-900">Kiểm tra danh sách trước khi lưu</h3><p className="mt-1 text-sm text-slate-500">Tìm thấy {importPreviewNames.length} tên học sinh. Lớp đích: {studentClassName || "chưa nhập"}. Tên lặp trong tệp đã được gộp.{importPreviewNames.length > 500 ? " Mỗi lượt tối đa 500 học sinh; hãy chia danh sách nhỏ hơn." : ""}</p></div><button type="button" aria-label="Đóng" onClick={() => { setShowImportModal(false); setImportPreviewNames([]); setImportPreviewCodes([]); }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
                   <div className="mt-4 max-h-72 overflow-y-auto rounded-xl border border-slate-200"><ol className="divide-y divide-slate-100">{importPreviewNames.map((name, index) => <li key={`${name}-${index}`} className="flex items-center gap-3 px-4 py-2.5 text-sm"><span className="w-8 text-right text-xs text-slate-400">{index + 1}.</span><span className="font-medium text-slate-800">{name}</span></li>)}</ol></div>
-                  <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setShowImportModal(false); setImportPreviewNames([]); }} disabled={isSavingStudents} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-50">Hủy</button><button type="button" onClick={confirmSaveImportedStudents} disabled={isSavingStudents || importPreviewNames.length === 0 || importPreviewNames.length > 500} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50">{isSavingStudents ? "Đang lưu…" : `Lưu ${importPreviewNames.length} học sinh`}</button></div>
+                  <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setShowImportModal(false); setImportPreviewNames([]); setImportPreviewCodes([]); }} disabled={isSavingStudents} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-50">Hủy</button><button type="button" onClick={confirmSaveImportedStudents} disabled={isSavingStudents || importPreviewNames.length === 0 || importPreviewNames.length > 500} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50">{isSavingStudents ? "Đang lưu…" : `Lưu ${importPreviewNames.length} học sinh`}</button></div>
                 </section>
               </div>
             )}

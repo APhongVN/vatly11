@@ -25,6 +25,8 @@ export async function POST(request: Request) {
     if (profileError || !profile) {
       return NextResponse.json({ error: "Mật khẩu đã đổi nhưng chưa cập nhật được trạng thái tài khoản. Hãy thử gửi lại." }, { status: 503 });
     }
+    // Mục 5: đánh dấu học sinh đã đổi mật khẩu để giáo viên thấy trạng thái bảo mật.
+    await admin.from("students").update({ password_changed: true }).eq("auth_user_id", access.user.id);
     return NextResponse.json({ success: true });
   } catch (error) {
     const tooLarge = error instanceof Error && error.name === "RequestBodyTooLargeError";
