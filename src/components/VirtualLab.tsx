@@ -102,7 +102,7 @@ export default function VirtualLab({ activityId = 4 }: { activityId?: number }) 
     let cancelled = false;
     fetch(`/api/activity-evidence?activityId=${activityId}`, { cache: "no-store" })
       .then(async (response) => {
-        if (response.status === 401) { if (!cancelled) { setPreviewMode(true); setLoadState("ready"); } return null; }
+        if (response.status === 401) { if (!cancelled) { setError("Cần đăng nhập học sinh để lưu sổ tay."); setLoadState("unavailable"); } return null; }
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Không tải được sổ tay.");
         return result;

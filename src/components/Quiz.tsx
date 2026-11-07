@@ -54,7 +54,7 @@ export default function Quiz({ activityId, questions }: { activityId: number; qu
     let cancelled = false;
     fetch(`/api/activity-evidence?activityId=${activityId}`, { cache: "no-store" })
       .then(async (response) => {
-        if (response.status === 401) { if (!cancelled) setPreviewMode(true); return null; }
+        if (response.status === 401) { if (!cancelled) { setError("Cần đăng nhập học sinh để lưu kết quả."); setLoading(false); } return null; }
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Không tải được kết quả đã lưu.");
         return result.record;

@@ -57,7 +57,7 @@ export default function ActivityResponseForm({ activityId }: { activityId: numbe
     let cancelled = false;
     fetch(`/api/activity-evidence?activityId=${activityId}`, { cache: "no-store" })
       .then(async (response) => {
-        if (response.status === 401) { if (!cancelled) setPreviewMode(true); return null; }
+        if (response.status === 401) { if (!cancelled) setMessage("Cần đăng nhập học sinh để lưu bài."); return null; }
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Không tải được bài làm đã lưu.");
         return result;

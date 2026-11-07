@@ -22,15 +22,13 @@ function redirectWithRefreshedCookies(response: NextResponse, request: NextReque
 export async function proxy(request: NextRequest) {
   const isTeacherPortal = request.nextUrl.pathname === "/giao-vien"
     || request.nextUrl.pathname.startsWith("/giao-vien/");
-  const isStudentPreview = request.nextUrl.pathname.replace(/\/+$/, "") === "/hoc-sinh";
   let response = NextResponse.next({ request });
-  if (isStudentPreview) return response;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = getSupabasePublicKey();
   if (!url || !key) {
-    // Cổng giáo viên và trang xem học sinh là công khai; các thao tác ghi vẫn qua API có xác thực.
-    return isTeacherPortal ? response : redirectWithRefreshedCookies(response, request, "/login");
+    // Không cấu hình Supabase: yêu cầu đăng nhập thay vì hiển thị dữ liệu mẫu.
+    return redirectWithRefreshedCookies(response, request, "/login");
   }
 
   const supabase = createServerClient(url, key, {
@@ -49,16 +47,15 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // Làm mới refresh token ở mọi cổng, nhưng không chặn khách xem dashboard giáo viên.
+  // Làm mới refresh token ở mọi cổng. Cổng giáo viên và cổng học sinh đều yêu cầu
+  // đăng nhập; khách chưa đăng nhập được chuyển thẳng sang trang đăng nhập.
   let claims: { sub?: string } | null = null;
   try {
     const { data } = await supabase.auth.getClaims();
     claims = data?.claims || null;
   } catch {
-    // Cổng giáo viên vẫn là trang xem mẫu công khai nếu Supabase đang lỗi.
-    if (isTeacherPortal) return response;
+    return redirectWithRefreshedCookies(response, request, "/login");
   }
-  if (isTeacherPortal) return response;
   if (!claims?.sub) return redirectWithRefreshedCookies(response, request, "/login");
 
   const { data: profile, error } = await supabase
@@ -67,7 +64,21 @@ export async function proxy(request: NextRequest) {
     .eq("id", claims.sub)
     .maybeSingle();
 
-  if (error || !profile || profile.role !== "student") {
+  if (error || !profile) {
+    return redirectWithRefreshedCookies(response, request, "/login?error=role");
+  }
+
+  if (isTeacherPortal) {
+    if (profile.role !== "teacher") {
+      return redirectWithRefreshedCookies(response, request, "/login?error=role");
+    }
+    if (profile.must_change_password && request.nextUrl.pathname !== "/doi-mat-khau") {
+      return redirectWithRefreshedCookies(response, request, "/doi-mat-khau");
+    }
+    return response;
+  }
+
+  if (profile.role !== "student") {
     return redirectWithRefreshedCookies(response, request, "/login?error=role");
   }
   if (profile.must_change_password && request.nextUrl.pathname !== "/doi-mat-khau") {
