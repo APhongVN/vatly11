@@ -440,7 +440,7 @@ assert.match(submissionValidation, /\^\$\{folder\}\/\$\{escapeRegExp\(userId\)\}
 assert.match(submissionRateLimitMigration, /WHEN 'submission' THEN 12/);
 assert.match(submissionRateLimitMigration, /WHEN 'group-submission' THEN 12/);
 assert.match(submissionRateLimitMigration, /auth\.role\(\) IS DISTINCT FROM 'service_role'/);
-const boundedBodyRoutes = ["account/update-password", "activity-evidence", "ai-generate-quiz", "capacitance-lab-settings", "chat", "grade", "group-submissions", "ocr", "peer-votes", "quiz-submit", "submissions", "teacher/student-accounts"];
+const boundedBodyRoutes = ["account/update-password", "activity-evidence", "ai-generate-quiz", "capacitance-lab-settings", "chat", "grade", "group-submissions", "ocr", "peer-votes", "quiz-submit", "student-questions", "submissions", "teacher/student-accounts"];
 for (const routePath of boundedBodyRoutes) {
   const routeSource = await readFile(new URL(`../src/app/api/${routePath}/route.ts`, import.meta.url), "utf8");
   assert.match(routeSource, /readBoundedRequestText\((?:request|req),/, `${routePath} must stream requests through the byte limit.`);
@@ -878,6 +878,26 @@ assert.match(studentImportSaveSection, /Promise|allResults/);
 assert.doesNotMatch(studentImportSaveSection, /supabase\.from\("students"\)\.insert/);
 assert.match(guestStudentRouteText, /Lọc lớp/);
 console.log("Teacher/student authentication, unique usernames, server-only account creation, rate-limited login, bulk partial success and one-time credential delivery verified.");
+
+// "Góc hỏi đáp" question tracker: table, RLS, status transitions and the teacher
+// PATCH route that answers and updates handling state.
+const studentQuestionsMigration = await readFile(new URL("../supabase/migrations/20261104000100_student_questions.sql", import.meta.url), "utf8");
+const studentQuestionsApi = await readFile(new URL("../src/app/api/student-questions/route.ts", import.meta.url), "utf8");
+const studentQuestionPatchApi = await readFile(new URL("../src/app/api/student-questions/[id]/route.ts", import.meta.url), "utf8");
+const studentQuestionRules = await readFile(new URL("../src/lib/student-questions.mjs", import.meta.url), "utf8");
+assert.match(studentQuestionsMigration, /CREATE TABLE IF NOT EXISTS public\.student_questions/);
+assert.match(studentQuestionsMigration, /status TEXT NOT NULL DEFAULT 'unanswered' CHECK \(status IN \('unanswered', 'answered', 'resolved'\)\)/);
+assert.match(studentQuestionsMigration, /CHECK \(status = 'unanswered' OR teacher_response IS NOT NULL\)/);
+assert.match(studentQuestionsMigration, /student_questions_student_read_own/);
+assert.match(studentQuestionsMigration, /student_questions_teacher_manage/);
+assert.match(studentQuestionsMigration, /WHEN 'student-question' THEN 20/);
+assert.match(studentQuestionsApi, /authorizeApi\(\["student", "teacher"\], 40, "student-question"\)/);
+assert.match(studentQuestionsApi, /authorizeApi\(\["student"\], 20, "student-question"\)/);
+assert.match(studentQuestionsApi, /status: "unanswered"/);
+assert.match(studentQuestionPatchApi, /authorizeApi\(\["teacher"\], 20, "student-question"\)/);
+assert.match(studentQuestionPatchApi, /canTransitionQuestionStatus/);
+assert.match(studentQuestionRules, /canTransitionQuestionStatus/);
+console.log("Student Q&A tracker: topics, statuses, RLS, rate limit, bounded bodies and teacher response workflow verified.");
 const rubricDocumentMigration = await readFile(new URL("../supabase/migrations/20261031002700_rubric_document_import.sql", import.meta.url), "utf8");
 assert.match(teacherDashboardSource, /handleNewActivityRubricFile/);
 assert.match(teacherDashboardSource, /handleEditActivityRubricFile/);
