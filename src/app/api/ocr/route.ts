@@ -3,6 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import { authorizeApi } from "@/lib/api-security";
 import { readBoundedRequestText } from "@/lib/read-bounded-request.mjs";
 import { GEMINI_MODELS } from "@/lib/gemini-config";
+import { logGeminiUsage } from "@/lib/gemini-usage";
 
 const MODELS = GEMINI_MODELS;
 
@@ -59,6 +60,7 @@ Quy tắc:
           },
         });
 
+        logGeminiUsage("ocr", model, response.usageMetadata);
         const text = response.text || "";
         if (text) {
           return NextResponse.json({ text, model });

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { authorizeApi } from "@/lib/api-security";
 import { GEMINI_MODELS } from "@/lib/gemini-config";
+import { logGeminiUsage } from "@/lib/gemini-usage";
 import { READINESS_TOPICS } from "@/lib/readiness-check.mjs";
 
 export async function POST() {
@@ -34,6 +35,7 @@ export async function POST() {
   for (const model of GEMINI_MODELS) {
     try {
       const result = await ai.models.generateContent({ model, contents: prompt, config: { temperature: 0.2, maxOutputTokens: 1800 } });
+      logGeminiUsage("readiness-analysis", model, result.usageMetadata);
       const cleaned = (result.text || "").replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       const match = cleaned.match(/\{[\s\S]*\}/);
       if (!match) continue;

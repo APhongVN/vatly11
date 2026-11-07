@@ -4,6 +4,7 @@ import { authorizeApi } from "@/lib/api-security";
 import { readBoundedRequestText } from "@/lib/read-bounded-request.mjs";
 import { createSupabaseAdminClient, hasSupabaseAdminKey } from "@/lib/supabase-admin";
 import { GEMINI_MODELS } from "@/lib/gemini-config";
+import { logGeminiUsage } from "@/lib/gemini-usage";
 
 const MODELS = GEMINI_MODELS;
 
@@ -79,6 +80,7 @@ ${JSON.stringify({ activity: activityTitle, rubric, student_submission: sanitize
           },
         });
 
+        logGeminiUsage("grade", model, response.usageMetadata);
         const responseText = response.text || "";
         const cleanedText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
         const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { authorizeApi } from "@/lib/api-security";
 import { GEMINI_MODELS } from "@/lib/gemini-config";
+import { logGeminiUsage } from "@/lib/gemini-usage";
 
 const MODELS = GEMINI_MODELS;
 
@@ -63,6 +64,7 @@ HÃY ĐÁNH GIÁ VÀ XUẤT RA BÁO CÁO TOÀN DIỆN BẰNG ĐỊNH DẠNG JSON
           },
         });
 
+        logGeminiUsage("ai-analytics", model, response.usageMetadata);
         const text = response.text || "";
         const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
         const jsonMatch = cleaned.match(/\{[\s\S]*\}/);

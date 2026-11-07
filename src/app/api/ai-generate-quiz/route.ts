@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { authorizeApi } from "@/lib/api-security";
 import { GEMINI_MODELS } from "@/lib/gemini-config";
+import { logGeminiUsage } from "@/lib/gemini-usage";
 import { normalizeGeneratedQuiz } from "@/lib/ai-quiz-validation.mjs";
 import { readBoundedRequestText } from "@/lib/read-bounded-request.mjs";
 
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
           maxOutputTokens: 4000,
         },
       });
+      logGeminiUsage("ai-generate-quiz", model, response.usageMetadata);
       const cleaned = (response.text || "").replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
       const parsed: unknown = JSON.parse(cleaned);
       const questions = normalizeGeneratedQuiz(parsed, count as number);

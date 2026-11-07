@@ -19,10 +19,11 @@ VatLy11 là ứng dụng Next.js full-stack: trang server-rendered, Proxy, API x
    | `SUPABASE_SECRET_KEY` | Settings → API Keys; dạng `sb_secret_...` | Chỉ server; không thêm tiền tố `NEXT_PUBLIC_` |
    | `GEMINI_API_KEY` | Google AI Studio | Chỉ server |
    | `GEMINI_MODELS` (tuỳ chọn) | Id model Gemini cách nhau bằng dấu phẩy, thử theo thứ tự | Chỉ server; để trống dùng danh sách mặc định trong `src/lib/gemini-config.ts` |
+   | `GEMINI_INPUT_COST_PER_M`, `GEMINI_OUTPUT_COST_PER_M` (tuỳ chọn) | USD cho mỗi 1 triệu token theo bảng giá Gemini của bạn; chỉ dùng để ước tính chi phí trong log `[gemini]` | Chỉ server; để trống dùng mặc định 0.5 (input) / 3.0 (output) |
    | `STUDENT_AUTH_EMAIL_DOMAIN` | Miền email do cô quản lý, có DNS | Dùng cho tài khoản username học sinh |
 
 4. Bấm **Save, rebuild, and deploy** sau khi thay biến. Nếu vừa đổi/thu hồi khóa Supabase cũ, phải thay đồng thời publishable key và server secret trong Render; redeploy xong mới kiểm tra.
-5. Mở **Events/Logs** để xác nhận deploy chạy `npm start` thành công. Kiểm tra `https://<ten-service>.onrender.com/api/public-curriculum`: cần trả HTTP 200 và JSON có `activities`. HTTP 503 hoặc log `Invalid API key` nghĩa là URL/key không cùng project, key cũ đã bị thu hồi, hoặc migration/RLS chưa áp dụng.
+5. Mở **Events/Logs** để xác nhận deploy chạy `npm start` thành công. Kiểm tra `https://<ten-service>.onrender.com/api/health`: cần trả HTTP 200 với `status` là `ok` (hoặc `degraded` kèm từng dependency rõ tên). Kiểm tra `https://<ten-service>.onrender.com/api/public-curriculum`: cần trả HTTP 200 và JSON có `activities`. HTTP 503 hoặc log `Invalid API key` nghĩa là URL/key không cùng project, key cũ đã bị thu hồi, hoặc migration/RLS chưa áp dụng.
 6. Mở `/hoc-sinh` và `/hoat-dong/8` để kiểm tra nội dung học; đăng nhập giáo viên thật rồi thử tạo tài liệu, nhóm, import rubric và xuất Excel. Bản xem công khai không tạo điểm hay hồ sơ học sinh giả.
 
 Tài liệu chính thức: [Deploy Next.js trên Render](https://render.com/docs/deploy-nextjs-app), [Environment Variables của Render](https://render.com/docs/configure-environment-variables), [Supabase API Keys](https://supabase.com/docs/guides/getting-started/api-keys).

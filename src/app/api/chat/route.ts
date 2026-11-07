@@ -3,6 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import { authorizeApi } from "@/lib/api-security";
 import { readBoundedRequestText } from "@/lib/read-bounded-request.mjs";
 import { GEMINI_MODELS } from "@/lib/gemini-config";
+import { logGeminiUsage } from "@/lib/gemini-usage";
 import { getChatActivityId, isStudentTaskAwaitingWork } from "@/lib/chat-context.mjs";
 
 const MAX_MESSAGES = 12;
@@ -103,6 +104,7 @@ export async function POST(request: Request) {
           },
         });
 
+        logGeminiUsage("chat", model, response.usageMetadata);
         const reply = response.text?.trim();
         if (reply) return NextResponse.json({ reply });
       } catch {
