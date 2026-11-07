@@ -35,6 +35,7 @@ export default function HocSinhPage() {
   const [now, setNow] = useState(new Date());
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isChatMuted, setIsChatMuted] = useState(false);
+  const [isDeletionBlocked, setIsDeletionBlocked] = useState(false);
   const [myQuestions, setMyQuestions] = useState<any[]>([]);
   const [myEvidence, setMyEvidence] = useState<any[]>([]);
   const [newQuestionTopic, setNewQuestionTopic] = useState("");
@@ -106,8 +107,8 @@ export default function HocSinhPage() {
     if (qzs) setQuizzes(qzs);
     const { data: ev } = await supabase.from('activity_evidence').select('activity_id,score,score_max,completed_at,first_attempt_correct,correct_after_hint,attempts_count,hint_count,review_topics').eq('student_id', student.id).order('updated_at', { ascending: false });
     if (ev) setMyEvidence(ev);
-    const { data: setting } = await supabase.from('chat_settings').select('is_muted').eq('id', 1).single();
-    if (setting) setIsChatMuted(setting.is_muted);
+    const { data: setting } = await supabase.from('chat_settings').select('is_muted,deletion_blocked').eq('id', 1).single();
+    if (setting) { setIsChatMuted(setting.is_muted); setIsDeletionBlocked(Boolean((setting as any).deletion_blocked)); }
     await fetchMyQuestions();
   }
 
@@ -800,7 +801,8 @@ export default function HocSinhPage() {
                         isMe ? 'bg-blue-600 text-white' : isTeacher ? 'bg-indigo-50 border border-indigo-200 text-indigo-950 font-medium' : 'bg-white border text-slate-800'
                       }`}>
                         <p>{m.content}</p>
-                        {isMe && <button onClick={() => void deleteOwnMessage(m)} className="mt-2 text-[10px] opacity-70 hover:opacity-100">Xóa tin nhắn</button>}
+                        {isMe && !isDeletionBlocked && <button onClick={() => void deleteOwnMessage(m)} className="mt-2 text-[10px] opacity-70 hover:opacity-100">Xóa tin nhắn</button>}
+                        {isMe && isDeletionBlocked && <span className="mt-2 block text-[10px] text-slate-400">Giáo viên đang khóa xóa tin nhắn</span>}
                         {m.attachment_url && (isInlineChatImage(m.attachment_type) ? <a href={attachmentHref(m.attachment_url)} target="_blank" rel="noreferrer"><Image unoptimized width={800} height={600} src={attachmentHref(m.attachment_url)} alt={m.attachment_name || "Ảnh đính kèm"} className="mt-2 max-h-64 rounded-xl object-contain" /></a> : <a href={attachmentHref(m.attachment_url)} target="_blank" rel="noreferrer" className="mt-2 block underline">📎 {m.attachment_name || "Tải tệp"}</a>)}
                         <button onClick={() => speakText(m.content)} className={`mt-1.5 ${isMe ? 'text-blue-200 hover:text-white' : 'text-slate-400 hover:text-blue-600'}`} title="Nghe đọc giọng nói">
                           <Volume2 className="w-3.5 h-3.5" />

@@ -41,6 +41,18 @@ function QuizContent() {
       setSubmitting(false);
     }
   }, [answers, quizId, submitted, submitting]);
+
+  // Mục 13: cảnh báo trước khi rời trang khi bài chưa nộp, tránh mất bài (giống Azota).
+  useEffect(() => {
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (submitted || loading || !quiz) return;
+      event.preventDefault();
+      event.returnValue = "";
+      return "";
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [submitted, loading, quiz]);
   useEffect(() => {
     let cancelled = false;
     const fetchQuiz = async () => {

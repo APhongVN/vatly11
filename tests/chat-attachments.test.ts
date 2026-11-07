@@ -38,8 +38,8 @@ describe("isInlineChatImage", () => {
 });
 
 describe("constants", () => {
-  it("keeps the 25 MB attachment cap and the accepted extension list intact", () => {
-    expect(MAX_CHAT_ATTACHMENT_BYTES).toBe(25 * 1024 * 1024);
+  it("keeps the 100 MB attachment cap and the accepted extension list intact", () => {
+    expect(MAX_CHAT_ATTACHMENT_BYTES).toBe(100 * 1024 * 1024);
     const accepted = CHAT_ATTACHMENT_ACCEPT.split(",");
     expect(accepted).toContain(".docx");
     expect(accepted).toContain(".png");

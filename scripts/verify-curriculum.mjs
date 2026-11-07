@@ -33,7 +33,7 @@ assert.equal(normalizeGeneratedQuiz([{ ...validGeneratedQuestion, correct_option
 assert.equal(normalizeGeneratedQuiz([{ ...validGeneratedQuestion, question: "x".repeat(1601) }], 1), null, "Question text must be bounded.");
 assert.equal(normalizeGeneratedQuiz([validGeneratedQuestion], 21), null, "Generated question count must be bounded.");
 assert.equal(await readBoundedRequestText(new Request("http://localhost", { method: "POST", body: "tụ điện" }), 32), "tụ điện");
-assert.equal(MAX_CHAT_ATTACHMENT_BYTES, 25 * 1024 * 1024);
+assert.equal(MAX_CHAT_ATTACHMENT_BYTES, 100 * 1024 * 1024);
 assert.equal(chatAttachmentMimeType({ name: "lab.HEIC", type: "" }), "image/heic");
 assert.equal(chatAttachmentMimeType({ name: "rubric.odt", type: "application/octet-stream" }), "application/vnd.oasis.opendocument.text");
 assert.equal(chatAttachmentMimeType({ name: "notes.pdf", type: "application/pdf" }), "application/pdf");

@@ -1,4 +1,4 @@
-export const MAX_CHAT_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+export const MAX_CHAT_ATTACHMENT_BYTES = 100 * 1024 * 1024;
 export const CHAT_ATTACHMENT_ACCEPT = [
   ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp", ".rtf", ".pages", ".numbers", ".key",
   ".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".bmp", ".heic", ".heif", ".tif", ".tiff",
