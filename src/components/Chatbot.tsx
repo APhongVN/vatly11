@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, Check, Copy, Maximize2, Minimize2, RotateCcw, Send, User, X } from "lucide-react";
+import { Bot, Check, Copy, ImagePlus, Maximize2, Minimize2, RotateCcw, Send, User, X } from "lucide-react";
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
+import { extractRubricFile } from "@/lib/rubric-import.mjs";
 
-type Message = { role: "user" | "assistant"; text: string };
+type Message = { role: "user" | "assistant"; text: string; imageDataUrl?: string; fileName?: string };
 
 const WELCOME: Message = {
   role: "assistant",
@@ -28,6 +30,10 @@ export default function Chatbot({ initiallyOpen = false }: { initiallyOpen?: boo
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [pendingImage, setPendingImage] = useState<{ mimeType: string; data: string; dataUrl: string } | null>(null);
+  const [pendingFileText, setPendingFileText] = useState("");
+  const [pendingFileName, setPendingFileName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -39,11 +45,46 @@ export default function Chatbot({ initiallyOpen = false }: { initiallyOpen?: boo
     if (open) inputRef.current?.focus();
   }, [open]);
 
+  const handlePickFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setError("");
+    const isImage = /^image\/(png|jpeg|webp|gif)$/i.test(file.type);
+    if (isImage) {
+      if (file.size > 4 * 1024 * 1024) { setError("Ảnh tối đa 4 MB. Em hãy chọn ảnh nhỏ hơn."); return; }
+      const buffer = await file.arrayBuffer();
+      let binary = "";
+      const bytes = new Uint8Array(buffer);
+      for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+      const base64 = btoa(binary);
+      setPendingImage({ mimeType: file.type.toLowerCase(), data: base64, dataUrl: `data:${file.type};base64,${base64}` });
+      setPendingFileText("");
+      setPendingFileName(file.name);
+      return;
+    }
+    // Tài liệu: trích văn bản bằng bộ đọc dùng chung (TXT/Word/Excel/PDF/ảnh scan).
+    try {
+      const extracted = await extractRubricFile(file, () => Promise.resolve({ text: "", confidence: 0 }));
+      const text = (extracted?.text || "").trim();
+      if (!text) throw new Error("Không đọc được nội dung tài liệu.");
+      setPendingFileText(text);
+      setPendingImage(null);
+      setPendingFileName(file.name);
+    } catch (pickError) {
+      setError(pickError instanceof Error ? pickError.message : "Không đọc được tệp. Em thử tệp khác nhé.");
+    }
+  };
+
+  const clearPending = () => { setPendingImage(null); setPendingFileText(""); setPendingFileName(""); };
+
   const send = async (prompt?: string) => {
     const question = (prompt ?? input).trim();
     if (!question || loading) return;
 
-    const nextMessages: Message[] = [...messages, { role: "user", text: question }];
+    const attachmentNote = pendingFileName ? `\n\n[Đính kèm: ${pendingFileName}]` : "";
+    const userMessage: Message = { role: "user", text: question + attachmentNote, imageDataUrl: pendingImage?.dataUrl, fileName: pendingFileName || undefined };
+    const nextMessages: Message[] = [...messages, userMessage];
     setMessages(nextMessages);
     setInput("");
     setError("");
@@ -56,11 +97,14 @@ export default function Chatbot({ initiallyOpen = false }: { initiallyOpen?: boo
         body: JSON.stringify({
           messages: nextMessages.slice(-12).map(({ role, text }) => ({ role, content: text })),
           context: { pathname: window.location.pathname, search: window.location.search },
+          attachments: pendingImage ? [{ mimeType: pendingImage.mimeType, data: pendingImage.data }] : [],
+          fileText: pendingFileText,
         }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Trợ lý chưa trả lời được.");
       setMessages((current) => [...current, { role: "assistant", text: data.reply }]);
+      clearPending();
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : "Mất kết nối. Em thử gửi lại nhé.");
     } finally {
@@ -139,7 +183,10 @@ export default function Chatbot({ initiallyOpen = false }: { initiallyOpen?: boo
             </div>
             <div className={`group relative max-w-[86%] rounded-2xl px-3.5 py-3 text-sm leading-6 ${message.role === "user" ? "rounded-tr-md bg-blue-700 text-white" : "rounded-tl-md border border-slate-200 bg-white text-slate-800 shadow-sm"}`}>
               {message.role === "user" ? (
-                <p className="whitespace-pre-wrap">{message.text}</p>
+                <>
+                  {message.imageDataUrl ? <Image unoptimized width={320} height={240} src={message.imageDataUrl} alt={message.fileName || "Ảnh đính kèm"} className="mb-2 max-h-48 w-auto rounded-xl object-contain" /> : null}
+                  <p className="whitespace-pre-wrap">{message.text}</p>
+                </>
               ) : (
                 <>
                   <div className="prose prose-sm max-w-none break-words text-slate-800 prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-pre:overflow-x-auto">
@@ -178,7 +225,7 @@ export default function Chatbot({ initiallyOpen = false }: { initiallyOpen?: boo
         </div>
       )}
 
-      <form onSubmit={(event) => { event.preventDefault(); void send(); }} className="flex items-end gap-2 border-t border-slate-200 bg-white p-3">
+      <form onSubmit={(event) => { event.preventDefault(); void send(); }} className="border-t border-slate-200 bg-white p-3">{(pendingImage || pendingFileText) && (<div className="mb-2 flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">{pendingImage ? <Image unoptimized width={40} height={40} src={pendingImage.dataUrl} alt="Ảnh xem trước" className="h-10 w-10 rounded-lg object-cover" /> : <span>📄</span>}<span className="min-w-0 flex-1 truncate">{pendingFileName || "Tệp đính kèm"}</span><button type="button" onClick={clearPending} aria-label="Bỏ đính kèm" className="shrink-0 rounded-lg p-1 text-blue-700 hover:bg-blue-100"><X className="h-3.5 w-3.5" /></button></div>)}<div className="flex items-end gap-2"><input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif,.txt,.md,.csv,.docx,.xlsx,.pdf" onChange={(e) => void handlePickFile(e)} className="hidden" /><button type="button" onClick={() => fileInputRef.current?.click()} aria-label="Đính kèm ảnh hoặc tài liệu" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50"><ImagePlus className="h-4 w-4" /></button>
         <textarea
           ref={inputRef}
           value={input}
@@ -195,9 +242,10 @@ export default function Chatbot({ initiallyOpen = false }: { initiallyOpen?: boo
           placeholder="Nhập câu hỏi…"
           className="max-h-28 min-h-11 flex-1 resize-y rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
         />
-        <button type="submit" disabled={loading || !input.trim()} aria-label="Gửi câu hỏi" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-700 text-white transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300">
+        <button type="submit" disabled={loading || (!input.trim() && !pendingImage && !pendingFileText)} aria-label="Gửi câu hỏi" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-700 text-white transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300">
           <Send className="h-4 w-4" />
         </button>
+        </div>
       </form>
     </section>
   );
