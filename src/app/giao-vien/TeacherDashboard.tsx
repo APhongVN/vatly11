@@ -26,6 +26,8 @@ import CapacitanceLabSettings from "@/components/CapacitanceLabSettings";
 import RubricEditor from "@/components/RubricEditor";
 import QuizQuestionEditor from "@/components/QuizQuestionEditor";
 import TeacherSidebar from "@/components/teacher/TeacherSidebar";
+import StudentProgressChart from "@/components/teacher/StudentProgressChart";
+import LoadingState from "@/components/LoadingState";
 import QuestionCard from "@/components/TeacherQuestionCard";
 import { formatVietnameseName, getFirstName, sortVietnameseNames, isHeaderOrInvalidCell, containsDigit, hasInvalidNameCharacters } from "@/lib/vietnameseName";
 import { ACTIVITIES } from "@/lib/data/activities";
@@ -3950,6 +3952,14 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center"><p className="text-2xl font-black text-amber-700">{studentSubs.length}</p><p className="text-[11px] text-slate-500">Bài nộp cá nhân</p></div>
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center"><p className="text-2xl font-black text-indigo-700">{studentQuiz.length}</p><p className="text-[11px] text-slate-500">Lượt trắc nghiệm</p></div>
                   </div>
+                  <h4 className="mt-5 font-bold text-slate-900">Biểu đồ tiến độ theo hoạt động</h4>
+                  <div className="mt-2 rounded-xl border border-slate-200 bg-white p-2">
+                    <StudentProgressChart data={activities.map((activity) => {
+                      const evidence = studentEvidence.find((row) => row.activity_id === activity.id);
+                      const score = evidence?.teacher_score ?? evidence?.score;
+                      return { label: String(activity.id), score: score === null || score === undefined ? null : Number(score), done: Boolean(evidence?.completed_at) };
+                    })} />
+                  </div>
                   <h4 className="mt-5 font-bold text-slate-900">Hoạt động học tập</h4>
                   <div className="mt-2 overflow-x-auto rounded-xl border border-slate-200"><table className="w-full text-left text-xs"><thead className="bg-slate-50 text-slate-600"><tr><th className="px-2 py-2 font-bold">Hoạt động</th><th className="px-2 py-2 font-bold">Trạng thái</th><th className="px-2 py-2 font-bold">Điểm</th></tr></thead><tbody>
                     {activities.map((activity) => {
@@ -4035,7 +4045,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                     </div>
                     <button type="button" aria-label="Đóng" onClick={() => setShowTrash(false)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
                   </div>
-                  {isLoadingTrash ? <p className="mt-4 text-sm text-slate-500">Đang tải…</p> : (
+                  {isLoadingTrash ? <div className="mt-4"><LoadingState label="Đang tải thùng rác…" variant="card" /></div> : (
                     <div className="mt-4 space-y-4">
                       <div>
                         <h4 className="text-sm font-bold text-slate-800">Bài trắc nghiệm đã xóa ({trashQuizzes.length})</h4>
