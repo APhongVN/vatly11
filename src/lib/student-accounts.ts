@@ -96,22 +96,32 @@ export async function provisionStudentAccount(
     let createdUserId: string | null = null;
 
     if (!studentId) {
-      const { data: inserted, error: insertError } = await adminClient.from("students").insert({
+      const insertPayload: Record<string, unknown> = {
         full_name: sourceName,
         class_name: targetClass,
         birth_date: input.birthDate || null,
-        student_code: studentCode || null,
         username,
         login_email: email,
-      }).select("id").single();
+      };
+      if (studentCode) insertPayload.student_code = studentCode;
+      let { data: inserted, error: insertError } = await adminClient.from("students").insert(insertPayload).select("id").single();
+      // Mục 8: nếu cột student_code chưa tồn tại (migration chưa áp), vẫn tạo được học sinh.
+      if (insertError && (insertError.code === "42703" || insertError.code === "PGRST204") && "student_code" in insertPayload) {
+        delete insertPayload.student_code;
+        const retry = await adminClient.from("students").insert(insertPayload).select("id").single();
+        inserted = retry.data;
+        insertError = retry.error;
+      }
       if (insertError) {
         if (insertError.code === "23505") { lastError = insertError; continue; }
         throw new Error("Không lưu được hồ sơ học sinh.");
       }
-      studentId = inserted.id;
+      studentId = inserted!.id;
     } else {
       const { error: reserveError } = await adminClient.from("students").update({ username, login_email: email, ...(studentCode ? { student_code: studentCode } : {}) }).eq("id", studentId);
-      if (reserveError) {
+      if (reserveError && (reserveError.code === "42703" || reserveError.code === "PGRST204")) {
+        await adminClient.from("students").update({ username, login_email: email }).eq("id", studentId);
+      } else if (reserveError) {
         if (reserveError.code === "23505") { lastError = reserveError; continue; }
         throw new Error("Không cập nhật được thông tin tài khoản học sinh.");
       }

@@ -444,7 +444,7 @@ assert.match(submissionValidation, /\^\$\{folder\}\/\$\{escapeRegExp\(userId\)\}
 assert.match(submissionRateLimitMigration, /WHEN 'submission' THEN 12/);
 assert.match(submissionRateLimitMigration, /WHEN 'group-submission' THEN 12/);
 assert.match(submissionRateLimitMigration, /auth\.role\(\) IS DISTINCT FROM 'service_role'/);
-const boundedBodyRoutes = ["account/update-password", "activity-evidence", "ai-generate-quiz", "capacitance-lab-settings", "chat", "grade", "group-submissions", "ocr", "peer-votes", "quiz-submit", "student-questions", "submissions", "teacher/student-accounts"];
+const boundedBodyRoutes = ["account/update-password", "activity-evidence", "ai-generate-quiz", "ai-group-suggestion", "capacitance-lab-settings", "chat", "grade", "group-submissions", "ocr", "peer-votes", "quiz-submit", "student-questions", "submissions", "teacher/student-accounts"];
 for (const routePath of boundedBodyRoutes) {
   const routeSource = await readFile(new URL(`../src/app/api/${routePath}/route.ts`, import.meta.url), "utf8");
   assert.match(routeSource, /readBoundedRequestText\((?:request|req),/, `${routePath} must stream requests through the byte limit.`);

@@ -15,7 +15,7 @@ import {
   Save, X, Plus, Clock, Layers, BookOpen, Shuffle, RefreshCw, Camera,
   Sparkles, CheckSquare, Square, Merge, AlertTriangle, ExternalLink,
   ChevronRight, LayoutDashboard, PlusCircle, BarChart3, TrendingUp,
-  BrainCircuit, Award, Lightbulb, AlertCircle, FileSpreadsheet, ClipboardList, FolderOpen, Menu, HelpCircle
+  BrainCircuit, Award, Lightbulb, AlertCircle, FileSpreadsheet, ClipboardList, FolderOpen, Menu, HelpCircle, UploadCloud
 } from "lucide-react";
 import { QUESTION_TOPICS, QUESTION_STATUS_IDS } from "@/lib/student-questions.mjs";
 import TeacherHome from "@/components/TeacherHome";
@@ -306,6 +306,8 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   const [newQs, setNewQs] = useState([{ question: "", image_url: "", options: ["", "", "", ""], correct_option: 0, explanation: "" }]);
   const [aiQuizTopic, setAiQuizTopic] = useState("Đặc tính của tụ điện, công thức điện dung và năng lượng");
   const [aiQuizCount, setAiQuizCount] = useState(4);
+  const [aiQuizFile, setAiQuizFile] = useState<File | null>(null);
+  const [isGeneratingGroupAI, setIsGeneratingGroupAI] = useState(false);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
 
   // AI Analytics & Báo cáo phổ điểm
@@ -1531,10 +1533,20 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
     }
     setIsGeneratingQuiz(true);
     try {
+      let fileContent = "";
+      if (aiQuizFile) {
+        try {
+          const extracted = await extractRubricFile(aiQuizFile, () => Promise.resolve({ text: "", confidence: 0 }));
+          fileContent = (extracted?.text || "").trim();
+        } catch {
+          fileContent = "";
+        }
+        if (!fileContent) throw new Error("Không đọc được nội dung file đề thi. Hãy thử file .txt hoặc .docx không bị hỏng.");
+      }
       const res = await fetch('/api/ai-generate-quiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: aiQuizTopic, count: aiQuizCount }),
+        body: JSON.stringify({ topic: aiQuizTopic, count: aiQuizCount, fileContent }),
       });
       const data = await res.json();
       if (data.questions && Array.isArray(data.questions)) {
@@ -1553,6 +1565,32 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
       alert("Lỗi kết nối AI: " + err.message);
     } finally {
       setIsGeneratingQuiz(false);
+    }
+  };
+
+  const handleGenerateGroupWithAI = async () => {
+    if (!newGroupTitle.trim()) { alert("Hãy nhập tên bài tập nhóm trước khi nhờ AI gợi ý."); return; }
+    if (previewMode) {
+      setNewGroupDesc(`Nhiệm vụ nhóm: tìm hiểu và thuyết trình về "${newGroupTitle}". Các nhóm chuẩn bị sản phẩm (slide hoặc poster), nêu ứng dụng thực tiễn và bảo vệ lập luận trước lớp.`);
+      setNewGroupRubric("4đ nội dung kiến thức; 3đ sản phẩm/slide; 2đ thuyết trình; 1đ phối hợp nhóm.");
+      setPreviewNotice("Đã tạo gợi ý đề nhóm mẫu tại chỗ.");
+      return;
+    }
+    setIsGeneratingGroupAI(true);
+    try {
+      const res = await fetch("/api/ai-group-suggestion", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newGroupTitle }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Không tạo được gợi ý.");
+      if (data.description) setNewGroupDesc(data.description);
+      if (data.rubric) setNewGroupRubric(data.rubric);
+      alert("✅ AI đã gợi ý mô tả nhiệm vụ và ma trận điểm. Cô có thể chỉnh lại trước khi lưu.");
+    } catch (error) {
+      alert("Lỗi AI: " + (error instanceof Error ? error.message : "không xác định."));
+    } finally {
+      setIsGeneratingGroupAI(false);
     }
   };
 
@@ -2370,13 +2408,15 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
     styleDataRows(evidenceSheet, [8, 9, 10, 11], [7]);
 
     const quizSheet = workbook.addWorksheet("Kết quả trắc nghiệm");
-    styleSheet(quizSheet, "Kết quả trắc nghiệm", "Kết quả trắc nghiệm đã lưu; điểm là kết quả của bài quiz, không trộn vào điểm giáo viên ở báo cáo tổng quan.", ["Mã lượt làm", "Mã học sinh", "Học sinh", "Lớp", "Mã quiz", "Tên quiz", "Mã bài", "Tên bài", "Điểm quiz", "Thời điểm làm"], [38, 38, 26, 15, 12, 38, 10, 38, 14, 21]);
+    styleSheet(quizSheet, "Kết quả trắc nghiệm", "Kết quả trắc nghiệm đã lưu; điểm là kết quả của bài quiz, không trộn vào điểm giáo viên ở báo cáo tổng quan.", ["Mã lượt làm", "Mã học sinh", "Học sinh", "Lớp", "Mã quiz", "Tên quiz", "Mã bài", "Tên bài", "Điểm quiz", "Thời gian làm", "Thời điểm làm"], [38, 38, 26, 15, 12, 38, 10, 38, 14, 16, 21]);
     reportQuizResults.forEach((record: any) => {
       const student: any = studentById.get(String(record.student_id)) || {};
       const quiz = Array.isArray(record.quizzes) ? record.quizzes[0] : record.quizzes;
-      quizSheet.addRow([formulaSafe(record.id), formulaSafe(record.student_id), formulaSafe(student.full_name || "Hồ sơ đã xóa"), formulaSafe(classNameOf(student)), record.quiz_id, formulaSafe(quiz?.title || `Quiz ${record.quiz_id}`), quiz?.activity_id ?? null, quiz?.activity_id ? formulaSafe(activityTitle(quiz.activity_id)) : "Chưa gắn bài", scoreText(record.score), record.created_at ? new Date(record.created_at) : null]);
+      const timeSpent = Number(record.time_spent_seconds);
+      const timeText = Number.isFinite(timeSpent) && timeSpent > 0 ? `${Math.floor(timeSpent / 60)} phút ${timeSpent % 60} giây` : "Chưa ghi";
+      quizSheet.addRow([formulaSafe(record.id), formulaSafe(record.student_id), formulaSafe(student.full_name || "Hồ sơ đã xóa"), formulaSafe(classNameOf(student)), record.quiz_id, formulaSafe(quiz?.title || `Quiz ${record.quiz_id}`), quiz?.activity_id ?? null, quiz?.activity_id ? formulaSafe(activityTitle(quiz.activity_id)) : "Chưa gắn bài", scoreText(record.score), timeText, record.created_at ? new Date(record.created_at) : null]);
     });
-    styleDataRows(quizSheet, [9], [10]);
+    styleDataRows(quizSheet, [9], [11]);
 
     const groupSheet = workbook.addWorksheet("Bài tập nhóm");
     styleSheet(groupSheet, "Bài tập nhóm", "Danh sách nhiệm vụ nhóm, lớp nhận bài, số nhóm, bài nộp và ma trận chấm.", ["Mã bài nhóm", "Tên bài tập nhóm", "Lớp nhận bài", "Hạn nộp", "Số nhóm", "Số bài nộp", "Điểm GV TB", "Trạng thái", "Mô tả", "Rubric", "Tên tệp rubric", "Đường dẫn tệp rubric"], [38, 32, 20, 21, 12, 14, 14, 15, 48, 48, 30, 52]);
@@ -3166,6 +3206,9 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
               <h3 className="font-bold text-base text-slate-800 flex items-center gap-2">
                 <PlusCircle className="w-5 h-5 text-orange-600" /> Tạo bài tập nhóm mới
               </h3>
+              <button type="button" onClick={() => void handleGenerateGroupWithAI()} disabled={isGeneratingGroupAI} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50">
+                <Sparkles className="h-4 w-4" /> {isGeneratingGroupAI ? "AI đang soạn đề nhóm…" : "AI gợi ý đề nhóm + ma trận"}
+              </button>
 
               <div className="grid md:grid-cols-3 gap-4">
                 <div>
@@ -3770,7 +3813,10 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                       </div>
                     </div>
                     <p className="mt-1 truncate text-[10px] font-normal text-slate-500">{s.student_code ? `Mã SV: ${s.student_code} · ` : ""}{s.username ? `Đăng nhập: ${s.username}` : (s.login_email || (s.auth_user_id ? "Tài khoản đã liên kết" : "Chưa có tài khoản đăng nhập"))}</p>
-                    <button type="button" onClick={() => setDetailStudent(s)} className="mt-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-700 hover:bg-indigo-100">Xem chi tiết bài làm</button>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      <button type="button" onClick={() => setDetailStudent(s)} className="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-700 hover:bg-indigo-100">Xem chi tiết</button>
+                      {s.username && <button type="button" onClick={() => { void navigator.clipboard.writeText(s.username).then(() => setPreviewNotice(`Đã sao chép tên đăng nhập của ${s.full_name}.`)).catch(() => setPreviewNotice("Không sao chép tự động được.")); }} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-slate-50">Sao chép username</button>}
+                    </div>
                   </div>
                 ))}
                 {visibleStudents.length === 0 && (
@@ -3929,6 +3975,18 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                     placeholder="Chủ đề: Tụ điện phẳng, điện dung, ghép nối tiếp/song song..."
                     className="w-full p-2.5 rounded-xl border border-indigo-200 bg-white text-xs outline-none focus:ring-2 focus:ring-indigo-500"
                   />
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50">
+                      <UploadCloud className="h-4 w-4" /> Tải file đề thi (để AI đọc)
+                      <input
+                        type="file"
+                        accept=".txt,.md,.csv,.docx,.xlsx,.pdf,image/png,image/jpeg,image/webp"
+                        onChange={(e) => setAiQuizFile(e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                    </label>
+                    {aiQuizFile ? <span className="text-[11px] text-indigo-700">Đã chọn: {aiQuizFile.name} <button type="button" onClick={() => setAiQuizFile(null)} className="ml-1 font-bold text-rose-600">×</button></span> : <span className="text-[10px] text-indigo-500">Hỗ trợ TXT, Word, Excel, PDF, ảnh (tối đa 10 MB)</span>}
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <select
@@ -4098,15 +4156,19 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                 const isTeacher = m.sender_name?.includes('Cô') || m.sender_name?.includes('Giáo viên');
                 return (
                   <div key={m.id} className={`flex gap-3 group ${isTeacher ? 'flex-row-reverse' : ''}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 ${isTeacher ? 'bg-blue-600' : 'bg-emerald-600'}`}>
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm ${isTeacher ? 'bg-blue-600' : 'bg-emerald-600'}`}>
                       {getAvatar(m.sender_name)}
                     </div>
-                    <div className={`p-3.5 rounded-2xl max-w-[70%] text-xs shadow-sm ${isTeacher ? 'bg-blue-600 text-white' : 'bg-white border text-slate-800'}`}>
-                      <p className={`font-bold text-[10px] mb-1 ${isTeacher ? 'text-blue-200' : 'text-slate-400'}`}>
-                        {m.sender_name} • {formatTime(m.created_at)}
-                      </p>
-                      <p className="leading-relaxed">{m.content}</p>
-                      {m.attachment_url && (isInlineChatImage(m.attachment_type) ? <a href={privateFileHref(m.attachment_url)} target="_blank" rel="noreferrer"><Image unoptimized width={800} height={600} src={privateFileHref(m.attachment_url)} alt={m.attachment_name || "Tệp ảnh"} className="mt-2 max-h-64 rounded-xl object-contain" /></a> : <a href={privateFileHref(m.attachment_url)} target="_blank" rel="noreferrer" className="mt-2 block underline">📎 {m.attachment_name || "Tải tệp đính kèm"}</a>)}<button onClick={() => deleteMessage(m)} className="mt-2 block text-[10px] opacity-70 hover:opacity-100">Xóa tin nhắn</button>
+                    <div className={`flex flex-col ${isTeacher ? 'items-end' : 'items-start'} max-w-[70%]`}>
+                      <div className={`p-3.5 rounded-2xl text-xs shadow-sm ${isTeacher ? 'bg-blue-600 text-white' : 'bg-white border text-slate-800'}`}>
+                        <p className={`font-bold text-[10px] mb-1 flex items-center gap-1 ${isTeacher ? 'text-blue-200' : 'text-slate-400'}`}>
+                          <span>{m.sender_name}</span>
+                          <span className="opacity-70">• {formatTime(m.created_at)}</span>
+                        </p>
+                        <p className="leading-relaxed">{m.content}</p>
+                        {m.attachment_url && (isInlineChatImage(m.attachment_type) ? <a href={privateFileHref(m.attachment_url)} target="_blank" rel="noreferrer"><Image unoptimized width={800} height={600} src={privateFileHref(m.attachment_url)} alt={m.attachment_name || "Tệp ảnh"} className="mt-2 max-h-64 rounded-xl object-contain" /></a> : <a href={privateFileHref(m.attachment_url)} target="_blank" rel="noreferrer" className="mt-2 flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-semibold underline">📎 {m.attachment_name || "Tải tệp đính kèm"}</a>)}
+                        {isTeacher && !isDeletionBlocked && <button onClick={() => deleteMessage(m)} className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold opacity-80 hover:opacity-100"><Trash2 className="h-3 w-3" /> Xóa tin nhắn</button>}
+                      </div>
                     </div>
                   </div>
                 );

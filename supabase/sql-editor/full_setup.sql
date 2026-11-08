@@ -2318,3 +2318,36 @@ ALTER TABLE public.student_questions
 CREATE INDEX IF NOT EXISTS idx_student_questions_attachment
   ON public.student_questions (attachment_path) WHERE attachment_path IS NOT NULL;
 
+-- ===== 20261104000800_quiz_time_tracking.sql =====
+-- Mục 7: lưu thời gian làm bài trắc nghiệm để giáo viên thống kê.
+-- started_at do hệ thống ghi khi học sinh mở bài; time_spent_seconds do client
+-- đo và gửi lên (máy chủ vẫn giới hạn trong khoảng hợp lệ).
+ALTER TABLE public.quiz_submissions
+  ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS time_spent_seconds INTEGER CHECK (time_spent_seconds IS NULL OR time_spent_seconds >= 0);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_submissions_started ON public.quiz_submissions (quiz_id, started_at DESC);
+
+-- ===== 20261104000900_storage_bucket_limits.sql =====
+-- Mục 4 & 9: đảm bảo bucket kho học liệu tồn tại với giới hạn 100 MB và nhận
+-- mọi định dạng tệp (docx, pdf, video, ảnh...). Idempotent — chạy lại an toàn.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('learning-resources', 'learning-resources', FALSE, 104857600, NULL)
+ON CONFLICT (id) DO UPDATE SET
+  public = FALSE,
+  file_size_limit = 104857600,
+  allowed_mime_types = NULL;
+
+-- Đảm bảo bucket bài làm/nộp bài cũng nhận tệp 100 MB.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('class-work', 'class-work', FALSE, 104857600, NULL)
+ON CONFLICT (id) DO UPDATE SET
+  public = FALSE,
+  file_size_limit = 104857600;
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('videos', 'videos', FALSE, 104857600, NULL)
+ON CONFLICT (id) DO UPDATE SET
+  public = FALSE,
+  file_size_limit = 104857600;
+

@@ -361,7 +361,7 @@ export default function ResourceLibrary({ activities, previewMode = false }: { a
       return <div className={`rounded-2xl border px-4 py-3 text-sm ${tone}`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="font-semibold">Dung lượng kho: {readableSize(storageTotalBytes)} / ~1 GB ({pct}%)</span>
-          {pct >= 90 ? <span className="font-bold">⚠️ Sắp hết dung lượng! Hãy xóa bớt tệp cũ hoặc nâng gói Supabase Storage.</span> : pct >= 80 ? <span className="font-bold">Đã dùng trên 80% dung lượng miễn phí.</span> : <span className="text-xs opacity-80">Còn nhiều dung lượng trống.</span>}
+          {pct >= 90 ? <span className="font-bold">⚠️ Sắp hết dung lượng! Hãy xóa bớt tệp cũ hoặc nâng gói Supabase Storage.</span> : pct >= 80 ? <span className="font-bold">Đã dùng trên 80% dung lượng miễn phí.</span> : <span className="text-xs opacity-80">Gói miễn phí Supabase: 1 GB. Có thể nâng gói trong Dashboard → Settings → Billing để tăng dung lượng.</span>}
         </div>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200"><div className={`h-full ${barTone} transition-all`} style={{ width: pct + "%" }} /></div>
       </div>;
