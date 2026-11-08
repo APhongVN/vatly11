@@ -2357,6 +2357,45 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
     });
     styleDataRows(rubricSheet);
 
+    // Mục bổ sung: Bảng điểm tổng hợp theo từng học sinh × hoạt động.
+    // Chưa làm = 0; đã làm nhưng chưa chấm để trống điểm (kèm trạng thái).
+    const scoreByStudentActivity = new Map<string, { submitted: boolean; score: number | null }>();
+    const recordScore = (studentId: unknown, activityId: unknown, score: number | null, done: boolean) => {
+      if (!studentId || activityId === null || activityId === undefined) return;
+      const key = `${String(studentId)}:${String(activityId)}`;
+      const existing = scoreByStudentActivity.get(key) || { submitted: false, score: null };
+      if (done) existing.submitted = true;
+      if (score !== null) existing.score = score;
+      scoreByStudentActivity.set(key, existing);
+    };
+    reportSubmissions.forEach((record: any) => recordScore(record.student_id, record.activity_id, scoreText(record.final_score), Boolean(record.submitted_at)));
+    reportEvidence.forEach((record: any) => recordScore(record.student_id, record.activity_id, scoreText(record.teacher_score), Boolean(record.completed_at)));
+    reportQuizResults.forEach((record: any) => {
+      const quiz = Array.isArray(record.quizzes) ? record.quizzes[0] : record.quizzes;
+      recordScore(record.student_id, quiz?.activity_id, scoreText(record.score), true);
+    });
+
+    const gradeSheet = workbook.addWorksheet("Bảng điểm tổng hợp");
+    const gradeActivities = reportActivities.slice().sort((a: any, b: any) => Number(a.id) - Number(b.id));
+    const gradeHeaders = ["STT", "Họ và tên", "Lớp", "Mã SV", ...gradeActivities.map((activity: any) => `${activity.id}. ${activity.title || ""}`.slice(0, 40)), "Tổng điểm", "Điểm TB", "Số bài đã làm", "Số bài chưa làm"];
+    styleSheet(gradeSheet, "Bảng điểm tổng hợp theo học sinh", "Ô trống = chưa làm (tính 0 điểm). Điểm trong ngoặc là bài đã làm nhưng chưa chấm.", gradeHeaders, [6, 26, 12, 14, ...gradeActivities.map(() => 16), 12, 12, 14, 14]);
+    const gradeStudents = reportStudents.slice().sort(sortVietnameseNames);
+    gradeStudents.forEach((student: any, index: number) => {
+      let total = 0;
+      let graded = 0;
+      let done = 0;
+      const activityCells = gradeActivities.map((activity: any) => {
+        const entry = scoreByStudentActivity.get(`${String(student.id)}:${String(activity.id)}`);
+        if (entry?.score !== null && entry?.score !== undefined) { done += 1; graded += 1; total += entry.score; return entry.score; }
+        if (entry?.submitted) { done += 1; return "Đã nộp"; }
+        return 0;
+      });
+      const notDone = gradeActivities.length - done;
+      const avg = graded ? Math.round((total / graded) * 100) / 100 : 0;
+      gradeSheet.addRow([index + 1, formulaSafe(student.full_name || ""), formulaSafe(student.class_name || ""), formulaSafe(student.student_code || ""), ...activityCells, Math.round(total * 100) / 100, avg, done, notDone]);
+    });
+    styleDataRows(gradeSheet, [...gradeActivities.map((_a: any, i: number) => 5 + i), 5 + gradeActivities.length, 6 + gradeActivities.length], []);
+
     const progressByPair = new Map<string, any>();
     const addProgressRecord = (studentId: unknown, activityId: unknown, kind: "submission" | "evidence" | "quiz", record: any) => {
       if (!studentId || activityId === null || activityId === undefined) return;
@@ -3500,6 +3539,21 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {/* Danh sách học sinh làm / chưa làm hoạt động đang chọn */}
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
+                      <p className="text-xs font-bold text-slate-700">Tình trạng làm bài hoạt động {selectedGradingAct.id} ({currentSubmissions.length}/{activeStudents.length} học sinh đã làm)</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {activeStudents.map((student: any) => {
+                          const did = currentSubmissions.some((sub: any) => sub.student_id === student.id || sub.student_name === student.full_name);
+                          return (
+                            <span key={student.id} className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${did ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>
+                              {did ? "✓" : "✗"} {student.full_name}
+                            </span>
+                          );
+                        })}
+                        {activeStudents.length === 0 && <span className="text-[11px] text-slate-400">Chưa có học sinh trong danh sách.</span>}
+                      </div>
+                    </div>
                     {currentSubmissions.length === 0 && (
                       <div className="text-center py-16 text-slate-400 text-xs">
                         Chưa có học sinh nào nộp bài số {selectedGradingAct.id}.
