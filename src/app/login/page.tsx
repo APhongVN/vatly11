@@ -40,7 +40,7 @@ export default function LoginPage() {
       .catch(() => { if (!cancelled) setClasses([]); })
       .finally(() => { if (!cancelled) setClassesLoading(false); });
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [role, classes.length]);
 
   const studentsOfClass = classes.find((group) => group.name === selectedClass)?.students ?? [];
