@@ -15,7 +15,7 @@ import {
   Save, X, Plus, Clock, Layers, BookOpen, Shuffle, RefreshCw, Camera,
   Sparkles, CheckSquare, Square, Merge, AlertTriangle, ExternalLink,
   ChevronRight, LayoutDashboard, PlusCircle, BarChart3, TrendingUp,
-  BrainCircuit, Award, Lightbulb, AlertCircle, FileSpreadsheet, ClipboardList, FolderOpen, Menu, HelpCircle, UploadCloud
+  BrainCircuit, Award, Lightbulb, AlertCircle, FileSpreadsheet, ClipboardList, FolderOpen, Menu, HelpCircle, UploadCloud, Pencil, Undo
 } from "lucide-react";
 import { QUESTION_TOPICS, QUESTION_STATUS_IDS } from "@/lib/student-questions.mjs";
 import TeacherHome from "@/components/TeacherHome";
@@ -24,6 +24,7 @@ import ResourceLibrary from "@/components/ResourceLibrary";
 import ActivityEvidencePanel from "@/components/ActivityEvidencePanel";
 import CapacitanceLabSettings from "@/components/CapacitanceLabSettings";
 import RubricEditor from "@/components/RubricEditor";
+import QuizQuestionEditor from "@/components/QuizQuestionEditor";
 import QuestionCard from "@/components/TeacherQuestionCard";
 import { formatVietnameseName, getFirstName, sortVietnameseNames, isHeaderOrInvalidCell, containsDigit, hasInvalidNameCharacters } from "@/lib/vietnameseName";
 import { ACTIVITIES } from "@/lib/data/activities";
@@ -309,6 +310,12 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   const [aiQuizCount, setAiQuizCount] = useState(4);
   const [aiQuizFile, setAiQuizFile] = useState<File | null>(null);
   const [isGeneratingGroupAI, setIsGeneratingGroupAI] = useState(false);
+  // Quản lý sửa/xóa/hoàn tác bài trắc nghiệm và bài tập nhóm.
+  const [editingQuiz, setEditingQuiz] = useState<any>(null);
+  const [isSavingQuizEdit, setIsSavingQuizEdit] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<any>(null);
+  const [isSavingGroupEdit, setIsSavingGroupEdit] = useState(false);
+  const [undoBanner, setUndoBanner] = useState<{ kind: "quiz" | "group"; label: string; payload: any } | null>(null);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
 
   // AI Analytics & Báo cáo phổ điểm
@@ -414,13 +421,13 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
       }
       if (subs) setSubmissions(subs);
       if (msgs) setMessages([...msgs].reverse());
-      if (qzs) setQuizzes(qzs);
+      if (qzs) setQuizzes(qzs.filter((quiz: any) => !quiz.archived_at));
       const { data: quizSubs } = await supabase.from("quiz_submissions").select("id,quiz_id,student_id,score,created_at,time_spent_seconds,students(full_name,class_name)").order("created_at", { ascending: false }).limit(2000);
       if (quizSubs) setQuizSubmissions(quizSubs);
       const { data: evidenceRows } = await supabase.from("activity_evidence").select("id,student_id,activity_id,score,score_max,completed_at,teacher_score,teacher_feedback,graded_at,updated_at,ai_score,ai_feedback").order("updated_at", { ascending: false }).limit(3000);
       if (evidenceRows) setActivityEvidence(evidenceRows);
       if (setting) { setIsChatMuted(setting.is_muted); setIsDeletionBlocked(Boolean((setting as any).deletion_blocked)); }
-      if (gActs) setGroupAssignments(gActs);
+      if (gActs) setGroupAssignments(gActs.filter((assignment: any) => !assignment.archived_at));
       if (gSubs) setGroupSubmissions(gSubs);
       if (courseRows) setCurriculumCourses(courseRows);
       if (chapterRows) setCurriculumChapters(chapterRows);
@@ -917,26 +924,65 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   };
 
   const deleteGroupAssignment = async (id: string) => {
+    const assignment = groupAssignments.find((item) => item.id === id);
+    if (!confirm(`Ẩn/xóa bài tập nhóm “${assignment?.title || id}”? Có thể bấm Hoàn tác để khôi phục.`)) return;
     if (previewMode) {
-      setGroupAssignments((current) => current.filter((assignment) => assignment.id !== id));
+      setGroupAssignments((current) => current.filter((item) => item.id !== id));
       setGroupSubmissions((current) => current.filter((submission) => submission.assignment_id !== id));
       if (expandedGroupAct === id) { setExpandedGroupAct(null); setCurrentGroupMembers([]); }
-      setPreviewNotice("Đã xóa thử bài tập nhóm khỏi phiên xem trước.");
+      setUndoBanner({ kind: "group", label: assignment?.title || "Bài tập nhóm", payload: assignment });
       return;
     }
-    if (!confirm("Xóa bài tập nhóm này và toàn bộ danh sách nhóm/bài nộp?")) return;
-    const { error } = await supabase.from("group_assignments").delete().eq("id", id);
-    if (error) return alert("Không xóa được bài tập nhóm: " + error.message);
-    const rubricPath = groupAssignments.find((assignment) => assignment.id === id)?.rubric_document_path;
-    if (rubricPath) {
-      const { error: fileError } = await supabase.storage.from("class-work").remove([rubricPath]);
-      if (fileError) alert("Bài nhóm đã xóa, nhưng file ma trận chưa được dọn: " + fileError.message);
+    const { error } = await supabase.from("group_assignments").update({ archived_at: new Date().toISOString() }).eq("id", id);
+    if (error) { alert("Không xóa được bài tập nhóm: " + error.message); return; }
+    setGroupAssignments((current) => current.filter((item) => item.id !== id));
+    if (expandedGroupAct === id) { setExpandedGroupAct(null); setCurrentGroupMembers([]); }
+    setUndoBanner({ kind: "group", label: assignment?.title || "Bài tập nhóm", payload: assignment });
+  };
+
+  const restoreGroupAssignment = async (backup: any) => {
+    setUndoBanner(null);
+    if (!backup) return;
+    if (previewMode) {
+      setGroupAssignments((current) => [backup, ...current.filter((item) => item.id !== backup.id)]);
+      return;
     }
-    if (expandedGroupAct === id) {
-      setExpandedGroupAct(null);
-      setCurrentGroupMembers([]);
-    }
+    const { error } = await supabase.from("group_assignments").update({ archived_at: null }).eq("id", backup.id);
+    if (error) { alert("Không hoàn tác được: " + error.message); return; }
     await fetchData();
+  };
+
+  // Sửa thông tin bài tập nhóm (tên, mô tả, hạn nộp, link, ma trận).
+  const saveGroupEdit = async () => {
+    if (!editingGroup || isSavingGroupEdit) return;
+    if (!editingGroup.title.trim()) { alert("Nhập tên bài tập nhóm."); return; }
+    setIsSavingGroupEdit(true);
+    try {
+      let deadline: string | null = null;
+      if (editingGroup.deadline) {
+        try { deadline = new Date(editingGroup.deadline).toISOString(); } catch { deadline = null; }
+      }
+      if (previewMode) {
+        setGroupAssignments((current) => current.map((item) => item.id === editingGroup.id ? { ...item, title: editingGroup.title.trim(), description: editingGroup.description, deadline, document_url: editingGroup.document_url || null, rubric: editingGroup.rubric } : item));
+        setEditingGroup(null);
+        setPreviewNotice("Đã lưu thử thay đổi bài tập nhóm trong phiên xem trước.");
+        return;
+      }
+      const { error } = await supabase.from("group_assignments").update({
+        title: editingGroup.title.trim(),
+        description: editingGroup.description || "",
+        deadline,
+        document_url: editingGroup.document_url || null,
+        rubric: editingGroup.rubric || "",
+      }).eq("id", editingGroup.id);
+      if (error) throw error;
+      setEditingGroup(null);
+      await fetchData();
+    } catch (error) {
+      alert("Không lưu được thay đổi bài nhóm: " + (error instanceof Error ? error.message : "lỗi không rõ."));
+    } finally {
+      setIsSavingGroupEdit(false);
+    }
   };
 
   const fetchGroupDetails = async (assignId: string) => {
@@ -2023,6 +2069,97 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
     setNewQs([{ question: "", image_url: "", options: ["", "", "", ""], correct_option: 0, explanation: "" }]);
     fetchData();
   };
+
+  // --- SỬA / XÓA / HOÀN TÁC BÀI TRẮC NGHIỆM ---
+  const openQuizEditor = async (quiz: any) => {
+    if (previewMode) {
+      setEditingQuiz({ ...quiz, questions: [{ question: quiz.title, image_url: "", options: ["", "", "", ""], correct_option: 0, explanation: "" }] });
+      return;
+    }
+    try {
+      const [{ data: questionRows, error: questionsError }, { data: keyRows }] = await Promise.all([
+        supabase.from("quiz_questions").select("id,question,image_url,options").eq("quiz_id", quiz.id).order("id"),
+        supabase.from("quiz_question_keys").select("question_id,correct_option,explanation"),
+      ]);
+      if (questionsError) throw questionsError;
+      const keyByQuestion = new Map((keyRows || []).map((row: any) => [String(row.question_id), row]));
+      const questions = (questionRows || []).map((row: any) => {
+        const key: any = keyByQuestion.get(String(row.id));
+        return {
+          question: row.question || "",
+          image_url: row.image_url || "",
+          options: Array.isArray(row.options) ? row.options : ["", "", "", ""],
+          correct_option: key?.correct_option ?? 0,
+          explanation: key?.explanation || "",
+        };
+      });
+      setEditingQuiz({ ...quiz, questions: questions.length ? questions : [{ question: "", image_url: "", options: ["", "", "", ""], correct_option: 0, explanation: "" }] });
+    } catch (error) {
+      alert("Không tải được câu hỏi của bài trắc nghiệm: " + (error instanceof Error ? error.message : "lỗi không rõ."));
+    }
+  };
+
+  const saveQuizEdit = async () => {
+    if (!editingQuiz || isSavingQuizEdit) return;
+    const validQuestions = (editingQuiz.questions || []).filter((question: any) => question.question.trim() && question.options.every((option: string) => option.trim()));
+    if (!validQuestions.length) { alert("Cần ít nhất một câu hỏi có đủ bốn lựa chọn."); return; }
+    if (!editingQuiz.title.trim()) { alert("Nhập tiêu đề bài trắc nghiệm."); return; }
+    setIsSavingQuizEdit(true);
+    try {
+      if (previewMode) {
+        setQuizzes((current) => current.map((quiz) => quiz.id === editingQuiz.id ? { ...quiz, title: editingQuiz.title.trim(), activity_id: editingQuiz.activity_id, time_limit: editingQuiz.time_limit, question_count: validQuestions.length } : quiz));
+        setEditingQuiz(null);
+        setPreviewNotice("Đã lưu thử thay đổi bài trắc nghiệm trong phiên xem trước.");
+        return;
+      }
+      const { error: updateError } = await supabase.from("quizzes").update({ title: editingQuiz.title.trim(), activity_id: editingQuiz.activity_id || null, time_limit: editingQuiz.time_limit }).eq("id", editingQuiz.id);
+      if (updateError) throw updateError;
+      // Thay toàn bộ câu hỏi: xóa cũ rồi thêm mới (đơn giản, tránh sai lệch đáp án bảo mật).
+      const { error: deleteQuestionsError } = await supabase.from("quiz_questions").delete().eq("quiz_id", editingQuiz.id);
+      if (deleteQuestionsError) throw deleteQuestionsError;
+      for (const question of validQuestions) {
+        const { data: savedQuestion, error: questionError } = await supabase.from("quiz_questions")
+          .insert({ quiz_id: editingQuiz.id, question: question.question.trim(), image_url: question.image_url || null, options: question.options })
+          .select("id").single();
+        if (questionError || !savedQuestion) throw new Error(questionError?.message || "Không lưu được câu hỏi.");
+        const { error: keyError } = await supabase.from("quiz_question_keys").insert({ question_id: savedQuestion.id, correct_option: question.correct_option, explanation: question.explanation || null });
+        if (keyError) throw new Error(keyError.message);
+      }
+      setEditingQuiz(null);
+      await fetchData();
+    } catch (error) {
+      alert("Không lưu được thay đổi: " + (error instanceof Error ? error.message : "lỗi không rõ."));
+    } finally {
+      setIsSavingQuizEdit(false);
+    }
+  };
+
+  const deleteQuiz = async (quiz: any) => {
+    if (!confirm(`Ẩn/xóa bài trắc nghiệm “${quiz.title}”? Có thể bấm Hoàn tác để khôi phục.`)) return;
+    if (previewMode) {
+      setQuizzes((current) => current.filter((item) => item.id !== quiz.id));
+      setUndoBanner({ kind: "quiz", label: quiz.title, payload: quiz });
+      return;
+    }
+    const previous = quizzes.find((item) => item.id === quiz.id) || quiz;
+    const { error } = await supabase.from("quizzes").update({ archived_at: new Date().toISOString() }).eq("id", quiz.id);
+    if (error) { alert("Không xóa được bài trắc nghiệm: " + error.message); return; }
+    setQuizzes((current) => current.filter((item) => item.id !== quiz.id));
+    setUndoBanner({ kind: "quiz", label: quiz.title, payload: previous });
+  };
+
+  const restoreQuiz = async (backup: any) => {
+    setUndoBanner(null);
+    if (!backup) return;
+    if (previewMode) {
+      setQuizzes((current) => [backup, ...current.filter((item) => item.id !== backup.id)]);
+      return;
+    }
+    const { error } = await supabase.from("quizzes").update({ archived_at: null }).eq("id", backup.id);
+    if (error) { alert("Không hoàn tác được: " + error.message); return; }
+    await fetchData();
+  };
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!newMsg.trim() && !chatFile) || isSendingChat) return;
@@ -2762,6 +2899,15 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
       {/* CONTENT AREA CHÍNH */}
       <div className="min-w-0 flex-1 p-4 pt-20 md:p-8 md:pt-20 lg:p-10 lg:pt-10 h-screen overflow-y-auto relative">
         {!previewMode && dataLoadIssues.length > 0 && <div role="alert" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm"><div><p className="font-bold">Chưa tải được đầy đủ dữ liệu lớp.</p><p className="mt-1 text-xs">Mục lỗi: {dataLoadIssues.join(", ")}. Danh sách trống lúc này có thể do kết nối hoặc quyền Supabase, không có nghĩa là dữ liệu đã bị xóa.</p></div><button type="button" onClick={() => void fetchData()} className="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs font-bold hover:bg-amber-100"><RefreshCw className="h-4 w-4" />Tải lại dữ liệu</button></div>}
+        {undoBanner && (
+          <div role="status" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm text-slate-800 shadow-sm">
+            <p className="flex items-center gap-2"><Undo className="h-4 w-4 text-slate-600" /> Đã xóa <b>{undoBanner.kind === "quiz" ? "bài trắc nghiệm" : "bài tập nhóm"} “{undoBanner.label}”.</b> Dữ liệu và kết quả làm bài vẫn được giữ.</p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => { if (undoBanner.kind === "quiz") void restoreQuiz(undoBanner.payload); else void restoreGroupAssignment(undoBanner.payload); }} className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-black"><Undo className="h-3.5 w-3.5" /> Hoàn tác</button>
+              <button type="button" onClick={() => setUndoBanner(null)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">Đóng</button>
+            </div>
+          </div>
+        )}
         <Link href="/" className="absolute top-6 right-8 hidden bg-white text-slate-600 p-3 rounded-full shadow-md border hover:bg-slate-50 transition-all z-10 lg:inline-flex" title="Về trang chủ">
           <ArrowLeft className="w-5 h-5" />
         </Link>
@@ -3367,7 +3513,10 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <button type="button" disabled={savingGroupRubricId === gAct.id} onClick={(e) => { e.stopPropagation(); deleteGroupAssignment(gAct.id); }} className="text-slate-400 hover:text-rose-600 p-2 disabled:opacity-40" title="Xóa bài nhóm">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setEditingGroup({ ...gAct }); }} className="inline-flex items-center gap-1 rounded-xl bg-white border border-blue-200 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50" title="Sửa bài nhóm">
+                        <Pencil className="w-3.5 h-3.5"/> Sửa
+                      </button>
+                      <button type="button" disabled={savingGroupRubricId === gAct.id} onClick={(e) => { e.stopPropagation(); deleteGroupAssignment(gAct.id); }} className="text-slate-400 hover:text-rose-600 p-2 disabled:opacity-40" title="Xóa bài nhóm (có thể hoàn tác)">
                         <Trash2 className="w-4 h-4"/>
                       </button>
                       <button type="button" aria-expanded={expandedGroupAct === gAct.id} aria-controls={`group-details-${gAct.id}`} onClick={() => toggleExpandGroupAct(gAct.id)} className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-xl text-xs font-bold">
@@ -3940,6 +4089,68 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                 </section>
               </div>;
             })}
+            {editingQuiz && (
+              <div className="fixed inset-0 z-[86] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditingQuiz(null); }}>
+                <section role="dialog" aria-modal="true" aria-labelledby="edit-quiz-title" className="max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+                  <div className="flex items-start justify-between gap-4">
+                    <h3 id="edit-quiz-title" className="text-xl font-black text-slate-900">Sửa bài trắc nghiệm</h3>
+                    <button type="button" aria-label="Đóng" onClick={() => setEditingQuiz(null)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    <label className="block text-xs font-bold text-slate-700">Tiêu đề
+                      <input value={editingQuiz.title} onChange={(e) => setEditingQuiz({ ...editingQuiz, title: e.target.value })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
+                    </label>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block text-xs font-bold text-slate-700">Gắn với bài
+                        <select value={editingQuiz.activity_id || ""} onChange={(e) => setEditingQuiz({ ...editingQuiz, activity_id: e.target.value ? Number(e.target.value) : null })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal">
+                          <option value="">Không gắn bài</option>
+                          {activities.map((a: any) => <option key={a.id} value={a.id}>Bài {a.id}: {a.title}</option>)}
+                        </select>
+                      </label>
+                      <label className="block text-xs font-bold text-slate-700">Thời gian (phút)
+                        <input type="number" min={1} value={editingQuiz.time_limit} onChange={(e) => setEditingQuiz({ ...editingQuiz, time_limit: Number(e.target.value) })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
+                      </label>
+                    </div>
+                    <QuizQuestionEditor quiz={editingQuiz} setQuiz={setEditingQuiz} />
+                  </div>
+                  <div className="mt-5 flex justify-end gap-2">
+                    <button type="button" onClick={() => setEditingQuiz(null)} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600">Hủy</button>
+                    <button type="button" onClick={() => void saveQuizEdit()} disabled={isSavingQuizEdit} className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isSavingQuizEdit ? "Đang lưu..." : "Lưu thay đổi"}</button>
+                  </div>
+                </section>
+              </div>
+            )}
+            {editingGroup && (
+              <div className="fixed inset-0 z-[86] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditingGroup(null); }}>
+                <section role="dialog" aria-modal="true" aria-labelledby="edit-group-title" className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+                  <div className="flex items-start justify-between gap-4">
+                    <h3 id="edit-group-title" className="text-xl font-black text-slate-900">Sửa bài tập nhóm</h3>
+                    <button type="button" aria-label="Đóng" onClick={() => setEditingGroup(null)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    <label className="block text-xs font-bold text-slate-700">Tên bài tập nhóm
+                      <input value={editingGroup.title} onChange={(e) => setEditingGroup({ ...editingGroup, title: e.target.value })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
+                    </label>
+                    <label className="block text-xs font-bold text-slate-700">Hạn nộp
+                      <input type="datetime-local" value={editingGroup.deadline ? new Date(editingGroup.deadline).toISOString().slice(0, 16) : ""} onChange={(e) => setEditingGroup({ ...editingGroup, deadline: e.target.value })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
+                    </label>
+                    <label className="block text-xs font-bold text-slate-700">Mô tả / yêu cầu
+                      <textarea value={editingGroup.description || ""} onChange={(e) => setEditingGroup({ ...editingGroup, description: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
+                    </label>
+                    <label className="block text-xs font-bold text-slate-700">Link tài liệu
+                      <input value={editingGroup.document_url || ""} onChange={(e) => setEditingGroup({ ...editingGroup, document_url: e.target.value })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
+                    </label>
+                    <label className="block text-xs font-bold text-slate-700">Ma trận điểm
+                      <textarea value={editingGroup.rubric || ""} onChange={(e) => setEditingGroup({ ...editingGroup, rubric: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
+                    </label>
+                  </div>
+                  <div className="mt-5 flex justify-end gap-2">
+                    <button type="button" onClick={() => setEditingGroup(null)} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600">Hủy</button>
+                    <button type="button" onClick={() => void saveGroupEdit()} disabled={isSavingGroupEdit} className="rounded-xl bg-orange-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isSavingGroupEdit ? "Đang lưu..." : "Lưu thay đổi"}</button>
+                  </div>
+                </section>
+              </div>
+            )}
             {accountStudent && (
               <div className="fixed inset-0 z-[85] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeStudentAccountModal(); }}>
                 <section role="dialog" aria-modal="true" aria-labelledby="student-account-title" className="student-credentials-print w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
@@ -4002,6 +4213,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                       <th className="px-3 py-2 font-bold">Điểm TB</th>
                       <th className="px-3 py-2 font-bold">Thời gian làm TB</th>
                       <th className="px-3 py-2 font-bold">Chi tiết</th>
+                      <th className="px-3 py-2 font-bold">Thao tác</th>
                     </tr></thead>
                     <tbody>
                       {quizzes.map((quiz: any) => {
@@ -4027,6 +4239,12 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                                 ))}
                               </div>
                             </details></td>
+                            <td className="px-3 py-2">
+                              <div className="flex gap-1.5">
+                                <button type="button" onClick={() => void openQuizEditor(quiz)} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-50"><Pencil className="h-3 w-3" /> Sửa</button>
+                                <button type="button" onClick={() => void deleteQuiz(quiz)} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2 py-1 text-[10px] font-bold text-rose-700 hover:bg-rose-50"><Trash2 className="h-3 w-3" /> Xóa</button>
+                              </div>
+                            </td>
                           </tr>
                         );
                       })}
