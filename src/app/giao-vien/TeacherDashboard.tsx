@@ -28,6 +28,8 @@ import QuizQuestionEditor from "@/components/QuizQuestionEditor";
 import TeacherSidebar from "@/components/teacher/TeacherSidebar";
 import StudentProgressChart from "@/components/teacher/StudentProgressChart";
 import LoadingState from "@/components/LoadingState";
+import TeacherRegradeTab from "@/components/teacher/TeacherRegradeTab";
+import TeacherOcrTab from "@/components/teacher/TeacherOcrTab";
 import QuestionCard from "@/components/TeacherQuestionCard";
 import { formatVietnameseName, getFirstName, sortVietnameseNames, isHeaderOrInvalidCell, containsDigit, hasInvalidNameCharacters } from "@/lib/vietnameseName";
 import { ACTIVITIES } from "@/lib/data/activities";
@@ -3679,181 +3681,29 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
 
         {/* 7. TAB CHẤM TỪ ẢNH (AI OCR) & LƯU DB */}
         {activeTab === 'ocr' && (
-          <div className="space-y-6 max-w-5xl animate-in fade-in">
-            <div>
-              <h2 className="text-3xl font-extrabold text-slate-900">Chấm điểm từ Ảnh (AI OCR)</h2>
-              <p className="text-slate-500 text-sm mt-1">
-                Tải lên ảnh chụp bài thi hoặc bài tập viết tay của học sinh, AI sẽ trích xuất văn bản + công thức LaTeX và chấm điểm theo ma trận. Sau đó có thể lưu trực tiếp vào cơ sở dữ liệu.
-              </p>
-            </div>
-
-            <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 space-y-6 shadow-sm">
-              <div className="grid md:grid-cols-2 gap-5">
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">
-                      Gán cho học sinh:
-                    </label>
-                    <div className="flex gap-2">
-                      <select
-                        value={ocrStudentName}
-                        onChange={(e) => setOcrStudentName(e.target.value)}
-                        className="flex-1 p-2.5 border rounded-xl text-xs bg-slate-50/50"
-                      >
-                        <option value="">-- Chọn học sinh trong lớp --</option>
-                        {students.map(s => <option key={s.id} value={s.full_name}>{s.full_name}</option>)}
-                      </select>
-                      <input
-                        type="text"
-                        value={ocrStudentName}
-                        onChange={(e) => setOcrStudentName(e.target.value)}
-                        placeholder="Hoặc gõ tên..."
-                        className="w-36 p-2.5 border rounded-xl text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">
-                      Bài học liên quan:
-                    </label>
-                    <select
-                      value={ocrActivityId}
-                      onChange={(e) => setOcrActivityId(Number(e.target.value))}
-                      className="w-full p-2.5 border rounded-xl text-xs bg-slate-50/50"
-                    >
-                      {activities.map(a => <option key={a.id} value={a.id}>Bài {a.id}: {a.title}</option>)}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">
-                      Ma trận điểm (Rubric) cho bài thi này:
-                    </label>
-                    <textarea
-                      value={ocrRubric}
-                      onChange={e => setOcrRubric(e.target.value)}
-                      className="w-full p-3 border rounded-xl text-xs h-28 outline-none bg-slate-50/50"
-                      placeholder="Nhập ma trận điểm..."
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                    Tải ảnh bài thi học sinh
-                  </label>
-                  <div className="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-indigo-50/40 rounded-2xl p-8 text-center cursor-pointer relative transition-all">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleOcrImageUpload}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
-                    <Camera className="w-10 h-10 text-indigo-600 mx-auto mb-2" />
-                    <p className="text-sm font-bold text-indigo-900">Bấm để chọn ảnh bài làm (JPG, PNG)</p>
-                    <p className="text-xs text-indigo-600 mt-1">Hệ thống AI tự động trích xuất chữ viết tay và công thức</p>
-                  </div>
-
-                  {isOcrProcessing && (
-                    <div className="p-3 bg-indigo-50 rounded-xl text-xs text-indigo-700 font-semibold flex items-center justify-center gap-2">
-                      <Sparkles className="w-4 h-4 animate-spin text-indigo-600" /> Đang nhận diện chữ và công thức từ ảnh...
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                  Văn bản trích xuất từ ảnh (Có thể chỉnh sửa nếu cần):
-                </label>
-                <textarea
-                  value={ocrText}
-                  onChange={e => setOcrText(e.target.value)}
-                  className="w-full p-4 border rounded-2xl text-xs h-36 outline-none bg-slate-50/50 leading-relaxed font-mono"
-                  placeholder="Nội dung nhận diện từ ảnh..."
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  onClick={executeOcrGrading}
-                  disabled={isOcrProcessing || !ocrText.trim()}
-                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2"
-                >
-                  <Sparkles className="w-4 h-4" /> Chấm điểm bài này bằng AI
-                </button>
-              </div>
-
-              {ocrResult && (
-                <div className="p-6 bg-gradient-to-br from-indigo-50 to-indigo-50 border border-indigo-200 rounded-2xl space-y-4 animate-in fade-in">
-                  <div className="flex justify-between items-center pb-2 border-b border-indigo-200">
-                    <span className="text-sm font-bold text-indigo-900">KẾT QUẢ CHẤM ĐIỂM AI:</span>
-                    <span className="text-2xl font-black text-indigo-700">{ocrResult.score}/10</span>
-                  </div>
-                  <p className="text-xs text-slate-800"><span className="font-bold">Nhận xét:</span> {ocrResult.feedback}</p>
-                  {ocrResult.strengths && <p className="text-xs text-emerald-800"><span className="font-bold">Ưu điểm:</span> {ocrResult.strengths}</p>}
-                  {ocrResult.weaknesses && <p className="text-xs text-amber-800"><span className="font-bold">Hạn chế:</span> {ocrResult.weaknesses}</p>}
-
-                  <div className="pt-2 flex justify-end">
-                    <button
-                      onClick={saveOcrSubmissionToDB}
-                      disabled={isSavingOcr}
-                      className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2"
-                    >
-                      <Save className="w-4 h-4" />
-                      {isSavingOcr ? "Đang lưu vào hệ thống..." : "Lưu kết quả này vào Bảng điểm Học sinh"}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          <TeacherOcrTab
+            students={students}
+            activities={activities}
+            studentName={ocrStudentName}
+            setStudentName={setOcrStudentName}
+            activityId={ocrActivityId}
+            setActivityId={setOcrActivityId}
+            rubric={ocrRubric}
+            setRubric={setOcrRubric}
+            ocrText={ocrText}
+            setOcrText={setOcrText}
+            isProcessing={isOcrProcessing}
+            result={ocrResult}
+            isSaving={isSavingOcr}
+            onSelectImage={handleOcrImageUpload}
+            onGrade={executeOcrGrading}
+            onSave={saveOcrSubmissionToDB}
+          />
         )}
 
         {/* 8. TAB CHẤM LẠI BÀI LỖI */}
         {activeTab === 'regrade' && (
-          <div className="space-y-6 max-w-5xl animate-in fade-in">
-            <div>
-              <h2 className="text-3xl font-extrabold text-amber-600">Chấm lại Bài nộp AI Lỗi / Chưa chấm</h2>
-              <p className="text-slate-500 text-sm mt-1">Danh sách các bài làm có điểm AI = -1 hoặc chưa có điểm. Giáo viên có thể chấm thủ công hoặc kích hoạt lại AI.</p>
-            </div>
-
-            <div className="space-y-3">
-              {submissions.filter(s => s.ai_score === null || s.ai_score === -1).length === 0 ? (
-                <div className="bg-white p-12 rounded-3xl text-center text-slate-400 text-sm">
-                  🎉 Tuyệt vời! Không có bài nào bị lỗi hoặc tồn đọng chưa chấm.
-                </div>
-              ) : (
-                submissions.filter(s => s.ai_score === null || s.ai_score === -1).map(sub => (
-                  <div key={sub.id} className="bg-white border rounded-2xl p-4 shadow-sm space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-slate-800 text-sm">{sub.student_name} (Bài {sub.activity_id})</span>
-                      <span className="text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full font-bold">Cần chấm lại</span>
-                    </div>
-                    <div className="bg-slate-50 p-3 rounded-xl text-xs text-slate-700 border">{sub.answer || "Nộp tệp đính kèm"}</div>
-                    <div className="flex gap-2 items-center pt-1">
-                      <button
-                        onClick={() => gradeWithAI(sub.id, sub.answer)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex gap-1 items-center"
-                      >
-                        <Bot className="w-3.5 h-3.5" /> AI Chấm lại
-                      </button>
-                      <input type="number" min="0" max="10" step="0.1" placeholder="Điểm cô" className="border p-2 rounded-xl w-20 text-xs bg-slate-50" id={`rescore-${sub.id}`} defaultValue={sub.final_score ?? sub.ai_score ?? ""} />
-                      <input type="text" placeholder="Nhận xét của cô..." className="border p-2 rounded-xl flex-1 text-xs bg-slate-50" id={`refb-${sub.id}`} defaultValue={sub.teacher_feedback || ""} />
-                      <button
-                        onClick={() => void saveTeacherGrade(sub.id, `rescore-${sub.id}`, `refb-${sub.id}`)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-xl"
-                        title="Xác nhận điểm"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          <TeacherRegradeTab submissions={submissions} onGradeWithAI={gradeWithAI} onSaveTeacherGrade={saveTeacherGrade} />
         )}
 
         {activeTab === 'activity-evidence' && <ActivityEvidencePanel previewMode={previewMode} />}
