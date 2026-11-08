@@ -846,7 +846,11 @@ assert.match(bulkStudentsApi, /Promise\.allSettled/);
 assert.match(bulkStudentsApi, /body\.students\.length > 100/);
 assert.match(studentLoginApi, /consume_student_auth_rate_limit/);
 assert.match(studentLoginApi, /auth\.signInWithPassword/);
-assert.match(studentLoginApi, /signedIn\.user\.id !== student\.auth_user_id/);
+// Đăng nhập học sinh: sau khi Supabase xác thực đúng, nếu auth_user_id trong DB còn là bản cũ
+// (do giáo viên cấp lại tài khoản) thì ĐỒNG BỘ lại, thay vì báo "sai" một cách oan.
+assert.match(studentLoginApi, /studentRow\.auth_user_id !== signedIn\.user\.id/);
+assert.match(studentLoginApi, /update\(\{ auth_user_id: signedIn\.user\.id \}\)/);
+assert.doesNotMatch(studentLoginApi, /signedIn\.user\.id !== studentRow\.auth_user_id \|\|/);
 assert.match(studentLoginApi, /Cache-Control.*no-store/);
 assert.match(proxy, /getAll\(\)/);
 assert.match(proxy, /setAll\(cookiesToSet/);

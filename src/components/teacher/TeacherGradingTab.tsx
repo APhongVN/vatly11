@@ -38,6 +38,8 @@ type TeacherGradingTabProps = {
   getAvatar: (name: string) => string;
   formatTime: (value: string | null | undefined) => string;
   saveRubric: () => void;
+  rubricFileCleared: boolean;
+  clearRubricFileAndSave: () => void;
 };
 
 export default function TeacherGradingTab({
@@ -73,6 +75,8 @@ export default function TeacherGradingTab({
   getAvatar,
   formatTime,
   saveRubric,
+  rubricFileCleared,
+  clearRubricFileAndSave,
 }: TeacherGradingTabProps) {
   return (
     <div className="flex flex-col lg:flex-row gap-6 max-w-7xl h-[85vh] animate-in fade-in">
@@ -126,9 +130,9 @@ export default function TeacherGradingTab({
                 importError={rubricImportError}
                 isImporting={isImportingRubric}
                 disabled={isSavingRubric}
-                savedFileName={selectedGradingAct.rubric_document_name}
+                savedFileName={rubricFileCleared ? null : selectedGradingAct.rubric_document_name}
                 onDownloadSavedFile={() => void downloadRubricDocument(selectedGradingAct)}
-                onClearFile={() => { setRubricText(""); setRubricFile(null); setRubricFileName(""); setRubricImportError(""); }}
+                onClearFile={() => clearRubricFileAndSave()}
               />
               {!rubricDocumentSchemaReady && rubricFile && <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">Cần migration 20261031002700_rubric_document_import.sql để lưu file gốc ma trận.</p>}
               <div className="flex justify-end">

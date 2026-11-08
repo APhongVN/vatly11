@@ -201,6 +201,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [rubricFileName, setRubricFileName] = useState("");
   const [rubricFile, setRubricFile] = useState<File | null>(null);
   const [rubricImportError, setRubricImportError] = useState("");
+  const [rubricCleared, setRubricCleared] = useState(false);
   const [isImportingRubric, setIsImportingRubric] = useState(false);
   const [isSavingRubric, setIsSavingRubric] = useState(false);
   const [rubricDocumentSchemaReady, setRubricDocumentSchemaReady] = useState(previewMode);
@@ -228,6 +229,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [editRubricFile, setEditRubricFile] = useState<File | null>(null);
   const [editRubricFileName, setEditRubricFileName] = useState("");
   const [editRubricImportError, setEditRubricImportError] = useState("");
+  const [editRubricCleared, setEditRubricCleared] = useState(false);
   const [isImportingEditRubric, setIsImportingEditRubric] = useState(false);
   const [savingActivityId, setSavingActivityId] = useState<number | null>(null);
   const [newActFile, setNewActFile] = useState<File | null>(null);
@@ -1343,7 +1345,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
     }
     setIsSavingRubric(true);
     const oldPath = selectedGradingAct.rubric_document_path || null;
-    let uploadedPath: string | null = oldPath;
+    let uploadedPath: string | null = rubricCleared ? null : oldPath;
     let newUploadedPath: string | null = null;
     try {
       if (rubricFile) {
@@ -1360,7 +1362,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
       };
       if (rubricDocumentSchemaReady) {
         guidePayload.rubric_document_path = uploadedPath;
-        guidePayload.rubric_document_name = rubricFile?.name || selectedGradingAct.rubric_document_name || null;
+        guidePayload.rubric_document_name = rubricFile?.name || (rubricCleared ? null : selectedGradingAct.rubric_document_name || null);
       }
       const { error } = await supabase.from("activity_grading_guides").upsert(guidePayload);
       if (error) throw new Error("Không lưu được ma trận điểm: " + error.message);
@@ -1369,17 +1371,22 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
         const { error: removeError } = await supabase.storage.from("learning-resources").remove([oldPath]);
         if (removeError) console.warn("Không dọn được file ma trận cũ:", removeError.message);
       }
+      if (rubricCleared && oldPath && !newUploadedPath) {
+        const { error: removeError } = await supabase.storage.from("learning-resources").remove([oldPath]);
+        if (removeError) console.warn("Không xóa được file ma trận:", removeError.message);
+      }
       const savedActivity = {
         ...selectedGradingAct,
         grading_rubric: rubricText.trim() || null,
         rubric_document_path: uploadedPath,
-        rubric_document_name: rubricFile?.name || selectedGradingAct.rubric_document_name || null,
+        rubric_document_name: rubricFile?.name || (rubricCleared ? null : selectedGradingAct.rubric_document_name || null),
       };
       setActivities((current) => current.map((activity) => activity.id === savedActivity.id ? savedActivity : activity));
       setSelectedGradingAct(savedActivity);
       setRubricFile(null);
       setRubricFileName("");
       setRubricImportError("");
+      setRubricCleared(false);
       alert("✅ Đã lưu ma trận và file gốc cho bài " + selectedGradingAct.id);
       fetchData();
     } catch (error) {
@@ -1389,7 +1396,18 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
       setIsSavingRubric(false);
     }
   };
-  const handleRubricFileUpload = async (file: File | null) => {
+  const clearRubricFileAndSave = async () => {
+  // Nút "Xóa file": xóa hẳn tệp ma trận đã lưu trên Storage + cập nhật DB (rubric_document_path = null).
+  if (!selectedGradingAct) return;
+  setRubricText("");
+  setRubricFile(null);
+  setRubricFileName("");
+  setRubricImportError("");
+  setRubricCleared(true);
+  await saveRubric();
+  setRubricCleared(false);
+};
+const handleRubricFileUpload = async (file: File | null) => {
     if (!file) return;
     setRubricFileName(file.name);
     setRubricFile(file);
@@ -2765,7 +2783,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
 
         {/* 3. TAB BÀI HỌC CÁ NHÂN & GỘP BÀI TẬP */}
         {activeTab === 'activities' && (
-          <div className="space-y-6 max-w-5xl animate-in fade-in">
+          <div className="space-y-6 w-full animate-in fade-in">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h2 className="text-3xl font-extrabold text-slate-900">Quản lý Bài học Cá nhân ({activities.length})</h2>
@@ -2991,7 +3009,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
 
         {/* 5. TAB BÀI TẬP NHÓM & TÀI LIỆU NHÓM */}
         {activeTab === 'group_assignments' && (
-          <div className="space-y-6 max-w-5xl animate-in fade-in">
+          <div className="space-y-6 w-full animate-in fade-in">
             <div>
               <h2 className="text-3xl font-extrabold text-slate-900">Quản lý Bài tập Nhóm</h2>
               <p className="text-slate-500 text-sm mt-1">Tạo bài tập nhóm, đính kèm tài liệu nghiên cứu, ma trận điểm và phân bổ thành viên.</p>
@@ -3275,8 +3293,10 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
     activeStudents={activeStudents}
     getAvatar={getAvatar}
     formatTime={formatTime}
-    saveRubric={saveRubric}
-  />
+    saveRubric={() => void saveRubric()}
+rubricFileCleared={rubricCleared}
+clearRubricFileAndSave={() => void clearRubricFileAndSave()}
+/>
         )}
 
         {/* 7. TAB CHẤM TỪ ẢNH (AI OCR) & LƯU DB */}
@@ -3310,7 +3330,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
 
         {/* 9. TAB SINH VIÊN */}
         {activeTab === 'students' && (
-          <div className="space-y-6 max-w-5xl animate-in fade-in">
+          <div className="space-y-6 max-w-7xl animate-in fade-in">
             <div className="flex flex-wrap justify-between items-center gap-3">
               <div>
                 <h2 className="text-3xl font-extrabold text-slate-900">Danh sách Học sinh ({activeStudents.length})</h2>
@@ -3358,11 +3378,11 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                 <label className="text-xs font-semibold text-slate-600">Lọc lớp<select value={studentClassFilter} onChange={(event) => setStudentClassFilter(event.target.value)} className="mt-1 block min-w-40 rounded-xl border bg-white px-3 py-3 text-sm"><option value="">Tất cả lớp ({currentRoster.length})</option>{studentClassOptions.map((className) => <option key={className} value={className}>{className}</option>)}</select></label>
               </div>
               <p className="text-xs text-slate-500">Đang hiển thị {visibleStudents.length} / {currentRoster.length} hồ sơ{showArchivedStudents ? " đã lưu trữ" : " đang hoạt động"}. Hồ sơ trùng tên vẫn giữ mã học sinh riêng.</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {visibleStudents.map((s: any) => (
+              <div className="flex flex-col gap-2">
+                {visibleStudents.map((s: any, idx: number) => (
                   <div key={s.id} className="min-w-0 rounded-xl border bg-slate-50 px-3 py-2.5 text-xs group">
-                    <div className="flex min-w-0 items-center justify-between gap-2">
-                      <span className="min-w-0 truncate font-bold">{s.full_name}<span className="ml-1.5 rounded bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">{s.class_name || "Chưa xếp lớp"}</span>{(() => { const seen = s.last_seen_at ? new Date(s.last_seen_at).getTime() : 0; const online = seen && Date.now() - seen < 5 * 60 * 1000; return <span className={`ml-1.5 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold ${online ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}><span className={`h-1.5 w-1.5 rounded-full ${online ? "bg-emerald-500" : "bg-slate-400"}`} />{online ? "Online" : "Offline"}</span>; })()}</span>
+                    <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                      <span className="min-w-0 flex-1 truncate font-bold">{idx + 1}. {s.full_name}<span className="ml-1.5 rounded bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">{s.class_name || "Chưa xếp lớp"}</span>{(() => { const seen = s.last_seen_at ? new Date(s.last_seen_at).getTime() : 0; const online = seen && Date.now() - seen < 5 * 60 * 1000; return <span className={`ml-1.5 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold ${online ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}><span className={`h-1.5 w-1.5 rounded-full ${online ? "bg-emerald-500" : "bg-slate-400"}`} />{online ? "Online" : "Offline"}</span>; })()}</span>
                       <div className="flex shrink-0 items-center gap-1">
                         {s.is_active === false ? <span className="rounded-md bg-slate-200 px-1.5 py-1 text-[9px] font-bold text-slate-600">Đã lưu trữ</span> : s.password_changed ? <span title="Học sinh đã tự đổi mật khẩu; giáo viên không xem được mật khẩu." className="rounded-md bg-emerald-100 px-1.5 py-1 text-[9px] font-bold text-emerald-700">Đã đổi mật khẩu</span> : s.auth_user_id ? <button type="button" disabled={previewMode || !canProvisionStudentAccounts} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-amber-800 disabled:opacity-50">Cấp lại mật khẩu</button> : <button type="button" disabled={previewMode || !canProvisionStudentAccounts} title={!canProvisionStudentAccounts ? "Cần áp dụng migration tài khoản mới." : undefined} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
                         <button type="button" aria-label={(s.is_active === false ? "Khôi phục học sinh " : "Lưu trữ học sinh ") + s.full_name} title={s.is_active === false ? "Khôi phục hồ sơ" : "Lưu trữ, giữ nguyên lịch sử"} disabled={studentArchiveBusyId === s.id || studentArchiveSchemaMissing && !previewMode} onClick={() => void deleteStudent(s.id)} className={"rounded-md p-1 disabled:opacity-40 " + (s.is_active === false ? "text-blue-600 hover:bg-blue-50" : "text-slate-400 hover:text-amber-700")}>{studentArchiveBusyId === s.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin"/> : s.is_active === false ? <RotateCcw className="h-3.5 w-3.5"/> : <Archive className="h-3.5 w-3.5"/>}</button>
@@ -3532,7 +3552,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                 <section role="dialog" aria-modal="true" aria-labelledby="student-account-title" className="student-credentials-print w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
                   <div className="flex items-start justify-between gap-4"><div><h3 id="student-account-title" className="text-xl font-black text-slate-900">Thông tin đăng nhập học sinh</h3><p className="mt-1 text-sm text-slate-500">{accountStudent.full_name} · mật khẩu được tạo ngẫu nhiên và không lưu trong cơ sở dữ liệu.</p></div><button type="button" aria-label="Đóng" onClick={closeStudentAccountModal} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
                   {studentAccountError && <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{studentAccountError}</p>}
-                  {studentAccountCredentials ? <div className="mt-5 space-y-3"><p className="rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">Hãy lưu lại ngay. Mật khẩu chỉ hiển thị trong lần này; học sinh phải đổi mật khẩu khi đăng nhập lần đầu.</p><div className="max-h-80 overflow-auto rounded-xl border"><table className="w-full text-left text-xs"><thead className="sticky top-0 bg-slate-100 text-slate-600"><tr><th className="px-2 py-2 font-bold">STT</th><th className="px-2 py-2 font-bold">Họ và tên</th><th className="px-2 py-2 font-bold">Tên đăng nhập</th><th className="px-2 py-2 font-bold">Mật khẩu tạm</th><th className="student-credentials-no-print px-2 py-2 font-bold">Sao chép</th></tr></thead><tbody>{studentAccountCredentials.map((credential, index) => { const copyRow = () => { void navigator.clipboard.writeText(`${credential.studentName}\t${credential.username}\t${credential.password}`).then(() => setStudentAccountNotice(`Đã sao chép thông tin của ${credential.studentName}.`)).catch(() => setStudentAccountNotice("Không sao chép tự động được; hãy chép thông tin đang hiển thị.")); }; return (<tr key={`${credential.username}-${index}`} className="border-t border-slate-100"><td className="px-2 py-2 text-slate-500">{index + 1}</td><td className="px-2 py-2 font-semibold text-slate-900">{credential.studentName}</td><td className="px-2 py-2 font-mono">{credential.username}</td><td className="px-2 py-2 font-mono font-bold break-all">{credential.password}</td><td className="student-credentials-no-print px-2 py-2"><button type="button" onClick={copyRow} className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-100">Sao chép</button></td></tr>); })}</tbody></table></div><div className="student-credentials-no-print flex flex-wrap gap-2"><button type="button" onClick={() => void navigator.clipboard.writeText(studentAccountCredentials.map((item) => `${item.studentName}\t${item.username}\t${item.password}`).join("\n")).then(() => setStudentAccountNotice("Đã sao chép toàn bộ thông tin đăng nhập.")).catch(() => setStudentAccountNotice("Không sao chép tự động được; hãy chép thông tin đang hiển thị."))} className="flex-1 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white">Sao chép danh sách</button><button type="button" onClick={() => window.print()} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700">In / lưu PDF</button></div><p role="status" className="text-xs text-slate-500">{studentAccountNotice}</p></div> : <form onSubmit={createStudentAccount} className="mt-5 space-y-4"><p className="text-sm leading-6 text-slate-600">Tạo mới hoặc cấp lại mật khẩu tạm cho hồ sơ. Khi cấp lại, mật khẩu cũ không còn dùng được và học sinh cần đổi mật khẩu sau khi đăng nhập.</p><div className="flex justify-end gap-2"><button type="button" onClick={closeStudentAccountModal} disabled={isCreatingStudentAccount} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-50">Hủy</button><button type="submit" disabled={isCreatingStudentAccount || previewMode || !canProvisionStudentAccounts} className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isCreatingStudentAccount ? "Đang tạo…" : accountStudent.auth_user_id ? "Cấp lại mật khẩu" : "Tạo tài khoản"}</button></div></form>}
+                  {studentAccountCredentials ? <div className="mt-5 space-y-3"><p className="rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">Hãy lưu lại ngay. Mật khẩu chỉ hiển thị trong lần này; học sinh phải đổi mật khẩu khi đăng nhập lần đầu.</p><div className="max-h-80 overflow-auto rounded-xl border"><table className="w-full text-left text-xs"><thead className="sticky top-0 bg-slate-100 text-slate-600"><tr><th className="px-2 py-2 font-bold">STT</th><th className="px-2 py-2 font-bold">Họ và tên</th><th className="px-2 py-2 font-bold">Tên đăng nhập</th><th className="px-2 py-2 font-bold">Mật khẩu tạm</th><th className="student-credentials-no-print px-2 py-2 font-bold">Sao chép</th></tr></thead><tbody>{studentAccountCredentials.map((credential, index) => { const copyRow = () => { void navigator.clipboard.writeText(credential.password).then(() => setStudentAccountNotice(`Đã sao chép mật khẩu của ${credential.studentName}.`)).catch(() => setStudentAccountNotice("Không sao chép tự động được; hãy chép thông tin đang hiển thị.")); }; return (<tr key={`${credential.username}-${index}`} className="border-t border-slate-100"><td className="px-2 py-2 text-slate-500">{index + 1}</td><td className="px-2 py-2 font-semibold text-slate-900">{credential.studentName}</td><td className="px-2 py-2 font-mono">{credential.username}</td><td className="px-2 py-2 font-mono font-bold break-all">{credential.password}</td><td className="student-credentials-no-print px-2 py-2"><button type="button" onClick={copyRow} title="Sao chép mật khẩu tạm" aria-label={`Sao chép mật khẩu của ${credential.studentName}`} className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-100">Sao chép</button></td></tr>); })}</tbody></table></div><div className="student-credentials-no-print flex flex-wrap gap-2"><button type="button" onClick={() => void navigator.clipboard.writeText(studentAccountCredentials.map((item) => `${item.studentName}\t${item.username}\t${item.password}`).join("\n")).then(() => setStudentAccountNotice("Đã sao chép toàn bộ thông tin đăng nhập.")).catch(() => setStudentAccountNotice("Không sao chép tự động được; hãy chép thông tin đang hiển thị."))} className="flex-1 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white">Sao chép danh sách</button><button type="button" onClick={() => window.print()} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700">In / lưu PDF</button></div><p role="status" className="text-xs text-slate-500">{studentAccountNotice}</p></div> : <form onSubmit={createStudentAccount} className="mt-5 space-y-4"><p className="text-sm leading-6 text-slate-600">Tạo mới hoặc cấp lại mật khẩu tạm cho hồ sơ. Khi cấp lại, mật khẩu cũ không còn dùng được và học sinh cần đổi mật khẩu sau khi đăng nhập.</p><div className="flex justify-end gap-2"><button type="button" onClick={closeStudentAccountModal} disabled={isCreatingStudentAccount} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-50">Hủy</button><button type="submit" disabled={isCreatingStudentAccount || previewMode || !canProvisionStudentAccounts} className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isCreatingStudentAccount ? "Đang tạo…" : accountStudent.auth_user_id ? "Cấp lại mật khẩu" : "Tạo tài khoản"}</button></div></form>}
                 </section>
               </div>
             )}            {showPasteModal && (
@@ -3561,7 +3581,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
 
         {/* 10. TAB TẠO TRẮC NGHIỆM & AI SINH ĐỀ */}
         {activeTab === 'quizzes' && (
-          <div className="space-y-6 max-w-4xl animate-in fade-in">
+          <div className="space-y-6 w-full animate-in fade-in">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h2 className="text-3xl font-extrabold text-slate-900 flex items-center gap-2">

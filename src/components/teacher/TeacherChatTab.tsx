@@ -47,6 +47,12 @@ export default function TeacherChatTab({ previewMode, onPreviewNotice, getAvatar
     if (previewMode) return;
     const { data: msgs } = await supabase.from("messages").select("id, sender_name, content, attachment_url, attachment_name, attachment_type, created_at").order("created_at");
     if (msgs) setMessages([...msgs].reverse());
+    // Nạp lại thiết lập kênh để trạng thái khóa/mở cập nhật ngay, không cần tải lại trang.
+    const { data: setting } = await supabase.from("chat_settings").select("*").limit(1).maybeSingle();
+    if (setting) {
+      setIsChatMuted(Boolean(setting.is_muted));
+      setIsDeletionBlocked(Boolean((setting as any).deletion_blocked));
+    }
   };
 
   const toggleMuted = async () => {
@@ -56,7 +62,9 @@ export default function TeacherChatTab({ previewMode, onPreviewNotice, getAvatar
       onPreviewNotice(nextMuted ? "Đã khóa kênh chat mẫu trong phiên này." : "Đã mở khóa kênh chat mẫu trong phiên này.");
       return;
     }
-    await supabase.from("chat_settings").update({ is_muted: !isChatMuted }).eq("id", 1);
+    const nextMuted = !isChatMuted;
+    setIsChatMuted(nextMuted);
+    await supabase.from("chat_settings").update({ is_muted: nextMuted }).eq("id", 1);
     reload();
   };
 
