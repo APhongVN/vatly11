@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CHAPTERS } from "@/lib/data/chapters";
 import { ACTIVITIES, type Activity } from "@/lib/data/activities";
 import { COURSES } from "@/lib/data/courses";
@@ -64,6 +65,7 @@ function toActivity(row: CatalogActivity, fallbackById: Map<number, Activity>): 
 }
 
 export default function ChapterDashboard() {
+  const router = useRouter();
   const [courses, setCourses] = useState<CatalogCourse[]>(FALLBACK_COURSES);
   const [chapters, setChapters] = useState<CatalogChapter[]>(FALLBACK_CHAPTERS);
   const [selectedCourse, setSelectedCourse] = useState<string>(FALLBACK_COURSES[0]?.id || "");
@@ -120,9 +122,14 @@ export default function ChapterDashboard() {
             <p className="mt-1 text-sm text-gray-500">Toàn bộ chương và hoạt động được phát hành cho lớp học.</p>
             <p className="mt-2 text-xs text-slate-500">Đề cương gồm 14 mục nguồn; các mục 8–11 được tổ chức thành một hoạt động thực nghiệm.</p>
           </div>
-          <Link href="/" className="flex items-center gap-2 font-medium text-blue-600 hover:text-blue-700">
-            <ArrowRight className="h-4 w-4" /> Về trang chủ
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => { if (typeof window !== "undefined" && window.history.length > 1) router.back(); else router.push("/"); }} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
+              <ArrowRight className="h-3.5 w-3.5 rotate-180" /> Quay lại
+            </button>
+            <Link href="/" className="flex items-center gap-2 font-medium text-blue-600 hover:text-blue-700">
+              <ArrowRight className="h-4 w-4" /> Về trang chủ
+            </Link>
+          </div>
         </div>
 
         {catalogError && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"><p className="max-w-3xl">Chưa kết nối được danh mục trực tuyến. Danh sách đang hiển thị dữ liệu nội dung đã đóng gói; bài và chương mới do giáo viên tạo sẽ xuất hiện sau khi kết nối cơ sở dữ liệu hoạt động.</p><button type="button" disabled={isRefreshingCatalog} onClick={() => { setIsRefreshingCatalog(true); setCatalogRetryCount((count) => count + 1); }} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold hover:bg-amber-100 disabled:cursor-wait disabled:opacity-60"><RefreshCw className={`h-4 w-4 ${isRefreshingCatalog ? "animate-spin" : ""}`} />{isRefreshingCatalog ? "Đang tải lại…" : "Tải lại danh mục"}</button></div>}

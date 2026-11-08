@@ -82,6 +82,15 @@ export default function HocSinhPage() {
     const timer = window.setInterval(() => void refreshChat(), 30000);
     return () => { window.clearInterval(timer); void supabase.removeChannel(channel); };
   }, [student]);
+  useEffect(() => {
+    if (!student) return;
+    // Mục 7: cập nhật trạng thái hoạt động để giáo viên biết online/offline.
+    const ping = () => { void fetch("/api/presence", { method: "POST" }).catch(() => undefined); };
+    ping();
+    const timer = window.setInterval(ping, 120000);
+    return () => window.clearInterval(timer);
+  }, [student]);
+
   async function fetchData(student: any) {
     if (!student) return;
     const { data: acts } = await supabase.from('activities').select('*').order('id');

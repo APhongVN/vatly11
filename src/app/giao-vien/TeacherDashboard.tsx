@@ -48,7 +48,7 @@ const isMissingStudentSchemaField = (error: { code?: string } | null) => error?.
 
 const loadTeacherStudentRoster = async () => {
   const completeRoster = await supabase.from("students")
-    .select("id,full_name,class_name,auth_user_id,login_email,username,birth_date,is_active,student_code,password_changed").order("full_name").limit(1000);
+    .select("id,full_name,class_name,auth_user_id,login_email,username,birth_date,is_active,student_code,password_changed,last_seen_at").order("full_name").limit(1000);
   if (!completeRoster.error) {
     return { ...completeRoster, accountFieldsReady: true, accountSchemaMissing: false, archiveSchemaMissing: false };
   }
@@ -61,7 +61,7 @@ const loadTeacherStudentRoster = async () => {
   if (!accountRoster.error) {
     return {
       ...accountRoster,
-      data: (accountRoster.data || []).map((student) => ({ ...student, is_active: true, student_code: null, password_changed: false })),
+      data: (accountRoster.data || []).map((student) => ({ ...student, is_active: true, student_code: null, password_changed: false, last_seen_at: null })),
       accountFieldsReady: true,
       accountSchemaMissing: false,
       archiveSchemaMissing: true,
@@ -267,6 +267,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   const [regroupingAssignmentId, setRegroupingAssignmentId] = useState<string | null>(null);
   const [newGroupTitle, setNewGroupTitle] = useState("");
   const [newGroupDesc, setNewGroupDesc] = useState("");
+  const [newGroupTheory, setNewGroupTheory] = useState("");
   const [newGroupDeadline, setNewGroupDeadline] = useState("");
   const [newGroupDocUrl, setNewGroupDocUrl] = useState("");
   const [newGroupRubric, setNewGroupRubric] = useState("");
@@ -1580,7 +1581,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
     try {
       const res = await fetch("/api/ai-group-suggestion", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newGroupTitle }),
+        body: JSON.stringify({ title: newGroupTitle, theory: newGroupTheory }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Không tạo được gợi ý.");
@@ -3000,6 +3001,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                             disabled={savingActivityId === act.id}
                             savedFileName={act.rubric_document_name}
                             onDownloadSavedFile={() => void downloadRubricDocument(act)}
+                            onClearFile={() => { setEditRubricText(""); setEditRubricFile(null); setEditRubricFileName(""); setEditRubricImportError(""); }}
                           />
                           {editRubricFile && !rubricDocumentSchemaReady && <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">Cần migration 20261031002700_rubric_document_import.sql để lưu file gốc ma trận.</p>}
                         </div>
@@ -3100,7 +3102,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                     type="text"
                     value={newActTitle}
                     onChange={(e) => setNewActTitle(e.target.value)}
-                    placeholder="Ví dụ: Bài tập Năng lượng và Ghép tụ điện..."
+                    placeholder="Nhập tên bài tập..."
                     className="w-full p-3 border border-slate-200 rounded-xl outline-none text-sm focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
                     required
                   />
@@ -3162,7 +3164,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                 <textarea
                   value={newActDesc}
                   onChange={(e) => setNewActDesc(e.target.value)}
-                  placeholder="Ghi rõ yêu cầu học sinh cần đạt, số bước giải, các hiện tượng cần giải thích..."
+                  placeholder="Nhập yêu cầu nhiệm vụ..."
                   className="w-full p-3 border border-slate-200 rounded-xl outline-none text-sm focus:ring-2 focus:ring-blue-500 bg-slate-50/50 h-24"
                 />
               </div>
@@ -3203,6 +3205,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                   importError={newActRubricImportError}
                   isImporting={isImportingNewActRubric}
                   disabled={isCreatingAct}
+                  onClearFile={() => { setNewActRubric(""); setNewActRubricFile(null); setNewActRubricFileName(""); setNewActRubricImportError(""); }}
                 />
                 {!rubricDocumentSchemaReady && !previewMode && <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">Đã trích nội dung được, nhưng cần migration 20261031002700_rubric_document_import.sql để hệ thống lưu kèm file gốc.</p>}
               </div>
@@ -3245,14 +3248,11 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
               <h3 className="font-bold text-base text-slate-800 flex items-center gap-2">
                 <PlusCircle className="w-5 h-5 text-orange-600" /> Tạo bài tập nhóm mới
               </h3>
-              <button type="button" onClick={() => void handleGenerateGroupWithAI()} disabled={isGeneratingGroupAI} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50">
-                <Sparkles className="h-4 w-4" /> {isGeneratingGroupAI ? "AI đang soạn đề nhóm…" : "AI gợi ý đề nhóm + ma trận"}
-              </button>
 
               <div className="grid md:grid-cols-3 gap-4">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">Tên bài tập nhóm *</label>
-                  <input value={newGroupTitle} onChange={e => setNewGroupTitle(e.target.value)} placeholder="VD: Thuyết trình ứng dụng Tụ điện trong thực tiễn..." className="w-full border p-2.5 rounded-xl text-sm outline-none bg-slate-50/50" required />
+                  <input value={newGroupTitle} onChange={e => setNewGroupTitle(e.target.value)} placeholder="Nhập tên bài tập nhóm..." className="w-full border p-2.5 rounded-xl text-sm outline-none bg-slate-50/50" required />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">Hạn chót nộp bài</label>
@@ -3272,6 +3272,17 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">Mô tả / Yêu cầu nhiệm vụ của các nhóm</label>
                 <textarea value={newGroupDesc} onChange={e => setNewGroupDesc(e.target.value)} placeholder="Yêu cầu cụ thể của từng nhóm..." className="w-full border p-2.5 rounded-xl text-sm outline-none bg-slate-50/50 h-20" />
+              </div>
+
+              <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-2">
+                <label className="text-xs font-bold text-indigo-900 block">Nội dung lý thuyết / tài liệu tham chiếu cho AI đọc (không bắt buộc)</label>
+                <textarea value={newGroupTheory} onChange={e => setNewGroupTheory(e.target.value)} placeholder="Dán nội dung lý thuyết hoặc yêu cầu để AI gợi ý đề nhóm sát hơn..." className="w-full border border-indigo-200 p-2.5 rounded-xl text-sm outline-none bg-white h-20" />
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" onClick={() => void handleGenerateGroupWithAI()} disabled={isGeneratingGroupAI} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50">
+                    <Sparkles className="h-4 w-4" /> {isGeneratingGroupAI ? "AI đang soạn đề nhóm..." : "AI gợi ý đề nhóm + ma trận từ nội dung trên"}
+                  </button>
+                  <span className="text-[10px] text-indigo-600">AI dựa vào tên bài tập và nội dung lý thuyết để gợi ý mô tả nhiệm vụ + ma trận.</span>
+                </div>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4 p-4 rounded-2xl bg-orange-50/40 border border-orange-100">
@@ -3295,7 +3306,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                     type="text"
                     value={newGroupRubric}
                     onChange={e => setNewGroupRubric(e.target.value)}
-                    placeholder="VD: 4đ nội dung, 3đ slide, 3đ thuyết trình..."
+                    placeholder="Nhập ma trận điểm..."
                     className="w-full border border-orange-200 p-2.5 rounded-xl text-sm outline-none bg-white"
                   />
                 </div>
@@ -3412,7 +3423,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                               disabled={isImportingGroupRubric || savingGroupRubricId !== null || loadingGroupDetailsId === gAct.id || groupRubricAssignmentId !== gAct.id}
                               onChange={e => setGroupRubricText(e.target.value)}
                               className="min-h-28 flex-1 resize-y rounded-xl border bg-slate-50/50 p-3 text-xs leading-5 outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-60"
-                              placeholder="Nội dung được trích từ file sẽ hiện ở đây để cô rà lại trước khi lưu. Có thể chỉnh sửa nếu cần."
+                              placeholder="Nội dung trích từ file..."
                             />
                             <button type="button" disabled={savingGroupRubricId !== null || isImportingGroupRubric || loadingGroupDetailsId === gAct.id || groupRubricAssignmentId !== gAct.id} onClick={() => void saveGroupRubric(gAct.id)} className="self-start rounded-xl bg-slate-800 px-4 py-3 text-xs font-bold text-white hover:bg-slate-900 disabled:opacity-50">
                               {savingGroupRubricId === gAct.id ? "Đang lưu…" : "Lưu ma trận"}
@@ -3529,6 +3540,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                       disabled={isSavingRubric}
                       savedFileName={selectedGradingAct.rubric_document_name}
                       onDownloadSavedFile={() => void downloadRubricDocument(selectedGradingAct)}
+                      onClearFile={() => { setRubricText(""); setRubricFile(null); setRubricFileName(""); setRubricImportError(""); }}
                     />
                     {!rubricDocumentSchemaReady && rubricFile && <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">Cần migration 20261031002700_rubric_document_import.sql để lưu file gốc ma trận.</p>}
                     <div className="flex justify-end">
@@ -3682,7 +3694,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                       value={ocrRubric}
                       onChange={e => setOcrRubric(e.target.value)}
                       className="w-full p-3 border rounded-xl text-xs h-28 outline-none bg-slate-50/50"
-                      placeholder="VD: 3đ nêu định nghĩa, 4đ công thức và thay số, 3đ đơn vị..."
+                      placeholder="Nhập ma trận điểm..."
                     />
                   </div>
                 </div>
@@ -3719,7 +3731,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                   value={ocrText}
                   onChange={e => setOcrText(e.target.value)}
                   className="w-full p-4 border rounded-2xl text-xs h-36 outline-none bg-slate-50/50 leading-relaxed font-mono"
-                  placeholder="Văn bản nhận diện từ ảnh bài thi sẽ xuất hiện ở đây..."
+                  placeholder="Nội dung nhận diện từ ảnh..."
                 />
               </div>
 
@@ -3860,7 +3872,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                 {visibleStudents.map((s: any) => (
                   <div key={s.id} className="min-w-0 rounded-xl border bg-slate-50 px-3 py-2.5 text-xs group">
                     <div className="flex min-w-0 items-center justify-between gap-2">
-                      <span className="min-w-0 truncate font-bold">{s.full_name}<span className="ml-1.5 rounded bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">{s.class_name || "Chưa xếp lớp"}</span></span>
+                      <span className="min-w-0 truncate font-bold">{s.full_name}<span className="ml-1.5 rounded bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">{s.class_name || "Chưa xếp lớp"}</span>{(() => { const seen = s.last_seen_at ? new Date(s.last_seen_at).getTime() : 0; const online = seen && Date.now() - seen < 5 * 60 * 1000; return <span className={`ml-1.5 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold ${online ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}><span className={`h-1.5 w-1.5 rounded-full ${online ? "bg-emerald-500" : "bg-slate-400"}`} />{online ? "Online" : "Offline"}</span>; })()}</span>
                       <div className="flex shrink-0 items-center gap-1">
                         {s.is_active === false ? <span className="rounded-md bg-slate-200 px-1.5 py-1 text-[9px] font-bold text-slate-600">Đã lưu trữ</span> : s.password_changed ? <span title="Học sinh đã tự đổi mật khẩu; giáo viên không xem được mật khẩu." className="rounded-md bg-emerald-100 px-1.5 py-1 text-[9px] font-bold text-emerald-700">Đã đổi mật khẩu</span> : s.auth_user_id ? <button type="button" disabled={previewMode || !canProvisionStudentAccounts} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-amber-800 disabled:opacity-50">Cấp lại mật khẩu</button> : <button type="button" disabled={previewMode || !canProvisionStudentAccounts} title={!canProvisionStudentAccounts ? "Cần áp dụng migration tài khoản mới." : undefined} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
                         <button type="button" aria-label={(s.is_active === false ? "Khôi phục học sinh " : "Lưu trữ học sinh ") + s.full_name} title={s.is_active === false ? "Khôi phục hồ sơ" : "Lưu trữ, giữ nguyên lịch sử"} disabled={studentArchiveBusyId === s.id || studentArchiveSchemaMissing && !previewMode} onClick={() => void deleteStudent(s.id)} className={"rounded-md p-1 disabled:opacity-40 " + (s.is_active === false ? "text-blue-600 hover:bg-blue-50" : "text-slate-400 hover:text-amber-700")}>{studentArchiveBusyId === s.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin"/> : s.is_active === false ? <RotateCcw className="h-3.5 w-3.5"/> : <Archive className="h-3.5 w-3.5"/>}</button>
@@ -4026,7 +4038,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                   <input
                     value={aiQuizTopic}
                     onChange={(e) => setAiQuizTopic(e.target.value)}
-                    placeholder="Chủ đề: Tụ điện phẳng, điện dung, ghép nối tiếp/song song..."
+                    placeholder="Nhập chủ đề..."
                     className="w-full p-2.5 rounded-xl border border-indigo-200 bg-white text-xs outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -4183,24 +4195,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                   }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold text-white ${isChatMuted ? 'bg-emerald-600' : 'bg-amber-600'}`}
                 >
-                  {isChatMuted ? "Mở khóa chat" : "Khóa chat học sinh"}
-                </button>
-                <button
-                  onClick={async () => {
-                    if (previewMode) {
-                      setIsDeletionBlocked(!isDeletionBlocked);
-                      setPreviewNotice(!isDeletionBlocked ? "Đã cấm xóa tin nhắn (chế độ mẫu)." : "Đã cho phép xóa tin nhắn (chế độ mẫu).");
-                      return;
-                    }
-                    const nextBlocked = !isDeletionBlocked;
-                    const { error } = await supabase.from('chat_settings').update({ deletion_blocked: nextBlocked }).eq('id', 1);
-                    if (error) { setPreviewNotice("Không đổi được chế độ cấm xóa. Hãy áp dụng migration 20261104000600."); return; }
-                    setIsDeletionBlocked(nextBlocked);
-                    setPreviewNotice(nextBlocked ? "Đã CẤM học sinh xóa tin nhắn trong kênh thảo luận." : "Đã cho phép học sinh xóa tin nhắn của mình.");
-                  }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold text-white ${isDeletionBlocked ? 'bg-rose-600' : 'bg-slate-600'}`}
-                >
-                  {isDeletionBlocked ? "Đang cấm xóa chat" : "Cấm xóa chat"}
+                  {isChatMuted ? "Mở khóa chat cho học sinh" : "Khóa chat học sinh"}
                 </button>
               </div>
             </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "katex/dist/katex.min.css";
 import ChatbotLoader from "@/components/ChatbotLoader";
 
 export const metadata: Metadata = {

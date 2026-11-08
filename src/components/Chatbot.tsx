@@ -8,8 +8,29 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 import { extractRubricFile } from "@/lib/rubric-import.mjs";
+import { normalizeLatexForMarkdown } from "@/lib/latex";
 
 type Message = { role: "user" | "assistant"; text: string; imageDataUrl?: string; fileName?: string };
+
+// Mục 5: lưu lịch sử chat 3 tiếng theo từng người dùng, rồi tự xóa.
+const CHAT_HISTORY_TTL_MS = 3 * 60 * 60 * 1000;
+
+function chatStorageKey(userKey: string) { return `chatbot-history:${userKey}`; }
+function loadChatHistory(userKey: string): Message[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(chatStorageKey(userKey));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { savedAt: number; messages: Message[] };
+    if (!parsed || typeof parsed.savedAt !== "number" || !Array.isArray(parsed.messages)) return null;
+    if (Date.now() - parsed.savedAt > CHAT_HISTORY_TTL_MS) { window.localStorage.removeItem(chatStorageKey(userKey)); return null; }
+    return parsed.messages;
+  } catch { return null; }
+}
+function saveChatHistory(userKey: string, messages: Message[]) {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(chatStorageKey(userKey), JSON.stringify({ savedAt: Date.now(), messages: messages.slice(-40) })); } catch { /* bỏ qua nếu hết chỗ */ }
+}
 
 const WELCOME: Message = {
   role: "assistant",
@@ -36,6 +57,29 @@ export default function Chatbot({ initiallyOpen = false }: { initiallyOpen?: boo
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const userKeyRef = useRef<string>("guest");
+
+  // Mục 5: mỗi người dùng có lịch sử riêng; khôi phục nếu còn trong 3 tiếng.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { supabase } = await import("@/lib/supabase");
+        const { data: { user } } = await supabase.auth.getUser();
+        const key = user?.id || "guest";
+        if (cancelled) return;
+        userKeyRef.current = key;
+        const saved = loadChatHistory(key);
+        if (saved && saved.length) setMessages(saved);
+      } catch { /* giữ lịch sử mặc định */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Mục 5: lưu lịch sử mỗi khi có tin nhắn mới.
+  useEffect(() => {
+    if (messages.length > 1) saveChatHistory(userKeyRef.current, messages);
+  }, [messages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -190,7 +234,7 @@ export default function Chatbot({ initiallyOpen = false }: { initiallyOpen?: boo
               ) : (
                 <>
                   <div className="prose prose-sm max-w-none break-words text-slate-800 prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-pre:overflow-x-auto">
-                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{message.text}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{normalizeLatexForMarkdown(message.text)}</ReactMarkdown>
                   </div>
                   <button onClick={() => copyText(message.text, index)} aria-label="Sao chép câu trả lời" className="mt-2 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900">
                     {copiedIndex === index ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}

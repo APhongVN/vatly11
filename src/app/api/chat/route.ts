@@ -105,6 +105,26 @@ export async function POST(request: Request) {
         }
       }
     }
+    // Mục 9: khi giáo viên hỏi, đưa tóm tắt dữ liệu lớp để AI trả lời được
+    // các câu hỏi thống kê (số học sinh, số bài nộp, số bài đã chấm...).
+    if (access.profile.role === "teacher") {
+      try {
+        const [studentsRes, subsRes, evidenceRes, quizzesRes] = await Promise.all([
+          access.supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true),
+          access.supabase.from("submissions").select("id,status,final_score", { count: "exact" }).limit(2000),
+          access.supabase.from("activity_evidence").select("id,completed_at,teacher_score").limit(2000),
+          access.supabase.from("quiz_submissions").select("id,score").limit(2000),
+        ]);
+        const studentCount = studentsRes.count ?? 0;
+        const subs = subsRes.data || [];
+        const evidenceRows = evidenceRes.data || [];
+        const pendingSubs = subs.filter((row: any) => row.final_score === null || row.final_score === undefined).length;
+        const submittedEvidence = evidenceRows.filter((row: any) => row.completed_at).length;
+        taskContext = `Ngữ cảnh giáo viên: lớp có ${studentCount} học sinh đang hoạt động; ${subs.length} bài nộp cá nhân (${pendingSubs} chờ chấm); ${submittedEvidence} hồ sơ hoạt động đã nộp; ${(quizzesRes.data || []).length} lượt làm trắc nghiệm. Giáo viên có thể hỏi về số liệu lớp, hướng dẫn chấm, hoặc nhờ phân tích. Nếu cần chi tiết chưa có trong ngữ cảnh, hãy nói rõ cần mở đúng tab để xem.`;
+      } catch {
+        // Không chặn chat nếu không tải được tóm tắt.
+      }
+    }
     const systemInstruction = `${SYSTEM_INSTRUCTION}\n\nNgữ cảnh nhiệm vụ do máy chủ kiểm tra: ${taskContext}`;
     const ai = new GoogleGenAI({ apiKey });
     for (const model of GEMINI_MODELS) {

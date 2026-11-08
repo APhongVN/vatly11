@@ -3,7 +3,8 @@
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { Download, Eye, FileUp, LoaderCircle } from "lucide-react";
+import { Download, Eye, FileUp, LoaderCircle, Trash2 } from "lucide-react";
+import { normalizeLatexForMarkdown } from "@/lib/latex";
 
 type RubricEditorProps = {
   value: string;
@@ -15,6 +16,7 @@ type RubricEditorProps = {
   disabled?: boolean;
   savedFileName?: string | null;
   onDownloadSavedFile?: () => void;
+  onClearFile?: () => void;
   compact?: boolean;
   id?: string;
 };
@@ -29,6 +31,7 @@ export default function RubricEditor({
   disabled = false,
   savedFileName,
   onDownloadSavedFile,
+  onClearFile,
   compact = false,
   id = "rubric-editor",
 }: RubricEditorProps) {
@@ -65,6 +68,11 @@ export default function RubricEditor({
               <Download className="h-3.5 w-3.5" /> Tải file gốc
             </button>
           )}
+          {onClearFile && (fileName || savedFileName) && (
+            <button type="button" onClick={onClearFile} disabled={disabled} className="inline-flex shrink-0 items-center gap-1.5 font-bold text-rose-700 hover:text-rose-900 disabled:opacity-50">
+              <Trash2 className="h-3.5 w-3.5" /> Xóa tài liệu
+            </button>
+          )}
         </div>
       )}
 
@@ -86,7 +94,7 @@ export default function RubricEditor({
       <div className="max-h-64 overflow-auto rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
         {value.trim() ? (
           <div className="rubric-math-preview break-words text-sm leading-7 text-slate-800">
-            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]} skipHtml>{value}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]} skipHtml>{normalizeLatexForMarkdown(value)}</ReactMarkdown>
           </div>
         ) : <p className="text-xs text-slate-400">Bản xem trước sẽ hiện tại đây sau khi nhập nội dung hoặc chọn file.</p>}
       </div>

@@ -16,7 +16,8 @@ function sanitizeInput(input: string): string {
 }
 
 export async function POST(req: Request) {
-  const access = await authorizeApi(["teacher", "student"], 8, "grade");
+  // Mục 3: chỉ giáo viên được dùng chấm điểm bằng AI. Học sinh chỉ có chatbot.
+  const access = await authorizeApi(["teacher"], 8, "grade");
   if ("response" in access) return access.response;
   try {
     if (!process.env.GEMINI_API_KEY) return NextResponse.json({ error: "Dịch vụ chấm AI chưa được cấu hình." }, { status: 503 });
@@ -32,23 +33,9 @@ export async function POST(req: Request) {
     }
     const numericActivityId = Number(activityId);
     let activityTitle = typeof body.activityTitle === "string" ? sanitizeInput(body.activityTitle).slice(0, 200) : "Bài tập Vật lí 11";
-    let rubric = access.profile.role === "teacher" && typeof body.rubricText === "string" ? sanitizeInput(body.rubricText).slice(0, 4000) : "";
+    let rubric = typeof body.rubricText === "string" ? sanitizeInput(body.rubricText).slice(0, 4000) : "";
 
-    if (access.profile.role === "student") {
-      if (!Number.isInteger(numericActivityId)) return NextResponse.json({ error: "Hoạt động không hợp lệ." }, { status: 400 });
-      const { data: activity, error: activityError } = await access.supabase.from("activities")
-        .select("id,title,status,accepting_submissions,deadline").eq("id", numericActivityId).maybeSingle();
-      if (activityError || !activity) return NextResponse.json({ error: "Không tìm thấy hoạt động cần chấm." }, { status: 404 });
-      if (activity.status !== "available" || !activity.accepting_submissions || (activity.deadline && new Date(activity.deadline).getTime() < Date.now())) {
-        return NextResponse.json({ error: "Hoạt động hiện không nhận bài nộp." }, { status: 403 });
-      }
-      activityTitle = activity.title;
-      const admin = createSupabaseAdminClient();
-      const { data: guide, error: guideError } = await admin.from("activity_grading_guides")
-        .select("grading_rubric").eq("activity_id", numericActivityId).maybeSingle();
-      if (guideError) return NextResponse.json({ error: "Không tải được tiêu chí chấm từ máy chủ." }, { status: 503 });
-      rubric = typeof guide?.grading_rubric === "string" ? sanitizeInput(guide.grading_rubric).slice(0, 4000) : "";
-    } else if (Number.isInteger(numericActivityId)) {
+    if (Number.isInteger(numericActivityId)) {
       const { data: activity } = await access.supabase.from("activities")
         .select("id,title").eq("id", numericActivityId).maybeSingle();
       if (activity) {

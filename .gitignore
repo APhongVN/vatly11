@@ -58,3 +58,11 @@ supabase/.temp
 
 # local Codex preview process output
 .codex-preview-logs/
+
+# local dev/build logs
+dev-out.txt
+bout.txt
+bd.txt
+vc.txt
+v.txt
+t.mjs
