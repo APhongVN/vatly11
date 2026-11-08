@@ -96,7 +96,7 @@ export default function HocSinhPage() {
     const { data: acts } = await supabase.from('activities').select('*').order('id');
     if (acts) setActivities(acts);
 
-    const { data: gActs } = await supabase.from('group_assignments').select('*').order('created_at', { ascending: false });
+    const { data: gActs } = await supabase.from('group_assignments').select('*').is('archived_at', null).order('created_at', { ascending: false });
     if (gActs) setGroupActs(gActs);
 
     const { data: msgs } = await supabase.from('messages').select('*').order('created_at', { ascending: false }).limit(300);
@@ -114,7 +114,7 @@ export default function HocSinhPage() {
       setMyGroupSubs([]);
     }
 
-    const { data: qzs } = await supabase.from('quizzes').select('*').order('id');
+    const { data: qzs } = await supabase.from('quizzes').select('*').is('archived_at', null).order('id');
     if (qzs) setQuizzes(qzs);
     const { data: ev } = await supabase.from('activity_evidence').select('activity_id,score,score_max,completed_at,first_attempt_correct,correct_after_hint,attempts_count,hint_count,review_topics').eq('student_id', student.id).order('updated_at', { ascending: false });
     if (ev) setMyEvidence(ev);

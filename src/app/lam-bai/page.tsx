@@ -72,11 +72,11 @@ function QuizContent() {
         return;
       }
       const [{ data: qz }, { data: qs }] = await Promise.all([
-        supabase.from('quizzes').select('id,title,time_limit').eq('id', Number(quizId)).maybeSingle(),
+        supabase.from('quizzes').select('id,title,time_limit,archived_at').eq('id', Number(quizId)).maybeSingle(),
         supabase.from('quiz_questions').select('id,quiz_id,question,image_url,options').eq('quiz_id', Number(quizId)).order('id'),
       ]);
       if (cancelled) return;
-      if (qz && qs?.length) {
+      if (qz && !qz.archived_at && qs?.length) {
         setQuiz(qz);
         setQuestions(qs);
         setTimeLeft(qz.time_limit * 60);
