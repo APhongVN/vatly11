@@ -1,5 +1,46 @@
 # Triển khai VatLy11: Render Web Service + Supabase
 
+## 📌 Sổ tay vận hành nhanh (làm theo 5 bước)
+
+Đây là checklist cô làm **một lần** để website chạy 24/24 trên `https://vatly11-tudien.onrender.com`.
+
+### Bước 1 — Áp toàn bộ database (làm 1 lần)
+Mở Supabase SQL Editor → dán toàn bộ file `supabase/sql-editor/full_setup.sql` (đã gộp **đủ 50 migration**: 26 bảng, RLS, rate-limit, trò chơi phát biểu, chỉ số kết quả, chọn lớp, online/offline, xóa mềm, lưu bài đã làm).
+
+```powershell
+Get-Content .\supabase\sql-editor\full_setup.sql -Raw | Set-Clipboard
+# Dán vào https://supabase.com/dashboard/project/<PROJECT_REF>/sql/new rồi Run
+```
+Kiểm tra: `SELECT count(*) FROM information_schema.tables WHERE table_schema='public';` → mong đợi **30+ bảng**.
+
+### Bước 2 — Cấp quyền giáo viên (làm 1 lần)
+Supabase → Authentication → Users → **Add user** (email thật của cô + tick *Auto Confirm*). Sau đó chạy `supabase/sql-editor/set_teacher_role.sql` trong SQL Editor (thay email placeholder thành email giáo viên).
+
+### Bước 3 — Cấu hình Render (một lần)
+Mở Render Dashboard → Environment, điền đúng 5 biến (giá trị của **cùng 1** Supabase project):
+
+| Biến | Ví dụ |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://nlfobhufcuizwarfyfjn.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_...` |
+| `SUPABASE_SECRET_KEY` | `sb_secret_...` |
+| `GEMINI_API_KEY` | `AQ.Ab8RN6K...` |
+| `STUDENT_AUTH_EMAIL_DOMAIN` | `vatly.com` |
+
+Bấm **Save, rebuild, and deploy**. Nếu vừa đổi khóa Supabase, phải thay **đồng thời** publishable + secret.
+
+### Bước 4 — Kiểm tra web chạy
+- `https://vatly11-tudien.onrender.com/api/health` → mong đợi `status: "ok"` (hoặc `degraded` kèm chi tiết dependency).
+- `https://vatly11-tudien.onrender.com/api/public-curriculum` → HTTP 200, JSON có `activities`.
+- Nếu HTTP 503 / `Invalid API key` → URL và 2 khóa Supabase **không cùng project** hoặc key cũ bị thu hồi; xem lại Bước 1–3.
+
+### Bước 5 — Vận hành hằng ngày
+1. Đăng nhập **giáo viên** tại `/login` (tab Giáo viên, email + mật khẩu).
+2. **Danh sách sinh viên** → nhập tên (tự in hoa, xếp A–Z) hoặc **nhập file** (tự nhận cột Họ tên + Mã SV) → **Cấp tài khoản** → sao chép/xuất Excel.
+3. **Cổng học tập** → chọn bài học, video, quiz, PhET, nhóm, phiếu; **Chấm điểm** → AI chấm tự luận; **Xuất báo cáo Excel** (chưa làm = 0đ).
+4. **Kênh thảo luận** 100MB, giáo viên khóa chat; **Góc hỏi đáp** kèm ảnh/video/link, gợi ý AI.
+5. **Kho tài liệu** (ảnh/video/đề/rubric, cảnh báo dung lượng). Trắc nghiệm/bài nhóm có **sửa – xóa mềm – hoàn tác – thùng rác**.
+
 ## Kiến trúc đang dùng
 
 VatLy11 là ứng dụng Next.js full-stack: trang server-rendered, Proxy, API xác thực, nộp bài, chấm điểm, import/export và Storage. Phải chạy bằng Node.js trên **Render Web Service** hoặc máy chủ Node tương đương; không chọn Static Site/Static Export vì các API và khóa server cần tiến trình Node. Hướng dẫn Oracle VPS bên dưới là phương án thay thế.
@@ -70,7 +111,7 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 SUPABASE_SECRET_KEY=...
 GEMINI_API_KEY=...
-STUDENT_AUTH_EMAIL_DOMAIN=vatly11.com
+STUDENT_AUTH_EMAIL_DOMAIN=vatly.com
 ```
 
 Chỉ publishable/anon key có tiền tố `NEXT_PUBLIC_`. `SUPABASE_SECRET_KEY` và khóa Gemini là secret server, không đưa vào Git, image công khai, biến `NEXT_PUBLIC_*`, log hay HTML. Nếu secret từng xuất hiện trong Git history hoặc nội dung chia sẻ, thu hồi và thay mới trước khi phát hành.
@@ -99,5 +140,7 @@ npm run lint
 npm run build
 npm audit --audit-level=high
 ```
+
+> **Ghi chú về `npm audit`:** 3 advisory hiện có (`vitest`, `tinypool`, `@vitest/mocker`) đều nằm trong nhóm **devDependencies** (bộ công cụ test, không chạy trên production). `vitest` có 2 critical là do bản 3.2.7; nâng lên vitest 4.x (breaking) sẽ hết — không cấp bách vì không ảnh hưởng code học sinh/giáo viên.
 
 Sau khi migration và biến môi trường được áp dụng, thử với một tài khoản giáo viên thật và hai học sinh trên cửa sổ thường/ẩn danh: đăng nhập, đổi mật khẩu lần đầu, mở lại browser, logout, tạo hồ sơ, nhập lô có một dòng lỗi, đăng nhập từng học sinh, xác nhận API từ tài khoản khác bị chặn. Các tài khoản kiểm thử phải được tạo/xác minh trong chính Supabase của chủ dự án; mã nguồn không chứa mật khẩu mẫu. Kiểm tra key chỉ bằng trạng thái HTTP, không in hoặc sao chép secret ra log.
