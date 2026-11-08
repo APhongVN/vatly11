@@ -65,10 +65,24 @@ export async function POST(request: Request) {
     }
 
     const score = Math.round((correctCount / questions.length) * 1000) / 100;
+    // Ảnh chiếu chi tiết từng câu (đáp án đúng + giải thích) - chỉ ghi SAU KHI nộp,
+    // học sinh xem lại được nhưng không lộ đáp án trước khi nộp (dòng chỉ tồn tại sau khi nộp).
+    const review = questions.map((question) => {
+      const key = answerByQuestion.get(String(question.id));
+      const selected = Number(providedAnswers[String(question.id)]);
+      return {
+        questionId: String(question.id),
+        selected: Number.isInteger(selected) ? selected : null,
+        correct: key ? Number(key.correct_option) : null,
+        explanation: key?.explanation || "",
+      };
+    });
     const { error: saveError } = await admin.from("quiz_submissions").insert({
       quiz_id: quizId,
       student_id: student.id,
       score,
+      answers: providedAnswers,
+      review,
       started_at: new Date(Date.now() - (timeSpent ?? 0) * 1000).toISOString(),
       time_spent_seconds: timeSpent,
     });
@@ -76,11 +90,26 @@ export async function POST(request: Request) {
       if (saveError.code === "23505") {
         return NextResponse.json({ error: "Bài trắc nghiệm này đã được nộp." }, { status: 409 });
       }
-      console.error("Could not save quiz result", { code: saveError.code });
-      return NextResponse.json({ error: "Không lưu được kết quả bài làm." }, { status: 503 });
+      if (String(saveError.message || "").toLowerCase().includes("answers") || String(saveError.message || "").toLowerCase().includes("review") || saveError.code === "42703") {
+        // Cột answers/review chưa có (chưa áp migration 20261104001200) -> vẫn lưu điểm để học sinh không mất bài.
+        const fallback = await admin.from("quiz_submissions").insert({
+          quiz_id: quizId,
+          student_id: student.id,
+          score,
+          started_at: new Date(Date.now() - (timeSpent ?? 0) * 1000).toISOString(),
+          time_spent_seconds: timeSpent,
+        });
+        if (fallback.error) {
+          console.error("Could not save quiz result", { code: fallback.error.code });
+          return NextResponse.json({ error: "Không lưu được kết quả bài làm." }, { status: 503 });
+        }
+      } else {
+        console.error("Could not save quiz result", { code: saveError.code });
+        return NextResponse.json({ error: "Không lưu được kết quả bài làm." }, { status: 503 });
+      }
     }
 
-    return NextResponse.json({ score });
+    return NextResponse.json({ score, review });
   } catch (error) {
     const tooLarge = error instanceof Error && error.name === "RequestBodyTooLargeError";
     if (!tooLarge) console.error("Quiz submission failed", error instanceof Error ? error.message : "unknown error");

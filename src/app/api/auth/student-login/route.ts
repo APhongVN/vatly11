@@ -9,13 +9,17 @@ const noStore = { "Cache-Control": "no-store, max-age=0", Pragma: "no-cache" };
 export async function POST(request: Request) {
   try {
     const raw = await readBoundedRequestText(request, 4_000);
-    let body: { username?: unknown; password?: unknown; className?: unknown };
+    let body: { username?: unknown; password?: unknown; className?: unknown; studentId?: unknown };
     try { body = JSON.parse(raw) as typeof body; } catch { return NextResponse.json({ error: "Tên đăng nhập hoặc mật khẩu không đúng." }, { status: 401, headers: noStore }); }
+    const studentId = typeof body.studentId === "string" ? body.studentId.trim() : "";
     const username = typeof body.username === "string" ? normalizeStudentUsername(body.username) : "";
     const password = typeof body.password === "string" ? body.password : "";
     const className = typeof body.className === "string" ? body.className.normalize("NFC").trim() : "";
-    if (username.length < 3 || username.length > 32 || password.length < 8 || password.length > 128) {
-      return NextResponse.json({ error: "Tên đăng nhập hoặc mật khẩu không đúng." }, { status: 401, headers: noStore });
+    if (!studentId && (username.length < 3 || username.length > 32)) {
+      return NextResponse.json({ error: "Hãy chọn tên của em trong danh sách lớp." }, { status: 400, headers: noStore });
+    }
+    if (password.length < 8 || password.length > 128) {
+      return NextResponse.json({ error: "Mật khẩu không đúng định dạng." }, { status: 401, headers: noStore });
     }
     if (!className || className.length > 40) {
       return NextResponse.json({ error: "Hãy chọn lớp trước khi đăng nhập." }, { status: 400, headers: noStore });
@@ -29,28 +33,41 @@ export async function POST(request: Request) {
     if (addressLimit.error || addressLimit.data !== true) {
       return NextResponse.json({ error: addressLimit.error ? "Dịch vụ đăng nhập tạm thời chưa sẵn sàng." : "Đã thử quá nhiều lần. Hãy thử lại sau 10 phút." }, { status: addressLimit.error ? 503 : 429, headers: noStore });
     }
-    const { data: student, error: lookupError } = await admin.from("students")
-      .select("id,full_name,class_name,auth_user_id,username,login_email")
-      .eq("username", username).maybeSingle();
-    let studentRow = student;
-    // Mục 11: nếu username chưa khớp do khác hoa/thường, so sánh không phân biệt case.
-    if (!studentRow) {
-      const { data: alt } = await admin.from("students").select("id,full_name,class_name,auth_user_id,username,login_email").limit(2000);
-      const matched = (alt || []).find((row: any) => String(row.username ?? "").toLowerCase() === username.toLowerCase());
-      studentRow = matched ?? null;
+    // Ưu tiên tra cứu theo studentId (học sinh chọn tên trong danh sách lớp), sau đó mới tới username.
+    let studentRow: any = null;
+    if (studentId) {
+      const { data: byId } = await admin.from("students")
+        .select("id,full_name,class_name,auth_user_id,username,login_email").eq("id", studentId).maybeSingle();
+      studentRow = byId ?? null;
     }
+    if (!studentRow && username.length >= 3) {
+      const { data: student, error: lookupError } = await admin.from("students")
+        .select("id,full_name,class_name,auth_user_id,username,login_email")
+        .eq("username", username).maybeSingle();
+      studentRow = student ?? null;
+      if (lookupError) studentRow = null;
+      // Mục 11: nếu username chưa khớp do khác hoa/thường, so sánh không phân biệt case.
+      if (!studentRow && username) {
+        const { data: alt } = await admin.from("students").select("id,full_name,class_name,auth_user_id,username,login_email").limit(2000);
+        studentRow = (alt || []).find((row: any) => String(row.username ?? "").toLowerCase() === username.toLowerCase()) ?? null;
+      }
+    }
+    if (!studentRow) {
+      return NextResponse.json({ error: "Học sinh hoặc mật khẩu không đúng. Hãy chọn lại tên và thử lại." }, { status: 401, headers: noStore });
+    }
+    const resolvedUsername = String(studentRow.username ?? username);
     if (studentRow) {
       const usernameLimit = await admin.rpc("consume_student_auth_rate_limit", {
-        p_subject_hash: studentUsernameRateLimitHash(username), p_limit: 8, p_window_seconds: 600,
+        p_subject_hash: studentUsernameRateLimitHash(resolvedUsername), p_limit: 8, p_window_seconds: 600,
       });
       if (usernameLimit.error || usernameLimit.data !== true) {
         return NextResponse.json({ error: usernameLimit.error ? "Dịch vụ đăng nhập tạm thời chưa sẵn sàng." : "Bạn đã thử quá nhiều lần. Hãy đợi 10 phút rồi thử lại." }, { status: usernameLimit.error ? 503 : 429, headers: noStore });
       }
     }
-    const email = studentRow?.login_email || studentInternalEmail(username);
+    const email = studentRow.login_email || studentInternalEmail(resolvedUsername);
     const supabase = await createServerSupabaseClient();
     const { data: signedIn, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (lookupError || !studentRow || signInError || !signedIn.user) {
+    if (signInError || !signedIn.user) {
       if (!signInError) await supabase.auth.signOut();
       return NextResponse.json({ error: "Tên đăng nhập hoặc mật khẩu không đúng." }, { status: 401, headers: noStore });
     }

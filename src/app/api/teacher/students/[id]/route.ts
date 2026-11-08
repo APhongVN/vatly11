@@ -15,13 +15,15 @@ function isMissingArchiveMigration(error: { code?: string } | null) {
   return error?.code === "42703" || error?.code === "PGRST204";
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
   const access = await authorizeApi(["teacher"], 10, "student-account");
   if ("response" in access) return access.response;
   if (!hasSupabaseAdminKey()) return NextResponse.json({ error: "Máy chủ chưa cấu hình quyền quản lý học sinh." }, { status: 503, headers: noStore });
 
   const id = await resolveId(context);
   if (!id) return NextResponse.json({ error: "Mã học sinh chưa hợp lệ." }, { status: 400, headers: noStore });
+  // ?hard=true: xóa hẳn hồ sơ (bỏ qua lưu trữ mềm). Mất lịch sử bài nộp kèm theo.
+  const hardDelete = new URL(request.url).searchParams.get("hard") === "true";
 
   try {
     const admin = createSupabaseAdminClient();
@@ -35,7 +37,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
       }, { status: isMissingArchiveMigration(lookupError) ? 409 : 503, headers: noStore });
     }
     if (!student) return NextResponse.json({ error: "Không tìm thấy hồ sơ học sinh." }, { status: 404, headers: noStore });
-    if (student.is_active === false) return NextResponse.json({ student: { id, is_active: false } }, { headers: noStore });
+    if (student.is_active === false && !hardDelete) return NextResponse.json({ student: { id, is_active: false } }, { headers: noStore });
 
     // Revoke the login identity first. The student row and all linked work stay in the database.
     if (student.auth_user_id) {
@@ -45,6 +47,13 @@ export async function DELETE(_request: Request, context: RouteContext) {
         console.error("Student account revocation failed", { code: deleteAuthError.code || "unknown" });
         return NextResponse.json({ error: "Không khóa được tài khoản đăng nhập; hồ sơ chưa được lưu trữ." }, { status: 503, headers: noStore });
       }
+    }
+
+    // Xóa hẳn: xóa cả hồ sơ + mọi dữ liệu liên kết (submissions, quiz, nhóm, chat...).
+    if (hardDelete) {
+      const { error: hardError } = await admin.from("students").delete().eq("id", id);
+      if (hardError) { console.error("Hard delete failed", { code: hardError.code }); return NextResponse.json({ error: "Không xóa hẳn được học sinh." }, { status: 503, headers: noStore }); }
+      return NextResponse.json({ student: { id, deleted: true } }, { headers: noStore });
     }
 
     const { data: archived, error: archiveError } = await admin.from("students")

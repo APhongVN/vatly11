@@ -28,6 +28,7 @@ export default function HocSinhPage() {
   const [mySubmissions, setMySubmissions] = useState<any[]>([]);
   const [myGroupSubs, setMyGroupSubs] = useState<any[]>([]);
   const [quizzes, setQuizzes] = useState<any[]>([]);
+  const [myQuizSubs, setMyQuizSubs] = useState<any[]>([]);
   const [newMsg, setNewMsg] = useState("");
   const [chatFile, setChatFile] = useState<File | null>(null);
   const [isSendingChat, setIsSendingChat] = useState(false);
@@ -116,6 +117,8 @@ export default function HocSinhPage() {
 
     const { data: qzs } = await supabase.from('quizzes').select('*').is('archived_at', null).order('id');
     if (qzs) setQuizzes(qzs);
+    const { data: myQzSubs } = await supabase.from('quiz_submissions').select('quiz_id,score,created_at').eq('student_id', student.id);
+    if (myQzSubs) setMyQuizSubs(myQzSubs);
     const { data: ev } = await supabase.from('activity_evidence').select('activity_id,score,score_max,completed_at,first_attempt_correct,correct_after_hint,attempts_count,hint_count,review_topics').eq('student_id', student.id).order('updated_at', { ascending: false });
     if (ev) setMyEvidence(ev);
     const { data: setting } = await supabase.from('chat_settings').select('is_muted,deletion_blocked').eq('id', 1).single();
@@ -366,7 +369,7 @@ export default function HocSinhPage() {
               </div>
               <div className="hidden md:block text-right">
                 <span className="font-bold text-xs text-slate-900 block leading-tight">{student.full_name}</span>
-                <span className="text-[10px] text-slate-400 font-medium">Học sinh {student.class_name || "11A1"}</span>
+                <span className="text-[10px] text-slate-400 font-medium">Học sinh {student.class_name || "Chưa xếp lớp"}</span>
               </div>
             </div>
             <button
@@ -616,27 +619,85 @@ export default function HocSinhPage() {
               <p className="text-xs text-slate-500 mt-1">Luyện tập câu hỏi trắc nghiệm khách quan có tính giờ và giải thích chi tiết.</p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-5">
-              {quizzes.map(qz => (
-                <div key={qz.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/80 flex flex-col justify-between space-y-4 hover:shadow-md transition-all">
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-bold text-base text-slate-900">{qz.title}</h3>
-                      <span className="text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
-                        <Clock className="w-3 h-3"/> {qz.time_limit} phút
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500">Gắn với bài học số {qz.activity_id}</p>
-                  </div>
-                  <Link
-                    href={`/lam-bai?quiz=${qz.id}`}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-bold text-xs text-center shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-1.5"
-                  >
-                    Bắt đầu làm bài thi <ChevronRight className="w-4 h-4"/>
-                  </Link>
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+              Mỗi bài trắc nghiệm chỉ được làm <strong>duy nhất 1 lần</strong>. Em hãy chắc chắn đã sẵn sàng trước khi bấm bắt đầu và không thoát ra giữa buổi làm bài.
+            </p>
+
+            {(() => {
+              const doneIds = new Set(myQuizSubs.map((s) => String(s.quiz_id)));
+              const pending = quizzes.filter((qz) => !doneIds.has(String(qz.id)));
+              const done = quizzes.filter((qz) => doneIds.has(String(qz.id)));
+              return (
+                <div className="space-y-8">
+                  <section>
+                    <h2 className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+                      <Target className="w-4 h-4 text-emerald-600" /> Chưa làm ({pending.length})
+                    </h2>
+                    {pending.length === 0 ? (
+                      <p className="mt-3 rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-xs text-slate-400">Em đã hoàn thành toàn bộ bài trắc nghiệm. Tuyệt vời!</p>
+                    ) : (
+                      <div className="mt-3 grid md:grid-cols-2 gap-5">
+                        {pending.map((qz) => (
+                          <div key={qz.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/80 flex flex-col justify-between space-y-4 hover:shadow-md transition-all">
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-start">
+                                <h3 className="font-bold text-base text-slate-900">{qz.title}</h3>
+                                <span className="text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                                  <Clock className="w-3 h-3"/> {qz.time_limit} phút
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-500">Gắn với bài học số {qz.activity_id}</p>
+                              <span className="inline-flex items-center gap-1 rounded-lg bg-slate-50 border border-slate-200 px-2 py-1 text-[10px] font-semibold text-slate-500">Chỉ làm 1 lần</span>
+                            </div>
+                            <Link
+                              href={`/lam-bai?quiz=${qz.id}`}
+                              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-bold text-xs text-center shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-1.5"
+                            >
+                              Bắt đầu làm bài thi <ChevronRight className="w-4 h-4"/>
+                            </Link>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  <section>
+                    <h2 className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+                      <CheckCircle2 className="w-4 h-4 text-blue-600" /> Đã làm ({done.length})
+                    </h2>
+                    {done.length === 0 ? (
+                      <p className="mt-3 rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-xs text-slate-400">Chưa có bài nào được nộp.</p>
+                    ) : (
+                      <div className="mt-3 grid md:grid-cols-2 gap-5">
+                        {done.map((qz) => {
+                          const sub = myQuizSubs.find((s) => String(s.quiz_id) === String(qz.id));
+                          return (
+                            <div key={qz.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/80 flex flex-col justify-between space-y-4">
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-start">
+                                  <h3 className="font-bold text-base text-slate-900">{qz.title}</h3>
+                                  <span className="text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                                    <Trophy className="w-3 h-3"/> {sub?.score ?? "—"} / 10
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-500">Nộp lúc {sub?.created_at ? new Date(sub.created_at).toLocaleString("vi-VN") : "—"}</p>
+                              </div>
+                              <Link
+                                href={`/lam-bai?quiz=${qz.id}`}
+                                className="w-full border border-slate-300 text-slate-600 py-2.5 rounded-xl font-bold text-xs text-center transition-all flex items-center justify-center gap-1.5 cursor-not-allowed"
+                                title="Bài trắc nghiệm chỉ được làm 1 lần"
+                              >
+                                <Lock className="w-3.5 h-3.5"/> Đã nộp — xem lại kết quả
+                              </Link>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           </div>
         )}
 

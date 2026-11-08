@@ -23,6 +23,11 @@ body {
   @apply shadow-[0_8px_30px_rgb(0,0,0,0.08)] transform -translate-y-1;
 }
 
+/* Công thức LaTeX (KaTeX) trong nội dung bài tập, chatbot, đáp án. */
+.math-text-break { overflow-wrap: anywhere; }
+.math-text-break .katex { font-size: 1.02em; }
+.math-inline { display: inline; }
+
 .btn {
   @apply px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2;
 }

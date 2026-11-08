@@ -63,14 +63,14 @@ export default function RubricEditor({
       {(fileName || savedFileName) && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2.5 text-xs">
           <span className="min-w-0 truncate font-semibold text-blue-900">{isImporting ? "Đang trích xuất: " : fileName ? "Tài liệu đã nhập: " : "File gốc đã lưu: "}{fileName || savedFileName}</span>
-          {!fileName && savedFileName && onDownloadSavedFile && (
+          {savedFileName && onDownloadSavedFile && (
             <button type="button" onClick={onDownloadSavedFile} disabled={disabled} className="inline-flex shrink-0 items-center gap-1.5 font-bold text-emerald-800 hover:text-emerald-950 disabled:opacity-50">
-              <Download className="h-3.5 w-3.5" /> Tải file gốc
+              <Download className="h-3.5 w-3.5" /> Tải file gốc đã lưu
             </button>
           )}
-          {onClearFile && (fileName || savedFileName) && (
-            <button type="button" onClick={onClearFile} disabled={disabled} className="inline-flex shrink-0 items-center gap-1.5 font-bold text-rose-700 hover:text-rose-900 disabled:opacity-50">
-              <Trash2 className="h-3.5 w-3.5" /> Xóa tài liệu
+          {onClearFile && (
+            <button type="button" onClick={onClearFile} disabled={disabled} title={fileName ? "Xóa tài liệu vừa nhập (không ảnh hưởng file đã lưu)" : "Xóa file gốc đã lưu khỏi hoạt động"} className="inline-flex shrink-0 items-center gap-1.5 font-bold text-rose-700 hover:text-rose-900 disabled:opacity-50">
+              <Trash2 className="h-3.5 w-3.5" /> {fileName ? "Xóa tài liệu đã nhập" : "Xóa file đã lưu"}
             </button>
           )}
         </div>

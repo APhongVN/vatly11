@@ -252,12 +252,17 @@ assert.match(baselineRlsMigration, /videos_read_activity_document[\s\S]+a\.docum
 assert.match(apiSecuritySource, /createSupabaseAdminClient\(\)/);
 assert.match(apiSecuritySource, /p_user_id: user\.id/);
 assert.match(apiSecuritySource, /p_window_seconds: 60/);
-assert.doesNotMatch(quizPage, /correct_option|explanation/, "Student quiz pages must not load answer keys.");
+// Trang làm bài của học sinh không được đọc thẳng bảng đáp án (quiz_question_keys / correct_option).
+// Ảnh chiếu review (đáp án đúng + giải thích) chỉ nằm trong quiz_submissions và chỉ tồn tại SAU KHI nộp
+// (server ghi lúc chấm), RLS student_read_own chỉ cho đọc dòng của chính mình -> không lộ đáp án trước khi làm.
+assert.doesNotMatch(quizPage, /correct_option|quiz_question_keys/, "Student quiz pages must not load answer keys.");
 assert.match(quizSubmitApi, /createSupabaseAdminClient/);
 assert.match(uniqueQuizMigration, /CREATE UNIQUE INDEX IF NOT EXISTS idx_quiz_submissions_one_attempt_per_student/);
 assert.match(uniqueQuizMigration, /quiz_submission_duplicate_archive/);
 assert.match(quizSubmitApi, /saveError\.code === "23505"[\s\S]*status: 409/);
-assert.doesNotMatch(quizSubmitApi, /return NextResponse\.json\(\{ score,.*correct/i, "Quiz API must not return the answer key.");
+// API KHÔNG được gửi đáp án khi học sinh chưa nộp (review chỉ được build và ghi SAU khi chấm xong,
+// ngay trong cùng lượt nộp). Đáp án chỉ lộ ra ở lượt phản hồi của chính lần nộp đó.
+assert.match(quizSubmitApi, /const review = questions\.map[\s\S]*insert\(\{[\s\S]*review,/m, "Review snapshot must be built from keys and persisted with the submission.");
 
 
 const sourceQuestionTable = curriculum.flatMap(({ blocks }) => blocks).find((block) => block.type === "table" && block.rows.some((row) => row[0] === "Mã câu" && row[1] === "PRE01-Q1"));

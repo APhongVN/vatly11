@@ -23,6 +23,7 @@ import ResourceLibrary from "@/components/ResourceLibrary";
 import ActivityEvidencePanel from "@/components/ActivityEvidencePanel";
 import CapacitanceLabSettings from "@/components/CapacitanceLabSettings";
 import RubricEditor from "@/components/RubricEditor";
+import MathText from "@/components/MathText";
 import QuizQuestionEditor from "@/components/QuizQuestionEditor";
 import TeacherSidebar from "@/components/teacher/TeacherSidebar";
 import StudentProgressChart from "@/components/teacher/StudentProgressChart";
@@ -275,6 +276,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   const [newGroupTitle, setNewGroupTitle] = useState("");
   const [newGroupDesc, setNewGroupDesc] = useState("");
   const [newGroupTheory, setNewGroupTheory] = useState("");
+  const [newGroupTheoryFile, setNewGroupTheoryFile] = useState<File | null>(null);
   const [newGroupDeadline, setNewGroupDeadline] = useState("");
   const [newGroupDocUrl, setNewGroupDocUrl] = useState("");
   const [newGroupRubric, setNewGroupRubric] = useState("");
@@ -327,6 +329,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   const [trashGroups, setTrashGroups] = useState<any[]>([]);
   const [isLoadingTrash, setIsLoadingTrash] = useState(false);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+  const [showQuizMathPreview, setShowQuizMathPreview] = useState(true);
 
   // AI Analytics & Báo cáo phổ điểm
   const [analyticsReport, setAnalyticsReport] = useState<any>(null);
@@ -1331,8 +1334,10 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   };
 
   // --- CHẤM ĐIỂM CÁ NHÂN ---
-  const saveRubric = async () => {
+  const saveRubric = async (forceClearFile?: boolean) => {
     if (!selectedGradingAct || isSavingRubric || isImportingRubric) return;
+    // forceClearFile: dùng khi người dùng vừa bấm "Xóa file" (state setRubricCleared còn chưa kịp cập nhật).
+    const isCleared = forceClearFile ?? rubricCleared;
     if (previewMode) {
       setActivities((current) => current.map((activity) => activity.id === selectedGradingAct.id ? { ...activity, grading_rubric: rubricText || null, rubric_document_name: rubricFile?.name || activity.rubric_document_name || null } : activity));
       setSelectedGradingAct((current: any) => current ? { ...current, grading_rubric: rubricText || null, rubric_document_name: rubricFile?.name || current.rubric_document_name || null } : current);
@@ -1345,7 +1350,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
     }
     setIsSavingRubric(true);
     const oldPath = selectedGradingAct.rubric_document_path || null;
-    let uploadedPath: string | null = rubricCleared ? null : oldPath;
+let uploadedPath: string | null = isCleared ? null : oldPath;
     let newUploadedPath: string | null = null;
     try {
       if (rubricFile) {
@@ -1362,7 +1367,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
       };
       if (rubricDocumentSchemaReady) {
         guidePayload.rubric_document_path = uploadedPath;
-        guidePayload.rubric_document_name = rubricFile?.name || (rubricCleared ? null : selectedGradingAct.rubric_document_name || null);
+guidePayload.rubric_document_name = rubricFile?.name || (isCleared ? null : selectedGradingAct.rubric_document_name || null);
       }
       const { error } = await supabase.from("activity_grading_guides").upsert(guidePayload);
       if (error) throw new Error("Không lưu được ma trận điểm: " + error.message);
@@ -1371,7 +1376,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
         const { error: removeError } = await supabase.storage.from("learning-resources").remove([oldPath]);
         if (removeError) console.warn("Không dọn được file ma trận cũ:", removeError.message);
       }
-      if (rubricCleared && oldPath && !newUploadedPath) {
+if (isCleared && oldPath && !newUploadedPath) {
         const { error: removeError } = await supabase.storage.from("learning-resources").remove([oldPath]);
         if (removeError) console.warn("Không xóa được file ma trận:", removeError.message);
       }
@@ -1379,7 +1384,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
         ...selectedGradingAct,
         grading_rubric: rubricText.trim() || null,
         rubric_document_path: uploadedPath,
-        rubric_document_name: rubricFile?.name || (rubricCleared ? null : selectedGradingAct.rubric_document_name || null),
+rubric_document_name: rubricFile?.name || (isCleared ? null : selectedGradingAct.rubric_document_name || null),
       };
       setActivities((current) => current.map((activity) => activity.id === savedActivity.id ? savedActivity : activity));
       setSelectedGradingAct(savedActivity);
@@ -1398,14 +1403,14 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   };
   const clearRubricFileAndSave = async () => {
   // Nút "Xóa file": xóa hẳn tệp ma trận đã lưu trên Storage + cập nhật DB (rubric_document_path = null).
+  // Dùng forceClearFile=true vì state setRubricCleared chưa kịp cập nhật trước khi saveRubric chạy.
   if (!selectedGradingAct) return;
   setRubricText("");
   setRubricFile(null);
   setRubricFileName("");
   setRubricImportError("");
   setRubricCleared(true);
-  await saveRubric();
-  setRubricCleared(false);
+  await saveRubric(true);
 };
 const handleRubricFileUpload = async (file: File | null) => {
     if (!file) return;
@@ -1694,9 +1699,15 @@ const handleRubricFileUpload = async (file: File | null) => {
     }
     setIsGeneratingGroupAI(true);
     try {
+      // Neu co chon file ly thuyet, doc noi dung de AI bam sat tai lieu that.
+      let groupFileContent = "";
+      if (newGroupTheoryFile) {
+        try { const extracted = await extractRubricFile(newGroupTheoryFile, () => Promise.resolve({ text: "", confidence: 0 })); groupFileContent = (extracted?.text || "").trim(); } catch { groupFileContent = ""; }
+        if (!groupFileContent) throw new Error("Khong doc duoc file ly thuyet. Thu file .txt hoac .docx khong bi hong.");
+      }
       const res = await fetch("/api/ai-group-suggestion", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newGroupTitle, theory: newGroupTheory }),
+        body: JSON.stringify({ title: newGroupTitle, theory: newGroupTheory, fileContent: groupFileContent }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Không tạo được gợi ý.");
@@ -2054,6 +2065,29 @@ const handleRubricFileUpload = async (file: File | null) => {
         : "Đã lưu trữ học sinh và khóa tài khoản. Bài nộp, điểm và lịch sử vẫn được giữ.");
     } catch (error) {
       alert(error instanceof Error ? error.message : "Không thể " + action + " học sinh.");
+    } finally {
+      setStudentArchiveBusyId(null);
+    }
+  };
+  // Xóa hẳn học sinh (bỏ qua lưu trữ mềm) — dùng khi muốn xóa sạch hồ sơ + lịch sử.
+  const hardDeleteStudent = async (id: string) => {
+    const student = students.find((item) => item.id === id);
+    if (!student || studentArchiveBusyId) return;
+    if (previewMode) {
+      setStudents((current) => current.filter((item) => item.id !== id));
+      setPreviewNotice("Đã xóa hẳn thử " + student.full_name + " trong danh sách lớp mẫu.");
+      return;
+    }
+    if (!confirm("XÓA HẲN " + student.full_name + "? Toàn bộ hồ sơ, điểm, bài nộp, nhóm và tin nhắn sẽ bị mất. Dùng \"Lưu trữ\" nếu muốn giữ lịch sử.")) return;
+    setStudentArchiveBusyId(id);
+    try {
+      const response = await fetch("/api/teacher/students/" + encodeURIComponent(id) + "?hard=true", { method: "DELETE" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Không xóa được học sinh.");
+      setStudents((current) => current.filter((item) => item.id !== id));
+      alert("Đã xóa hẳn " + student.full_name + " khỏi danh sách.");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Không xóa được học sinh.");
     } finally {
       setStudentArchiveBusyId(null);
     }
@@ -2741,6 +2775,7 @@ const handleRubricFileUpload = async (file: File | null) => {
         onLogout={handleLogout}
         mobileNavOpen={mobileNavOpen}
         setMobileNavOpen={setMobileNavOpen}
+        classSummary={studentClassOptions.length <= 1 ? (studentClassOptions[0] ? `Lớp ${studentClassOptions[0]}` : "Quản lý lớp học") : `${studentClassOptions.length} lớp đang quản lý`}
       />
 
       {/* CONTENT AREA CHÍNH */}
@@ -2919,9 +2954,27 @@ const handleRubricFileUpload = async (file: File | null) => {
                             importError={editRubricImportError}
                             isImporting={isImportingEditRubric}
                             disabled={savingActivityId === act.id}
-                            savedFileName={act.rubric_document_name}
+                            savedFileName={editRubricFile ? null : act.rubric_document_name}
                             onDownloadSavedFile={() => void downloadRubricDocument(act)}
-                            onClearFile={() => { setEditRubricText(""); setEditRubricFile(null); setEditRubricFileName(""); setEditRubricImportError(""); }}
+                            onClearFile={() => {
+                              if (editRubricFile) {
+                                // Xóa bản nháp đang nhập (chưa lưu)
+                                setEditRubricText(""); setEditRubricFile(null); setEditRubricFileName(""); setEditRubricImportError("");
+                              } else if (act.rubric_document_name) {
+                                // Xóa hẳn file gốc đã lưu trên Storage
+                                void (async () => {
+                                  setEditRubricText(""); setEditRubricFile(null); setEditRubricFileName(""); setEditRubricImportError("");
+                                  try {
+                                    await supabase.storage.from("activity-documents").remove([act.rubric_document_path || act.rubric_document_name]);
+                                    await supabase.from("activities").update({ rubric_document_name: null, rubric_document_path: null }).eq("id", act.id);
+                                    setActivities((current) => current.map((row) => row.id === act.id ? { ...row, rubric_document_name: null, rubric_document_path: null } : row));
+                                    setPreviewNotice(`Đã xóa file ma trận gốc của bài ${act.id}.`);
+                                  } catch {
+                                    setPreviewNotice("Không xóa được file ma trận gốc, thử lại.");
+                                  }
+                                })();
+                              }
+                            }}
                           />
                           {editRubricFile && !rubricDocumentSchemaReady && <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">Cần migration 20261031002700_rubric_document_import.sql để lưu file gốc ma trận.</p>}
                         </div>
@@ -3049,10 +3102,17 @@ const handleRubricFileUpload = async (file: File | null) => {
                 <label className="text-xs font-bold text-indigo-900 block">Nội dung lý thuyết / tài liệu tham chiếu cho AI đọc (không bắt buộc)</label>
                 <textarea value={newGroupTheory} onChange={e => setNewGroupTheory(e.target.value)} placeholder="Dán nội dung lý thuyết hoặc yêu cầu để AI gợi ý đề nhóm sát hơn..." className="w-full border border-indigo-200 p-2.5 rounded-xl text-sm outline-none bg-white h-20" />
                 <div className="flex flex-wrap items-center gap-2">
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50">
+                    <UploadCloud className="h-4 w-4" /> Tải file lý thuyết (AI đọc nội dung)
+                    <input type="file" accept=".txt,.md,.csv,.docx,.xlsx,.pdf,image/png,image/jpeg,image/webp" onChange={(e) => setNewGroupTheoryFile(e.target.files?.[0] || null)} className="hidden" />
+                  </label>
+                  {newGroupTheoryFile ? <span className="text-[11px] text-indigo-700">Đã chọn: {newGroupTheoryFile.name} <button type="button" onClick={() => setNewGroupTheoryFile(null)} className="ml-1 font-bold text-rose-600">×</button></span> : <span className="text-[10px] text-indigo-500">Hỗ trợ TXT, Word, Excel, PDF, ảnh (tối đa 10 MB)</span>}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
                   <button type="button" onClick={() => void handleGenerateGroupWithAI()} disabled={isGeneratingGroupAI} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:from-indigo-700 hover:to-indigo-700 disabled:opacity-50">
                     <Sparkles className="h-4 w-4" /> {isGeneratingGroupAI ? "AI đang soạn đề nhóm..." : "AI gợi ý đề nhóm + ma trận từ nội dung trên"}
                   </button>
-                  <span className="text-[10px] text-indigo-600">AI dựa vào tên bài tập và nội dung lý thuyết để gợi ý mô tả nhiệm vụ + ma trận.</span>
+                  <span className="text-[10px] text-indigo-600">AI dựa vào tên bài tập, nội dung lý thuyết hoặc file để gợi ý mô tả nhiệm vụ + ma trận.</span>
                 </div>
               </div>
 
@@ -3474,6 +3534,7 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
                 </section>
               </div>
             )}
+
             {editingGroup && (
               <div className="fixed inset-0 z-[86] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditingGroup(null); }}>
                 <section role="dialog" aria-modal="true" aria-labelledby="edit-group-title" className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
@@ -3578,6 +3639,7 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
             )}
           </div>
         )}
+
 
         {/* 10. TAB TẠO TRẮC NGHIỆM & AI SINH ĐỀ */}
         {activeTab === 'quizzes' && (
@@ -3736,7 +3798,22 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
                       </div>
                     ))}
                   </div>
-                  <textarea value={q.explanation} onChange={e => { const n = [...newQs]; n[idx].explanation = e.target.value; setNewQs(n); }} placeholder="Lời giải chi tiết cho câu hỏi này..." className="w-full border p-2 rounded-xl text-xs bg-white outline-none h-16" />
+                  <textarea value={q.explanation} onChange={e => { const n = [...newQs]; n[idx].explanation = e.target.value; setNewQs(n); }} placeholder="Lời giải chi tiết cho câu hỏi này (hỗ trợ LaTeX: $...$)..." className="w-full border p-2 rounded-xl text-xs bg-white outline-none h-16" />
+
+                  {showQuizMathPreview && (q.question.trim() || q.options.some((opt: string) => opt.trim())) ? (
+                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Xem trước công thức</p>
+                      <div className="mt-1 text-sm text-slate-800"><MathText>{q.question}</MathText></div>
+                      <ul className="mt-1.5 space-y-0.5 text-xs text-slate-600">
+                        {q.options.map((opt: string, oIdx: number) => opt.trim() ? (
+                          <li key={oIdx} className={q.correct_option === oIdx ? "font-semibold text-emerald-700" : ""}>
+                            {String.fromCharCode(65 + oIdx)}. <MathText className="inline">{opt}</MathText>{q.correct_option === oIdx ? " ✓" : ""}
+                          </li>
+                        ) : null)}
+                      </ul>
+                      {q.explanation.trim() ? <div className="mt-1.5 border-t pt-1.5 text-xs text-slate-600"><span className="font-semibold">Giải thích: </span><MathText className="inline">{q.explanation}</MathText></div> : null}
+                    </div>
+                  ) : null}
                 </div>
               ))}
 

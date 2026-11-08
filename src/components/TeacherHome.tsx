@@ -150,7 +150,7 @@ export default function TeacherHome({ onNavigateTab, previewMode = false }: Teac
               <Users className="w-6 h-6" />
             </div>
             <span className="text-xs font-semibold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-full">
-              Lớp 11A1
+              Các lớp
             </span>
           </div>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng sinh viên</p>

@@ -2,8 +2,13 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { Lock, Mail, ArrowLeft, Sparkles } from "lucide-react";
+import { Lock, Mail, ArrowLeft, Sparkles, Users } from "lucide-react";
 import Link from "next/link";
+
+type ClassStudent = { id: string; name: string; code?: string };
+type ClassGroup = { name: string; students: ClassStudent[] };
+
+const REMEMBER_KEY = "vatly11_last_login_choice";
 
 export default function LoginPage() {
   const [role, setRole] = useState<"teacher" | "student">("teacher");
@@ -11,15 +16,23 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [classes, setClasses] = useState<string[]>([]);
+  const [classes, setClasses] = useState<ClassGroup[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
+  const [selectedStudentId, setSelectedStudentId] = useState("");
   const [classesLoading, setClassesLoading] = useState(false);
   const router = useRouter();
 
-  // Mục 11: tải danh sách lớp để học sinh chọn trước khi đăng nhập.
+  // Mục 11: tải danh sách lớp + học sinh để chọn tên thay vì gõ tên đăng nhập.
   useEffect(() => {
-    if (role !== "student" || classes.length) return;
     let cancelled = false;
+    const remembered = (() => {
+      try { return JSON.parse(localStorage.getItem(REMEMBER_KEY) || "{}") as { role?: string; className?: string; studentId?: string }; } catch { return {}; }
+    })();
+    if (remembered.role === "student") {
+      setSelectedClass(remembered.className || "");
+      setSelectedStudentId(remembered.studentId || "");
+    }
+    if (role !== "student" || classes.length) return;
     setClassesLoading(true);
     fetch("/api/public-classes", { cache: "no-store" })
       .then((response) => response.json())
@@ -27,7 +40,11 @@ export default function LoginPage() {
       .catch(() => { if (!cancelled) setClasses([]); })
       .finally(() => { if (!cancelled) setClassesLoading(false); });
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, classes.length]);
+
+  const studentsOfClass = classes.find((group) => group.name === selectedClass)?.students ?? [];
+  const selectedStudent = studentsOfClass.find((student) => student.id === selectedStudentId) ?? null;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,18 +53,16 @@ export default function LoginPage() {
     try {
       if (role === "student") {
         if (!selectedClass) throw new Error("Em hãy chọn lớp của mình trước khi đăng nhập.");
-        const username = email.trim().toLocaleLowerCase("en-US");
-        if (!/^[a-z0-9]{3,32}$/.test(username)) {
-          throw new Error("Tên đăng nhập chỉ gồm 3–32 chữ cái không dấu hoặc chữ số.");
-        }
+        if (!selectedStudentId) throw new Error("Em hãy chọn tên của mình trong danh sách lớp.");
         const response = await fetch("/api/auth/student-login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password, className: selectedClass }),
+          body: JSON.stringify({ studentId: selectedStudentId, password, className: selectedClass }),
         });
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error || "Tên đăng nhập hoặc mật khẩu không đúng.");
+        if (!response.ok) throw new Error(result.error || "Tên hoặc mật khẩu không đúng.");
         localStorage.setItem("student_session", JSON.stringify(result.student));
+        localStorage.setItem(REMEMBER_KEY, JSON.stringify({ role: "student", className: selectedClass, studentId: selectedStudentId }));
         if (result.mustChangePassword) {
           router.push("/doi-mat-khau");
           return;
@@ -157,19 +172,32 @@ export default function LoginPage() {
           </form>
         ) : (
           <form onSubmit={handleLogin} className="space-y-4">
-            <p className="text-sm text-slate-600">Chọn lớp rồi đăng nhập bằng tài khoản lớp đã được giáo viên cấp. Nếu chọn sai lớp, hệ thống sẽ báo không đúng.</p>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">Lớp của em</label>
-            <div className="relative"><Sparkles className="w-5 h-5 absolute left-3.5 top-3 text-slate-400" />
-              <select value={selectedClass} onChange={(event) => setSelectedClass(event.target.value)} disabled={classesLoading} className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-sm bg-white" required>
-                <option value="">{classesLoading ? "Đang tải danh sách lớp…" : "— Chọn lớp —"}</option>
-                {classes.map((className) => <option key={className} value={className}>{className}</option>)}
-              </select>
+            <p className="text-sm text-slate-600">Chọn lớp, chọn tên của em rồi nhập mật khẩu được cô cấp. Không cần gõ tên đăng nhập.</p>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Lớp của em</label>
+              <div className="relative"><Sparkles className="w-5 h-5 absolute left-3.5 top-3 text-slate-400" />
+                <select value={selectedClass} onChange={(event) => { setSelectedClass(event.target.value); setSelectedStudentId(""); }} disabled={classesLoading} className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-sm bg-white" required>
+                  <option value="">{classesLoading ? "Đang tải danh sách lớp…" : "— Chọn lớp —"}</option>
+                  {classes.map((group) => <option key={group.name} value={group.name}>{group.name} ({group.students.length} bạn)</option>)}
+                </select>
+              </div>
             </div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">Tên đăng nhập</label>
-            <div className="relative"><Mail className="w-5 h-5 absolute left-3.5 top-3 text-slate-400" /><input type="text" autoComplete="username" inputMode="text" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nguyenvanan" className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-sm" required /></div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">Mật khẩu</label>
-            <div className="relative"><Lock className="w-5 h-5 absolute left-3.5 top-3 text-slate-400" /><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-sm" required /></div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Tên của em</label>
+              <div className="relative"><Users className="w-5 h-5 absolute left-3.5 top-3 text-slate-400" />
+                <select value={selectedStudentId} onChange={(event) => setSelectedStudentId(event.target.value)} disabled={classesLoading || !selectedClass} className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-sm bg-white disabled:bg-slate-100 disabled:text-slate-400" required>
+                  <option value="">{!selectedClass ? "— Chọn lớp trước —" : studentsOfClass.length === 0 ? "Lớp này chưa có danh sách" : "— Chọn tên —"}</option>
+                  {studentsOfClass.map((student) => <option key={student.id} value={student.id}>{student.code ? `${student.code} — ${student.name}` : student.name}</option>)}
+                </select>
+              </div>
+              {selectedStudent && <p className="mt-1.5 text-[11px] text-slate-500">Đang chọn: <strong className="text-slate-700">{selectedStudent.name}</strong> · Lớp {selectedClass}</p>}
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Mật khẩu</label>
+              <div className="relative"><Lock className="w-5 h-5 absolute left-3.5 top-3 text-slate-400" /><input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••" className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-sm" required /></div>
+            </div>
             <button type="submit" disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold text-sm">{loading ? "Đang xác thực..." : "Đăng nhập học sinh"}</button>
+            <p className="text-[11px] text-slate-400 text-center">Lần đăng nhập sau, lớp và tên của em sẽ được chọn sẵn.</p>
           </form>
         )}
       </div>

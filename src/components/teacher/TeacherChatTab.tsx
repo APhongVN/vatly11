@@ -120,7 +120,7 @@ export default function TeacherChatTab({ previewMode, onPreviewNotice, getAvatar
     <div className="bg-white rounded-3xl shadow-sm border border-slate-200 h-[80vh] flex flex-col max-w-4xl mx-auto overflow-hidden animate-in fade-in">
       <div className="p-4 border-b bg-slate-900 text-white flex justify-between items-center">
         <div>
-          <h2 className="font-bold text-sm">Kênh thảo luận lớp học 11A1</h2>
+          <h2 className="font-bold text-sm">Kênh thảo luận lớp học</h2>
           <p className="text-[11px] text-slate-400">Trao đổi giữa Giáo viên và Sinh viên</p>
         </div>
         <div className="flex flex-wrap gap-2">

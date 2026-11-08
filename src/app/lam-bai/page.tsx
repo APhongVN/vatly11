@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Clock, Trophy, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import MathText from "@/components/MathText";
 
 function QuizContent() {
   const searchParams = useSearchParams();
@@ -17,6 +18,7 @@ function QuizContent() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [review, setReview] = useState<Array<{ questionId: string; selected: number | null; correct: number | null; explanation: string }>>([]);
   const [score, setScore] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -35,6 +37,7 @@ function QuizContent() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Không nộp được bài.");
       setScore(Number(result.score) || 0);
+      if (Array.isArray(result.review)) setReview(result.review);
       setSubmitted(true);
     } catch (error) {
       alert(error instanceof Error ? error.message : "Không nộp được bài.");
@@ -71,6 +74,8 @@ function QuizContent() {
         setLoading(false);
         return;
       }
+      const { data: existingSub } = await supabase.from("quiz_submissions")
+        .select("score,answers,review,created_at").eq("quiz_id", Number(quizId)).eq("student_id", enrolledStudent.id).maybeSingle();
       const [{ data: qz }, { data: qs }] = await Promise.all([
         supabase.from('quizzes').select('id,title,time_limit,archived_at').eq('id', Number(quizId)).maybeSingle(),
         supabase.from('quiz_questions').select('id,quiz_id,question,image_url,options').eq('quiz_id', Number(quizId)).order('id'),
@@ -79,8 +84,16 @@ function QuizContent() {
       if (qz && !qz.archived_at && qs?.length) {
         setQuiz(qz);
         setQuestions(qs);
-        setTimeLeft(qz.time_limit * 60);
-        startedAtRef.current = Date.now();
+        if (existingSub) {
+          // Mục 13: đã nộp -> xem lại kết quả, không làm lại lần 2.
+          setScore(Number(existingSub.score) || 0);
+          if (existingSub.answers && typeof existingSub.answers === "object") setAnswers(existingSub.answers);
+          if (Array.isArray(existingSub.review)) setReview(existingSub.review);
+          setSubmitted(true);
+        } else {
+          setTimeLeft(qz.time_limit * 60);
+          startedAtRef.current = Date.now();
+        }
       } else {
         setLoadError("Không tìm thấy bài trắc nghiệm hoặc bài chưa có câu hỏi.");
       }
@@ -129,7 +142,7 @@ function QuizContent() {
         <div className="space-y-6">
           {questions.map((q, idx) => (
             <div key={q.id} className="bg-white rounded-2xl shadow-sm border p-6">
-              <h3 className="font-bold text-lg mb-4"><span className="text-blue-600 mr-2">Câu {idx + 1}:</span> {q.question}</h3>
+              <h3 className="font-bold text-lg mb-4"><span className="text-blue-600 mr-2">Câu {idx + 1}:</span> <MathText>{q.question}</MathText></h3>
               {q.image_url && <Image unoptimized src={q.image_url} width={800} height={600} alt="Hình ảnh câu hỏi" className="max-h-64 rounded-lg mb-4 object-contain border" />}
 
               <div className="grid md:grid-cols-2 gap-3 mb-4">
@@ -137,18 +150,39 @@ function QuizContent() {
                   const isSelected = answers[q.id] === optIdx;
                   let btnClass = "border-slate-200 hover:border-blue-400 hover:bg-blue-50";
                   if (isSelected && !submitted) btnClass = "border-blue-600 bg-blue-50 ring-1 ring-blue-600";
-                  if (submitted) {
+                  const reviewItem = review.find((item) => item.questionId === String(q.id));
+                  if (submitted && reviewItem) {
+                    const isRight = reviewItem.selected === reviewItem.correct;
+                    if (reviewItem.correct === optIdx) btnClass = "border-emerald-500 bg-emerald-50";
+                    else if (isSelected && !isRight) btnClass = "border-rose-400 bg-rose-50";
+                    else btnClass = "border-slate-200 opacity-70";
+                  } else if (submitted) {
                     btnClass = isSelected ? "border-blue-500 bg-blue-50" : "border-slate-200 opacity-70";
                   }
                   return (
                     <button key={optIdx} onClick={() => handleSelect(q.id, optIdx)} disabled={submitted || submitting} className={`text-left p-4 rounded-xl border-2 transition-all flex items-center justify-between ${btnClass}`}>
-                      <span className="font-medium"><span className="inline-block w-6 h-6 rounded-full bg-white border text-center leading-5 text-sm mr-2">{String.fromCharCode(65 + optIdx)}</span>{opt}</span>
+                      <span className="font-medium"><span className="inline-block w-6 h-6 rounded-full bg-white border text-center leading-5 text-sm mr-2">{String.fromCharCode(65 + optIdx)}</span><MathText>{opt}</MathText></span>
                     </button>
                   );
                 })}
               </div>
 
-              {submitted && <p className="mt-3 text-xs text-slate-500">Kết quả đã được lưu để giáo viên theo dõi.</p>}
+              {submitted && (() => {
+                const reviewItem = review.find((item) => item.questionId === String(q.id));
+                if (!reviewItem) return <p className="mt-3 text-xs text-slate-500">Kết quả đã được lưu để giáo viên theo dõi.</p>;
+                const isRight = reviewItem.selected === reviewItem.correct;
+                return (
+                  <div className={`mt-3 rounded-xl border p-3 text-xs ${isRight ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900"}`}>
+                    <p className="font-bold">{isRight ? "✓ Em trả lời đúng" : "✗ Em trả lời sai"}{reviewItem.correct !== null && !isRight ? ` — Đáp án đúng: ${String.fromCharCode(65 + reviewItem.correct)}` : ""}</p>
+                    {reviewItem.explanation ? (
+                      <div className="mt-1.5 leading-5 text-slate-700">
+                        <span className="font-semibold">Giải thích: </span>
+                        <MathText className="inline">{reviewItem.explanation}</MathText>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </div>

@@ -1,5 +1,5 @@
--- Full schema setup for a FRESH/EMPTY Supabase project.
--- Excludes 20261101000000_promote_configured_teacher.sql (raises if teacher missing).
+-- Full VatLy11 schema setup - regenerated with ALL migrations in order.
+-- Run ONCE in Supabase SQL Editor on a fresh database. Safe to re-run (idempotent).
 
 -- ===== 20261031000000_initial_schema.sql =====
 -- Initial schema for a clean Supabase project. Existing deployments should back up
@@ -132,7 +132,6 @@ CREATE INDEX IF NOT EXISTS idx_submissions_status_date ON public.submissions(sta
 CREATE INDEX IF NOT EXISTS idx_messages_created ON public.messages(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_group_members_student ON public.group_assignment_members(student_id);
 
-
 -- ===== 20261031000100_create_chapters.sql =====
 CREATE TABLE IF NOT EXISTS public.chapters (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -145,7 +144,6 @@ CREATE TABLE IF NOT EXISTS public.chapters (
 ALTER TABLE public.activities
   ADD COLUMN IF NOT EXISTS chapter_id UUID REFERENCES public.chapters(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_activities_chapter_id ON public.activities(chapter_id);
-
 
 -- ===== 20261031000200_create_courses.sql =====
 CREATE TABLE IF NOT EXISTS public.courses (
@@ -177,7 +175,6 @@ CREATE INDEX IF NOT EXISTS idx_chapters_course_id ON public.chapters(course_id);
 CREATE INDEX IF NOT EXISTS idx_course_enrollments_course_id ON public.course_enrollments(course_id);
 CREATE INDEX IF NOT EXISTS idx_course_enrollments_student_id ON public.course_enrollments(student_id);
 
-
 -- ===== 20261031000300_schema_updates.sql =====
 -- Compatibility additions for the initial schema. Keep all additions idempotent.
 ALTER TABLE public.students ADD COLUMN IF NOT EXISTS auth_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
@@ -203,7 +200,6 @@ CREATE INDEX IF NOT EXISTS idx_submissions_activity_id ON public.submissions(act
 CREATE INDEX IF NOT EXISTS idx_submissions_status ON public.submissions(status);
 CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON public.messages(sender_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON public.messages(created_at DESC);
-
 
 -- ===== 20261031000400_rls_policies.sql =====
 CREATE OR REPLACE FUNCTION public.is_teacher()
@@ -447,7 +443,6 @@ UPDATE public.activities
 SET document_url = split_part(document_url, '/storage/v1/object/public/videos/', 2)
 WHERE document_url LIKE '%/storage/v1/object/public/videos/%';
 
-
 -- ===== 20261031000500_rls_enabled.sql =====
 -- Guard against the old demo migration that disabled Row Level Security.
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -466,7 +461,6 @@ ALTER TABLE public.quiz_submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chat_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.course_enrollments ENABLE ROW LEVEL SECURITY;
-
 
 -- ===== 20261031000600_seed_data.sql =====
 -- Seed only curriculum metadata; teachers can add, edit, publish and attach the real materials in the UI.
@@ -507,7 +501,6 @@ INSERT INTO public.activity_grading_guides (activity_id, grading_rubric) VALUES
   (14,'Đánh giá phản tư dựa trên bằng chứng và hoàn thành bài chuyển giao sau một tuần.')
 ON CONFLICT (activity_id) DO NOTHING;
 SELECT setval(pg_get_serial_sequence('public.activities','id'), GREATEST(COALESCE((SELECT MAX(id) FROM public.activities), 1), 1), true);
-
 
 -- ===== 20261031000700_learning_resource_library.sql =====
 -- Teacher managed library for reusable files and external learning links.
@@ -608,7 +601,6 @@ CREATE POLICY "Teachers read learning resource files" ON storage.objects
   );
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.learning_resources TO authenticated;
 
-
 -- ===== 20261031000800_chat_attachments.sql =====
 ALTER TABLE public.messages
   ADD COLUMN IF NOT EXISTS attachment_url TEXT,
@@ -650,7 +642,6 @@ CREATE POLICY "learning_resource_objects_update" ON storage.objects FOR UPDATE T
 CREATE POLICY "learning_resource_objects_delete" ON storage.objects FOR DELETE TO authenticated
   USING (bucket_id = 'learning-resources' AND public.is_teacher());
 
-
 -- ===== 20261031001000_api_rate_limits.sql =====
 CREATE TABLE IF NOT EXISTS public.api_rate_limits (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -691,7 +682,6 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.consume_api_rate_limit(TEXT, INTEGER, INTEGER) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.consume_api_rate_limit(TEXT, INTEGER, INTEGER) TO authenticated;
-
 
 -- ===== 20261031001100_named_groups.sql =====
 ALTER TABLE public.group_assignment_groups
@@ -739,17 +729,14 @@ CREATE TRIGGER group_name_sync_submissions
 AFTER UPDATE OF group_name ON public.group_assignment_groups
 FOR EACH ROW EXECUTE FUNCTION public.sync_group_submission_name();
 
-
 -- ===== 20261031001200_publish_curriculum_activities.sql =====
 UPDATE public.activities
 SET status = 'available'
 WHERE id IN (1,2,3,4,5,6,7,8,12,13,14);
 
-
 -- ===== 20261031001300_private_activity_data.sql =====
 DROP POLICY IF EXISTS "activities_read_public" ON public.activities;
 REVOKE SELECT ON public.activities FROM anon;
-
 
 -- ===== 20261031001400_protect_answer_keys.sql =====
 -- Keep model answers, grading rubrics, quiz keys and explanations out of student-readable tables.
@@ -856,7 +843,6 @@ CREATE POLICY "quiz_submission_archive_teacher_read"
   ON public.quiz_submission_duplicate_archive FOR SELECT TO authenticated
   USING (public.is_teacher());
 
-
 -- ===== 20261031001600_activity_evidence.sql =====
 -- Persist student work from the curriculum activities without trusting client-side scores.
 CREATE TABLE IF NOT EXISTS public.activity_evidence (
@@ -895,7 +881,6 @@ CREATE POLICY "activity_evidence_teacher_manage"
   ON public.activity_evidence FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
 
-
 -- ===== 20261031001700_published_resources_public_read.sql =====
 -- Published curriculum resources are intentionally readable in the public,
 -- no-account preview. Drafts and all write operations remain teacher-only.
@@ -920,7 +905,6 @@ CREATE POLICY "learning_resource_objects_read"
     )
   );
 
-
 -- ===== 20261031001800_chat_realtime.sql =====
 -- Enable low-latency chat updates. Clients keep a bounded polling fallback if
 -- Realtime is not available in a self-hosted or not-yet-migrated environment.
@@ -937,7 +921,6 @@ BEGIN
   END IF;
 END;
 $$;
-
 
 -- ===== 20261031001900_atomic_group_assignment.sql =====
 -- Create the assignment, its groups and member allocations atomically.
@@ -1013,7 +996,6 @@ $$;
 REVOKE ALL ON FUNCTION public.create_group_assignment_with_groups(TEXT, TEXT, TIMESTAMPTZ, TEXT, TEXT, INTEGER, INTEGER) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.create_group_assignment_with_groups(TEXT, TEXT, TIMESTAMPTZ, TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
 
-
 -- ===== 20261031002000_activity_evidence_review.sql =====
 -- Keep teacher AI suggestions separate from a human-approved final mark.
 ALTER TABLE public.activity_evidence
@@ -1028,7 +1010,6 @@ ALTER TABLE public.activity_evidence
   ADD COLUMN IF NOT EXISTS teacher_feedback TEXT,
   ADD COLUMN IF NOT EXISTS graded_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS graded_at TIMESTAMPTZ;
-
 
 -- ===== 20261031002100_atomic_group_regroup.sql =====
 -- Reassign group members in one transaction and keep group history intact.
@@ -1184,7 +1165,6 @@ ALTER TABLE public.peer_instruction_votes ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.peer_instruction_votes FROM anon, authenticated;
 GRANT ALL ON public.peer_instruction_votes TO service_role;
 
-
 -- ===== 20261031002300_capacitance_lab_settings.sql =====
 CREATE TABLE IF NOT EXISTS public.capacitance_lab_settings (
   id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
@@ -1220,7 +1200,6 @@ DROP POLICY IF EXISTS capacitance_lab_settings_teacher_update ON public.capacita
 CREATE POLICY capacitance_lab_settings_teacher_update
   ON public.capacitance_lab_settings FOR UPDATE TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-
 
 -- ===== 20261031002400_harden_api_rate_limit.sql =====
 -- Move rate-limit accounting behind the server-only service role.
@@ -1289,7 +1268,6 @@ $$;
 REVOKE ALL ON FUNCTION public.consume_api_rate_limit(UUID, TEXT, INTEGER, INTEGER) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.consume_api_rate_limit(UUID, TEXT, INTEGER, INTEGER) TO service_role;
 
-
 -- ===== 20261031002500_scope_activity_file_reads.sql =====
 -- Restrict lesson-file reads to teachers and activities open to students.
 CREATE INDEX IF NOT EXISTS idx_activities_document_url ON public.activities(document_url) WHERE document_url IS NOT NULL;
@@ -1308,7 +1286,6 @@ CREATE POLICY "videos_read_activity_document" ON storage.objects
       )
     )
   );
-
 
 -- ===== 20261031002600_student_account_provisioning.sql =====
 -- Teacher-provisioned student accounts use one-time passwords that must be changed at first login.
@@ -1336,7 +1313,6 @@ BEGIN
 END;
 $$;
 
-
 -- ===== 20261031002700_rubric_document_import.sql =====
 -- Preserve the original teacher rubric document alongside extracted editable text.
 -- The rubric is teacher-only data and remains protected by the existing guide RLS policy.
@@ -1355,7 +1331,6 @@ ALTER TABLE public.activity_grading_guides
 ALTER TABLE public.activity_grading_guides
   ADD CONSTRAINT activity_grading_guides_rubric_document_name_length
   CHECK (rubric_document_name IS NULL OR char_length(rubric_document_name) BETWEEN 1 AND 255);
-
 
 -- ===== 20261031002800_teacher_final_feedback.sql =====
 -- Store the teacher's final feedback separately from AI suggestions.
@@ -1377,7 +1352,6 @@ ALTER TABLE public.group_submissions
 ALTER TABLE public.group_submissions
   ADD CONSTRAINT group_submissions_teacher_feedback_length
   CHECK (teacher_feedback IS NULL OR char_length(teacher_feedback) <= 5000);
-
 
 -- ===== 20261031002900_submission_api_rate_limit.sql =====
 -- Add the server-only submission bucket without reopening the rate-limit RPC to clients.
@@ -1445,7 +1419,6 @@ $$;
 REVOKE ALL ON FUNCTION public.consume_api_rate_limit(UUID, TEXT, INTEGER, INTEGER) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.consume_api_rate_limit(UUID, TEXT, INTEGER, INTEGER) TO service_role;
 
-
 -- ===== 20261101000100_group_rubric_documents.sql =====
 -- Keep the editable rubric text and its original file together on each group assignment.
 ALTER TABLE public.group_assignments
@@ -1479,7 +1452,6 @@ CREATE POLICY "group_rubric_objects_read_members" ON storage.objects FOR SELECT 
         AND s.auth_user_id = auth.uid()
     )
   );
-
 
 -- ===== 20261101000200_group_assignment_classes.sql =====
 -- Scope each group assignment to one class while preserving legacy all-class assignments.
@@ -1783,7 +1755,6 @@ $$;
 REVOKE ALL ON FUNCTION public.consume_student_auth_rate_limit(TEXT, INTEGER, INTEGER) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.consume_student_auth_rate_limit(TEXT, INTEGER, INTEGER) TO service_role;
 
-
 -- ===== 20261103000200_student_archive.sql =====
 -- Archive a student account without deleting the student row or any linked work.
 ALTER TABLE public.students ADD COLUMN IF NOT EXISTS is_active BOOLEAN;
@@ -1970,7 +1941,6 @@ GRANT EXECUTE ON FUNCTION public.regroup_assignment_students(UUID, INTEGER, INTE
 REVOKE ALL ON FUNCTION public.create_group_assignment_for_class(TEXT, TEXT, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTEGER, INTEGER) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_group_assignment_for_class(TEXT, TEXT, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
 
-
 -- ===== 20261103000300_protect_group_teacher_feedback.sql =====
 -- Students may edit their own group submission, but must never write teacher feedback.
 CREATE OR REPLACE FUNCTION public.protect_group_submission_teacher_feedback()
@@ -2055,7 +2025,6 @@ DROP TRIGGER IF EXISTS group_submissions_validate_payload ON public.group_submis
 CREATE TRIGGER group_submissions_validate_payload
 BEFORE INSERT OR UPDATE ON public.group_submissions
 FOR EACH ROW EXECUTE FUNCTION public.validate_group_submission_payload();
-
 
 -- ===== 20261104000100_student_questions.sql =====
 -- "Góc hỏi đáp" question tracker (đặc tả 4.7).
@@ -2181,7 +2150,6 @@ $$;
 REVOKE ALL ON FUNCTION public.consume_api_rate_limit(UUID, TEXT, INTEGER, INTEGER) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.consume_api_rate_limit(UUID, TEXT, INTEGER, INTEGER) TO service_role;
 
-
 -- ===== 20261104000200_learning_result_metrics.sql =====
 -- 4.8 Kết quả học tập của học sinh: bổ sung các chỉ số theo dõi.
 -- Các chỉ số chỉ được tính từ dữ liệu thật do website ghi nhận (đặc tả 4.8),
@@ -2195,7 +2163,6 @@ ALTER TABLE public.activity_evidence
 
 CREATE INDEX IF NOT EXISTS idx_activity_evidence_first_attempt
   ON public.activity_evidence (student_id, first_attempt_correct) WHERE first_attempt_correct IS NOT NULL;
-
 
 -- ===== 20261104000300_statement_game.sql =====
 -- 4.5 Trò chơi "Truy tìm phát biểu sai": phát biểu, lượt chơi và điểm nhóm.
@@ -2271,7 +2238,6 @@ INSERT INTO public.game_statements (statement, is_false, explanation, topic, dis
   ('Tụ trong flash máy ảnh tích trữ và giải phóng năng lượng nhanh', false, 'Đây là ứng dụng đúng của tụ điện.', 'energy', 8)
 ON CONFLICT DO NOTHING;
 
-
 -- ===== 20261104000400_student_code.sql =====
 -- Mục 4: lưu mã số sinh viên (MSSV) khi nhập danh sách từ tệp.
 -- Nếu tệp không có cột mã thì để trống, giáo viên tự điền sau.
@@ -2283,7 +2249,6 @@ CREATE INDEX IF NOT EXISTS idx_students_student_code
 -- Số lượng lớp: đảm bảo truy vấn lọc theo lớp nhanh khi có nhiều lớp.
 CREATE INDEX IF NOT EXISTS idx_students_class_name
   ON public.students (LOWER(class_name));
-
 
 -- ===== 20261104000500_password_changed.sql =====
 -- Mục 5: theo dõi trạng thái đổi mật khẩu để bảo mật.
@@ -2368,4 +2333,15 @@ ALTER TABLE public.group_assignments ADD COLUMN IF NOT EXISTS archived_at TIMEST
 
 CREATE INDEX IF NOT EXISTS idx_quizzes_archived ON public.quizzes (archived_at);
 CREATE INDEX IF NOT EXISTS idx_group_assignments_archived ON public.group_assignments (archived_at);
+
+-- ===== 20261104001200_quiz_review_snapshot.sql =====
+-- Mục 13: lưu lại bài làm trắc nghiệm để học sinh xem lại sau khi nộp (như Azota).
+-- review chứa đáp án đúng + giải thích TỪNG CÂU, chỉ ghi SAU KHI nộp thành công,
+-- và RLS "student_read_own" chỉ cho học sinh đọc dòng của CHÍNH MÌNH sau khi đã nộp,
+-- nên không lộ đáp án trước lúc làm bài.
+ALTER TABLE public.quiz_submissions
+  ADD COLUMN IF NOT EXISTS answers JSONB,
+  ADD COLUMN IF NOT EXISTS review JSONB;
+
+CREATE INDEX IF NOT EXISTS idx_quiz_submissions_student ON public.quiz_submissions (student_id, created_at DESC);
 
