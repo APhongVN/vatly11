@@ -17,7 +17,7 @@ body {
 }
 
 .card {
-  @apply bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-6 transition-all duration-300;
+  @apply bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 p-6 transition-all duration-300;
 }
 .card:hover {
   @apply shadow-[0_8px_30px_rgb(0,0,0,0.08)] transform -translate-y-1;
@@ -27,12 +27,12 @@ body {
   @apply px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2;
 }
 .btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200; }
-.btn-secondary { @apply bg-white text-gray-700 border border-gray-200 hover:bg-gray-50; }
+.btn-secondary { @apply bg-white text-slate-700 border border-slate-200 hover:bg-slate-50; }
 .btn-success { @apply bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-200; }
 
 /* Lớp input cơ bản */
 .input {
-  @apply w-full py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all;
+  @apply w-full py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all;
 }
 /* Lớp input khi có icon bên trái (thêm padding trái 40px) */
 .input-icon-left {

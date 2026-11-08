@@ -28,8 +28,8 @@ const PHASE_COLORS: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  available: "bg-green-100 text-green-700 border-green-200",
-  locked: "bg-gray-100 text-gray-500 border-gray-200",
+  available: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  locked: "bg-slate-100 text-slate-500 border-slate-200",
   done: "bg-emerald-100 text-emerald-700 border-emerald-200",
 };
 
@@ -114,12 +114,12 @@ export default function ChapterDashboard() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <h1 className="text-3xl font-extrabold text-gray-900">Chương trình học</h1>
-            <p className="mt-1 text-sm text-gray-500">Toàn bộ chương và hoạt động được phát hành cho lớp học.</p>
+            <h1 className="text-3xl font-extrabold text-slate-900">Chương trình học</h1>
+            <p className="mt-1 text-sm text-slate-500">Toàn bộ chương và hoạt động được phát hành cho lớp học.</p>
             <p className="mt-2 text-xs text-slate-500">Đề cương gồm 14 mục nguồn; các mục 8–11 được tổ chức thành một hoạt động thực nghiệm.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -134,10 +134,10 @@ export default function ChapterDashboard() {
 
         {catalogError && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"><p className="max-w-3xl">Chưa kết nối được danh mục trực tuyến. Danh sách đang hiển thị dữ liệu nội dung đã đóng gói; bài và chương mới do giáo viên tạo sẽ xuất hiện sau khi kết nối cơ sở dữ liệu hoạt động.</p><button type="button" disabled={isRefreshingCatalog} onClick={() => { setIsRefreshingCatalog(true); setCatalogRetryCount((count) => count + 1); }} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold hover:bg-amber-100 disabled:cursor-wait disabled:opacity-60"><RefreshCw className={`h-4 w-4 ${isRefreshingCatalog ? "animate-spin" : ""}`} />{isRefreshingCatalog ? "Đang tải lại…" : "Tải lại danh mục"}</button></div>}
 
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-4">
-            <label htmlFor="course-select" className="text-sm font-medium text-gray-700">Môn học:</label>
-            <select id="course-select" value={selectedCourse} onChange={(event) => { setSelectedCourse(event.target.value); setExpandedChapter(preferredChapter(chapters, event.target.value)); }} className="rounded-xl border border-gray-200 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            <label htmlFor="course-select" className="text-sm font-medium text-slate-700">Môn học:</label>
+            <select id="course-select" value={selectedCourse} onChange={(event) => { setSelectedCourse(event.target.value); setExpandedChapter(preferredChapter(chapters, event.target.value)); }} className="rounded-xl border border-slate-200 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
               {courses.map((course) => <option key={course.id} value={course.id}>{course.title} (Khối {course.grade_level})</option>)}
             </select>
           </div>
@@ -149,48 +149,48 @@ export default function ChapterDashboard() {
             const chapterActivities = activities.filter((activity) => activity.chapter_id === chapter.id && activity.course_id === selectedCourse);
             const isExpanded = expandedChapter === chapter.id;
             const pct = chapterProgress(chapter.id);
-            return <section key={chapter.id} className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-md">
-              <div className="border-b border-gray-100 bg-blue-50/50 p-6">
+            return <section key={chapter.id} className="group overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-md">
+              <div className="border-b border-slate-100 bg-blue-50/50 p-6">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 font-bold text-white">{chapterIndex + 1}</div>
-                    <div><h2 className="text-xl font-bold text-gray-900">{chapter.title}</h2><p className="text-xs text-gray-500">{chapter.description}</p></div>
+                    <div><h2 className="text-xl font-bold text-slate-900">{chapter.title}</h2><p className="text-xs text-slate-500">{chapter.description}</p></div>
                   </div>
-                  <button type="button" aria-expanded={isExpanded} aria-label={`${isExpanded ? "Thu gọn" : "Mở"} ${chapter.title}`} onClick={() => setExpandedChapter(isExpanded ? null : chapter.id)} className="rounded-lg border border-gray-200 bg-white p-2 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600">
+                  <button type="button" aria-expanded={isExpanded} aria-label={`${isExpanded ? "Thu gọn" : "Mở"} ${chapter.title}`} onClick={() => setExpandedChapter(isExpanded ? null : chapter.id)} className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 transition-colors hover:bg-blue-50 hover:text-blue-600">
                     {isExpanded ? <CheckCircle className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                   </button>
                 </div>
                 <div className="mb-2">
-                  <div className="mb-1 flex justify-between text-xs font-semibold text-gray-500"><span>Tiến độ</span><span>{pct}%</span></div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200"><div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500" style={{ width: `${pct}%` }} /></div>
+                  <div className="mb-1 flex justify-between text-xs font-semibold text-slate-500"><span>Tiến độ</span><span>{pct}%</span></div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500" style={{ width: `${pct}%` }} /></div>
                 </div>
-                <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
+                <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
                   <span className="flex items-center gap-1"><BookOpen className="h-3 w-3" /> {chapterActivities.length} hoạt động</span>
                   <span>{chapterActivities.filter((activity) => activity.status === "available").length} hoạt động đang phát hành</span>
                 </div>
               </div>
-              {isExpanded && <div className="p-0"><div className="divide-y divide-gray-100">
+              {isExpanded && <div className="p-0"><div className="divide-y divide-slate-100">
                 {chapterActivities.map((activity) => {
-                  const phaseColor = PHASE_COLORS[activity.phase] || "bg-gray-100 text-gray-600";
-                  const statusStyle = STATUS_STYLES[activity.status] || "bg-gray-100 text-gray-500";
-                  return <div key={activity.id} className="group flex items-center justify-between gap-4 p-5 transition-colors hover:bg-gray-50">
+                  const phaseColor = PHASE_COLORS[activity.phase] || "bg-slate-100 text-slate-600";
+                  const statusStyle = STATUS_STYLES[activity.status] || "bg-slate-100 text-slate-500";
+                  return <div key={activity.id} className="group flex items-center justify-between gap-4 p-5 transition-colors hover:bg-slate-50">
                     <div className="min-w-0 flex-1">
                       <div className="mb-1 flex flex-wrap items-center gap-2">
                         <span className={`rounded border px-2 py-0.5 text-[10px] font-bold ${phaseColor}`}>{activity.phase}</span>
                         <span className="text-[10px] font-semibold text-slate-600">{activity.type}</span>
                         <span className={`rounded border px-2 py-0.5 text-[10px] font-bold ${statusStyle}`}>{activity.status === "available" ? "Đang phát hành" : activity.status === "done" ? "Hoàn thành" : "Chưa phát hành"}</span>
                       </div>
-                      <div className="flex items-center gap-2"><span className="font-mono text-[10px] text-gray-400">{activity.code}</span><h3 className="font-semibold text-gray-800">{activity.title}</h3></div>
-                      <p className="mt-0.5 text-xs text-gray-500">{activity.duration} · {activity.deliverable}</p>
-                      <p className="mt-1 line-clamp-2 text-xs text-gray-500">{activity.description}</p>
+                      <div className="flex items-center gap-2"><span className="font-mono text-[10px] text-slate-400">{activity.code}</span><h3 className="font-semibold text-slate-800">{activity.title}</h3></div>
+                      <p className="mt-0.5 text-xs text-slate-500">{activity.duration} · {activity.deliverable}</p>
+                      <p className="mt-1 line-clamp-2 text-xs text-slate-500">{activity.description}</p>
                       {activity.status === "available" && activity.accepting_submissions === false && <p className="mt-1 text-xs font-medium text-amber-700">Đã đóng nhận bài</p>}
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      {activity.status === "available" ? <Link href={`/hoat-dong/${activity.id}`} aria-label={`Mở ${activity.title}`} className="rounded-lg border border-blue-200 bg-white p-2 text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700"><ArrowRight className="h-4 w-4" /></Link> : <span className="rounded-lg border border-gray-200 bg-gray-50 p-2 text-gray-400" title="Nội dung chưa được phát hành"><Lock className="h-4 w-4" /></span>}
+                      {activity.status === "available" ? <Link href={`/hoat-dong/${activity.id}`} aria-label={`Mở ${activity.title}`} className="rounded-lg border border-blue-200 bg-white p-2 text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700"><ArrowRight className="h-4 w-4" /></Link> : <span className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-400" title="Nội dung chưa được phát hành"><Lock className="h-4 w-4" /></span>}
                     </div>
                   </div>;
                 })}
-              </div>{chapterActivities.length === 0 && <div className="p-6 text-center text-sm text-gray-400">Chưa có hoạt động nào được xếp vào chương này.</div>}</div>}
+              </div>{chapterActivities.length === 0 && <div className="p-6 text-center text-sm text-slate-400">Chưa có hoạt động nào được xếp vào chương này.</div>}</div>}
             </section>;
           })}
         </div>
@@ -206,5 +206,5 @@ export default function ChapterDashboard() {
 }
 
 function StatCard({ title, value, icon, color }: { title: string; value: number; icon: React.ReactNode; color: string }) {
-  return <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div><p className="text-xs font-semibold uppercase tracking-wider text-gray-500">{title}</p><p className="mt-1 text-2xl font-bold text-gray-900">{value}</p></div><div className={`rounded-lg p-2.5 ${color} ${color === "text-blue-600" ? "bg-blue-50" : color === "text-indigo-600" ? "bg-indigo-50" : "bg-emerald-50"}`}>{icon}</div></div></div>;
+  return <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</p><p className="mt-1 text-2xl font-bold text-slate-900">{value}</p></div><div className={`rounded-lg p-2.5 ${color} ${color === "text-blue-600" ? "bg-blue-50" : color === "text-indigo-600" ? "bg-indigo-50" : "bg-emerald-50"}`}>{icon}</div></div></div>;
 }

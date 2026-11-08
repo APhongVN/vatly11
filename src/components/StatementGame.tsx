@@ -30,10 +30,10 @@ export default function StatementGame({ statements, readOnly = false }: { statem
   if (statements.length === 0) return <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">Chưa có phát biểu nào. Dữ liệu sẽ được cập nhật sau khi giáo viên thêm nội dung.</div>;
 
   return (
-    <section className="rounded-3xl border border-teal-200 bg-white shadow-sm overflow-hidden">
-      <div className="p-4 border-b bg-gradient-to-r from-teal-50 to-emerald-50">
-        <h3 className="font-bold text-base text-teal-900 flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-teal-600" /> Trò chơi “Truy tìm phát biểu sai”</h3>
-        <p className="text-[11px] text-teal-700/80 mt-1">Chọn phát biểu <strong>sai</strong>, viết lí do và bấm “Kiểm tra”. Hệ thống ghi nhận số câu đúng và số lần thử.</p>
+    <section className="rounded-3xl border border-emerald-200 bg-white shadow-sm overflow-hidden">
+      <div className="p-4 border-b bg-gradient-to-r from-emerald-50 to-emerald-50">
+        <h3 className="font-bold text-base text-emerald-900 flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-emerald-600" /> Trò chơi “Truy tìm phát biểu sai”</h3>
+        <p className="text-[11px] text-emerald-700/80 mt-1">Chọn phát biểu <strong>sai</strong>, viết lí do và bấm “Kiểm tra”. Hệ thống ghi nhận số câu đúng và số lần thử.</p>
       </div>
       <div className="p-4 space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
@@ -42,7 +42,7 @@ export default function StatementGame({ statements, readOnly = false }: { statem
             const showResult = checked && isSelected;
             return (
               <button key={statement.id} type="button" onClick={() => { if (!readOnly && !checked) setSelected(statement.id); }}
-                className={`rounded-2xl border p-4 text-left text-sm transition-all ${showResult ? (correct ? "border-emerald-300 bg-emerald-50" : "border-rose-300 bg-rose-50") : isSelected ? "border-teal-400 bg-teal-50" : "border-slate-200 bg-white hover:border-teal-300"}`}>
+                className={`rounded-2xl border p-4 text-left text-sm transition-all ${showResult ? (correct ? "border-emerald-300 bg-emerald-50" : "border-rose-300 bg-rose-50") : isSelected ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-white hover:border-emerald-300"}`}>
                 <span className="font-bold text-slate-800">Phát biểu {statement.id}</span>
                 <span className="mt-1 block leading-6 text-slate-700">{statement.statement}</span>
                 {showResult ? <span className={`mt-2 block text-xs font-bold ${correct ? "text-emerald-700" : "text-rose-700"}`}>{correct ? "Phát biểu sai — chọn đúng!" : "Phát biểu này đúng — chọn phát biểu sai khác."}</span> : null}
@@ -54,11 +54,11 @@ export default function StatementGame({ statements, readOnly = false }: { statem
           <label htmlFor="game-reason" className="text-xs font-bold text-slate-700">Lí do em chọn phát biểu này là sai</label>
           <textarea id="game-reason" value={reason} onChange={(event) => setReason(event.target.value)} rows={3} maxLength={1000}
             placeholder="Ví dụ: Hai bản tụ mang điện tích trái dấu và cùng độ lớn…"
-            className="w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:ring-2 focus:ring-teal-400" />
+            className="w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-400" />
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" onClick={check} disabled={readOnly || checked || selected === null || reason.trim().length < 5}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold text-white hover:bg-teal-700 disabled:opacity-40"><CheckCircle2 className="h-4 w-4" /> Kiểm tra</button>
+            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-40"><CheckCircle2 className="h-4 w-4" /> Kiểm tra</button>
           {checked ? <button type="button" onClick={next} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><RotateCcw className="h-4 w-4" /> Chọn phát biểu khác</button> : null}
           <button type="button" onClick={reset} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><RotateCcw className="h-4 w-4" /> Làm lại từ đầu</button>
           <span className="ml-auto text-xs font-bold text-slate-600">Đúng: {correctCount} · Thử: {attemptCount}</span>

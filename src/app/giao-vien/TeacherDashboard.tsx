@@ -2822,7 +2822,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                   activeTab === 'curriculum' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
               >
-                <Layers className="w-4 h-4 text-cyan-300" /> Lộ trình môn & chương
+                <Layers className="w-4 h-4 text-indigo-300" /> Lộ trình môn & chương
               </button>
               <button
                 onClick={() => navigateToTab('resources')}
@@ -2875,7 +2875,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                   activeTab === 'activity-evidence' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
               >
-                <ClipboardList className="w-4 h-4 text-cyan-400" /> Sổ tay & bằng chứng
+                <ClipboardList className="w-4 h-4 text-indigo-400" /> Sổ tay & bằng chứng
               </button>
               <button
                 onClick={() => navigateToTab('ocr')}
@@ -2883,7 +2883,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                   activeTab === 'ocr' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
                 }`}
               >
-                <Camera className="w-4 h-4 text-purple-400" /> Chấm từ ảnh (AI OCR)
+                <Camera className="w-4 h-4 text-indigo-400" /> Chấm từ ảnh (AI OCR)
               </button>
               <button
                 onClick={() => navigateToTab('regrade')}
@@ -3336,23 +3336,23 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-cyan-100 bg-cyan-50/50 p-5">
+              <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-5">
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-bold text-cyan-950">Vị trí trong lộ trình</h3>
-                    <p className="mt-1 text-xs leading-5 text-cyan-800">Gắn bài này vào môn và chương để học sinh thấy nó trong giao diện tổng thể. Có thể tạo thêm môn/chương ở mục “Lộ trình môn &amp; chương”.</p>
+                    <h3 className="text-sm font-bold text-indigo-950">Vị trí trong lộ trình</h3>
+                    <p className="mt-1 text-xs leading-5 text-indigo-800">Gắn bài này vào môn và chương để học sinh thấy nó trong giao diện tổng thể. Có thể tạo thêm môn/chương ở mục “Lộ trình môn &amp; chương”.</p>
                   </div>
-                  <button type="button" onClick={() => navigateToTab('curriculum')} className="shrink-0 rounded-lg border border-cyan-200 bg-white px-3 py-2 text-xs font-bold text-cyan-800 hover:bg-cyan-100">Mở lộ trình</button>
+                  <button type="button" onClick={() => navigateToTab('curriculum')} className="shrink-0 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-bold text-indigo-800 hover:bg-indigo-100">Mở lộ trình</button>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="text-xs font-bold text-slate-700">Môn học
-                    <select value={newActCourseId} onChange={(event) => { setNewActCourseId(event.target.value); setNewActChapterId(""); }} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal outline-none focus:ring-2 focus:ring-cyan-500">
+                    <select value={newActCourseId} onChange={(event) => { setNewActCourseId(event.target.value); setNewActChapterId(""); }} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal outline-none focus:ring-2 focus:ring-indigo-500">
                       <option value="">Chưa gán môn học</option>
                       {curriculumCourses.map((course) => <option key={course.id} value={course.id}>{course.subject ? `${course.subject} · ` : ""}{course.title} {course.grade_level ? `(Khối ${course.grade_level})` : ""}</option>)}
                     </select>
                   </label>
                   <label className="text-xs font-bold text-slate-700">Chương
-                    <select value={newActChapterId} onChange={(event) => setNewActChapterId(event.target.value)} disabled={!newActCourseId} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-slate-100">
+                    <select value={newActChapterId} onChange={(event) => setNewActChapterId(event.target.value)} disabled={!newActCourseId} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100">
                       <option value="">Chưa gán chương</option>
                       {newActivityChapters.map((chapter) => <option key={chapter.id} value={chapter.id}>{chapter.title}</option>)}
                     </select>
@@ -3493,7 +3493,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                 <label className="text-xs font-bold text-indigo-900 block">Nội dung lý thuyết / tài liệu tham chiếu cho AI đọc (không bắt buộc)</label>
                 <textarea value={newGroupTheory} onChange={e => setNewGroupTheory(e.target.value)} placeholder="Dán nội dung lý thuyết hoặc yêu cầu để AI gợi ý đề nhóm sát hơn..." className="w-full border border-indigo-200 p-2.5 rounded-xl text-sm outline-none bg-white h-20" />
                 <div className="flex flex-wrap items-center gap-2">
-                  <button type="button" onClick={() => void handleGenerateGroupWithAI()} disabled={isGeneratingGroupAI} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50">
+                  <button type="button" onClick={() => void handleGenerateGroupWithAI()} disabled={isGeneratingGroupAI} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:from-indigo-700 hover:to-indigo-700 disabled:opacity-50">
                     <Sparkles className="h-4 w-4" /> {isGeneratingGroupAI ? "AI đang soạn đề nhóm..." : "AI gợi ý đề nhóm + ma trận từ nội dung trên"}
                   </button>
                   <span className="text-[10px] text-indigo-600">AI dựa vào tên bài tập và nội dung lý thuyết để gợi ý mô tả nhiệm vụ + ma trận.</span>
@@ -3921,21 +3921,21 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
                     Tải ảnh bài thi học sinh
                   </label>
-                  <div className="border-2 border-dashed border-purple-200 hover:border-purple-400 bg-purple-50/40 rounded-2xl p-8 text-center cursor-pointer relative transition-all">
+                  <div className="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-indigo-50/40 rounded-2xl p-8 text-center cursor-pointer relative transition-all">
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleOcrImageUpload}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
-                    <Camera className="w-10 h-10 text-purple-600 mx-auto mb-2" />
-                    <p className="text-sm font-bold text-purple-900">Bấm để chọn ảnh bài làm (JPG, PNG)</p>
-                    <p className="text-xs text-purple-600 mt-1">Hệ thống AI tự động trích xuất chữ viết tay và công thức</p>
+                    <Camera className="w-10 h-10 text-indigo-600 mx-auto mb-2" />
+                    <p className="text-sm font-bold text-indigo-900">Bấm để chọn ảnh bài làm (JPG, PNG)</p>
+                    <p className="text-xs text-indigo-600 mt-1">Hệ thống AI tự động trích xuất chữ viết tay và công thức</p>
                   </div>
 
                   {isOcrProcessing && (
-                    <div className="p-3 bg-purple-50 rounded-xl text-xs text-purple-700 font-semibold flex items-center justify-center gap-2">
-                      <Sparkles className="w-4 h-4 animate-spin text-purple-600" /> Đang nhận diện chữ và công thức từ ảnh...
+                    <div className="p-3 bg-indigo-50 rounded-xl text-xs text-indigo-700 font-semibold flex items-center justify-center gap-2">
+                      <Sparkles className="w-4 h-4 animate-spin text-indigo-600" /> Đang nhận diện chữ và công thức từ ảnh...
                     </div>
                   )}
                 </div>
@@ -3957,17 +3957,17 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                 <button
                   onClick={executeOcrGrading}
                   disabled={isOcrProcessing || !ocrText.trim()}
-                  className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2"
+                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2"
                 >
                   <Sparkles className="w-4 h-4" /> Chấm điểm bài này bằng AI
                 </button>
               </div>
 
               {ocrResult && (
-                <div className="p-6 bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-2xl space-y-4 animate-in fade-in">
-                  <div className="flex justify-between items-center pb-2 border-b border-purple-200">
-                    <span className="text-sm font-bold text-purple-900">KẾT QUẢ CHẤM ĐIỂM AI:</span>
-                    <span className="text-2xl font-black text-purple-700">{ocrResult.score}/10</span>
+                <div className="p-6 bg-gradient-to-br from-indigo-50 to-indigo-50 border border-indigo-200 rounded-2xl space-y-4 animate-in fade-in">
+                  <div className="flex justify-between items-center pb-2 border-b border-indigo-200">
+                    <span className="text-sm font-bold text-indigo-900">KẾT QUẢ CHẤM ĐIỂM AI:</span>
+                    <span className="text-2xl font-black text-indigo-700">{ocrResult.score}/10</span>
                   </div>
                   <p className="text-xs text-slate-800"><span className="font-bold">Nhận xét:</span> {ocrResult.feedback}</p>
                   {ocrResult.strengths && <p className="text-xs text-emerald-800"><span className="font-bold">Ưu điểm:</span> {ocrResult.strengths}</p>}
@@ -4351,7 +4351,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
             </div>
 
             {/* KHỐI AI GENERATE QUIZ */}
-            <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-50/80 via-blue-50/60 to-purple-50/50 border border-indigo-200/80 space-y-4 shadow-sm">
+            <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-50/80 via-blue-50/60 to-indigo-50/50 border border-indigo-200/80 space-y-4 shadow-sm">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
                   <Bot className="w-4 h-4" />

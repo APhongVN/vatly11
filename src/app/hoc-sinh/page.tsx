@@ -326,7 +326,7 @@ export default function HocSinhPage() {
               <button
                 onClick={() => setActiveTab('lab')} data-preview-navigation="true"
                 className={`px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
-                  activeTab === 'lab' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  activeTab === 'lab' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <Microscope className="w-3.5 h-3.5" /> Thí nghiệm ảo
@@ -382,7 +382,7 @@ export default function HocSinhPage() {
         <div className="flex lg:hidden overflow-x-auto px-4 py-2 gap-1.5 border-t bg-slate-50 text-xs font-bold whitespace-nowrap">
           <button onClick={() => setActiveTab('personal')} data-preview-navigation="true" className={`px-3 py-1.5 rounded-lg ${activeTab === 'personal' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>Cá nhân</button>
           <button onClick={() => setActiveTab('group')} data-preview-navigation="true" className={`px-3 py-1.5 rounded-lg ${activeTab === 'group' ? 'bg-orange-600 text-white' : 'text-slate-600'}`}>Nhóm</button>
-          <button onClick={() => setActiveTab('lab')} data-preview-navigation="true" className={`px-3 py-1.5 rounded-lg ${activeTab === 'lab' ? 'bg-purple-600 text-white' : 'text-slate-600'}`}>Thí nghiệm ảo</button>
+          <button onClick={() => setActiveTab('lab')} data-preview-navigation="true" className={`px-3 py-1.5 rounded-lg ${activeTab === 'lab' ? 'bg-indigo-600 text-white' : 'text-slate-600'}`}>Thí nghiệm ảo</button>
           <button onClick={() => setActiveTab('quizzes')} data-preview-navigation="true" className={`px-3 py-1.5 rounded-lg ${activeTab === 'quizzes' ? 'bg-emerald-600 text-white' : 'text-slate-600'}`}>Trắc nghiệm</button>
           <button onClick={() => setActiveTab('results')} data-preview-navigation="true" className={`px-3 py-1.5 rounded-lg ${activeTab === 'results' ? 'bg-indigo-600 text-white' : 'text-slate-600'}`}>Kết quả</button>
           <button onClick={() => setActiveTab('chat')} data-preview-navigation="true" className={`px-3 py-1.5 rounded-lg ${activeTab === 'chat' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>Hỏi đáp</button>
@@ -422,7 +422,7 @@ export default function HocSinhPage() {
             </div>
 
             {/* Điểm trung bình */}
-            <div className="px-5 py-3 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 text-center shrink-0">
+            <div className="px-5 py-3 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-50 border border-emerald-100 text-center shrink-0">
               <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">Điểm TB</span>
               <span className="text-xl font-black text-emerald-700">{avgScore}</span>
             </div>
@@ -594,7 +594,7 @@ export default function HocSinhPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 flex items-center gap-2">
-                  <Microscope className="w-8 h-8 text-purple-600"/> Phòng Thí Nghiệm Ảo Tụ Điện
+                  <Microscope className="w-8 h-8 text-indigo-600"/> Phòng Thí Nghiệm Ảo Tụ Điện
                 </h1>
                 <p className="text-xs text-slate-500 mt-1">
                   Khảo sát mối quan hệ giữa điện tích Q và điện áp U, đo điện dung thực nghiệm C = (ε₀ · εr · S) / d và vẽ đường hồi quy.

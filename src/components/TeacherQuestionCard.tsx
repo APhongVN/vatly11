@@ -91,7 +91,7 @@ export default function TeacherQuestionCard({
         <div className="flex items-center justify-between gap-2">
           <label htmlFor={`resp-${question.id}`} className="text-xs font-bold text-slate-600">Phản hồi của giáo viên</label>
           <button type="button" onClick={() => void requestSuggestion()} disabled={suggesting}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50 px-2.5 py-1 text-[10px] font-bold text-violet-700 hover:bg-violet-100 disabled:opacity-40">
+            className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-300 bg-indigo-50 px-2.5 py-1 text-[10px] font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-40">
             {suggesting ? "Đang gợi ý…" : "Gợi ý AI"}
           </button>
         </div>

@@ -7,7 +7,7 @@ import { READINESS_TOPICS } from "@/lib/readiness-check.mjs";
 type Q = { id: string; question: string; options: string[]; hint?: string };
 function renderPeerHistogram(questions: Q[], results: Array<{ questionId: string; first: number[] | null; second: number[] | null }> | null, phase: "first" | "second") {
   if (!results) return null;
-  return <div className="space-y-3 rounded-xl border border-violet-200 bg-white p-4 text-left">
+  return <div className="space-y-3 rounded-xl border border-indigo-200 bg-white p-4 text-left">
     {results.map((result) => {
       const question = questions.find((item) => item.id === result.questionId);
       const counts = phase === "first" ? result.first : result.second;
@@ -19,7 +19,7 @@ function renderPeerHistogram(questions: Q[], results: Array<{ questionId: string
           const percent = total ? Math.round((counts[index] / total) * 100) : 0;
           return <div key={option} className="space-y-1 text-xs text-slate-600">
             <div className="flex justify-between gap-2"><span>{option}</span><span>{counts[index]} lượt · {percent}%</span></div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-violet-600 transition-all" style={{ width: percent + "%" }} /></div>
+            <div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: percent + "%" }} /></div>
           </div>;
         }) : <p className="text-xs text-slate-500">Chưa đủ 5 lượt bình chọn để hiện biểu đồ ẩn danh.</p>}
       </div>;
@@ -241,13 +241,13 @@ export default function Quiz({ activityId, questions }: { activityId: number; qu
   }
 
   if (phase === "discussion") {
-    return <div className="space-y-4 rounded-2xl border border-violet-200 bg-violet-50 p-6 text-center">
-      <h3 className="text-xl font-extrabold text-violet-950">Thảo luận cặp · 2 phút</h3>
-      <p className="text-sm leading-6 text-violet-900">Hãy giải thích lí do cho lựa chọn ở vòng đầu, lắng nghe ý kiến bạn và kiểm tra lại bằng chứng. Sau đó bình chọn lần hai. Lựa chọn cá nhân chỉ được tổng hợp ẩn danh khi có ít nhất năm lượt.</p>
+    return <div className="space-y-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-6 text-center">
+      <h3 className="text-xl font-extrabold text-indigo-950">Thảo luận cặp · 2 phút</h3>
+      <p className="text-sm leading-6 text-indigo-900">Hãy giải thích lí do cho lựa chọn ở vòng đầu, lắng nghe ý kiến bạn và kiểm tra lại bằng chứng. Sau đó bình chọn lần hai. Lựa chọn cá nhân chỉ được tổng hợp ẩn danh khi có ít nhất năm lượt.</p>
       {renderPeerHistogram(questions, pollResults, "first")}
-      <p className="text-2xl font-black tabular-nums text-violet-950">{Math.floor(discussionSeconds / 60)}:{String(discussionSeconds % 60).padStart(2, "0")}</p>
-      <p className="text-xs text-violet-800">Dành đủ hai phút để trao đổi trước khi bình chọn lại.</p>
-      <button type="button" disabled={discussionSeconds > 0} onClick={() => { setPhase("second-vote"); setCurrent(0); setSelected(null); }} className="rounded-xl bg-violet-700 px-5 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{discussionSeconds > 0 ? "Đang thảo luận…" : "Bắt đầu bình chọn lại"}</button>
+      <p className="text-2xl font-black tabular-nums text-indigo-950">{Math.floor(discussionSeconds / 60)}:{String(discussionSeconds % 60).padStart(2, "0")}</p>
+      <p className="text-xs text-indigo-800">Dành đủ hai phút để trao đổi trước khi bình chọn lại.</p>
+      <button type="button" disabled={discussionSeconds > 0} onClick={() => { setPhase("second-vote"); setCurrent(0); setSelected(null); }} className="rounded-xl bg-indigo-700 px-5 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{discussionSeconds > 0 ? "Đang thảo luận…" : "Bắt đầu bình chọn lại"}</button>
     </div>;
   }
 

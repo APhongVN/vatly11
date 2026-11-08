@@ -6,7 +6,7 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {}
 function Card({ className, ...props }: CardProps) {
   return (
     <div
-      className={cn("rounded-2xl border border-gray-100 bg-white shadow-sm", className)}
+      className={cn("rounded-2xl border border-slate-100 bg-white shadow-sm", className)}
       {...props}
     />
   );
@@ -29,7 +29,7 @@ function CardTitle({ className, ...props }: CardTitleProps) {
 
 export interface CardDescriptionProps extends React.HTMLAttributes<HTMLParagraphElement> {}
 function CardDescription({ className, ...props }: CardDescriptionProps) {
-  return <p className={cn("text-sm text-gray-500", className)} {...props} />;
+  return <p className={cn("text-sm text-slate-500", className)} {...props} />;
 }
 
 export { Card, CardContent, CardHeader, CardTitle, CardDescription, CardTitle as CardTitleComp };

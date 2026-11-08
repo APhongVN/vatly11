@@ -81,7 +81,7 @@ export default function TeacherHome({ onNavigateTab, previewMode = false }: Teac
         <div className="absolute right-0 top-0 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
         <div className="relative z-10 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-blue-100 text-xs font-semibold mb-4 backdrop-blur-md">
-            <Sparkles className="w-3.5 h-3.5 text-yellow-300" /> Hệ thống Quản trị Lớp học Đảo ngược
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Hệ thống Quản trị Lớp học Đảo ngược
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">
             Chào mừng Cô giáo đến với Trung tâm Quản trị!
@@ -212,16 +212,16 @@ export default function TeacherHome({ onNavigateTab, previewMode = false }: Teac
 
             <button
               onClick={() => nav('ocr')}
-              className="w-full p-3.5 rounded-2xl bg-slate-50 hover:bg-purple-50/60 border border-slate-100 text-left flex items-center justify-between group transition-all"
+              className="w-full p-3.5 rounded-2xl bg-slate-50 hover:bg-indigo-50/60 border border-slate-100 text-left flex items-center justify-between group transition-all"
             >
               <div className="flex items-center gap-3">
-                <Camera className="w-5 h-5 text-purple-600" />
+                <Camera className="w-5 h-5 text-indigo-600" />
                 <div>
                   <p className="text-xs font-bold text-slate-800">Chấm bài từ ảnh (AI OCR)</p>
                   <p className="text-[11px] text-slate-500">Quét ảnh chụp bài thi & chấm điểm tự động</p>
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-purple-600 transition-colors" />
+              <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
             </button>
 
             <button

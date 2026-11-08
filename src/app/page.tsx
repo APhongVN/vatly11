@@ -35,7 +35,7 @@ export default function HomePage() {
       <div className="max-w-6xl mx-auto px-6 py-12 md:py-16 text-center space-y-8 relative z-10 my-auto">
         <div className="space-y-4">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 text-blue-300 font-semibold text-xs border border-blue-500/20 ">
-            <Sparkles className="w-4 h-4 text-yellow-300" /> Hệ thống Dạy học Đảo ngược & Chấm điểm AI 2.0
+            <Sparkles className="w-4 h-4 text-amber-300" /> Hệ thống Dạy học Đảo ngược & Chấm điểm AI 2.0
           </div>
 
           <h1 className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-white to-indigo-200 tracking-tight leading-tight">
@@ -73,7 +73,7 @@ export default function HomePage() {
           {/* Cổng Giáo viên */}
           <Link href="/giao-vien" className="group relative bg-white/5 hover:bg-white/10 border border-white/15 hover:border-emerald-400/50 p-8 rounded-3xl transition-[transform,background-color,border-color,box-shadow] duration-300 motion-safe:hover:-translate-y-1 text-left portal-enter portal-enter-delay flex flex-col justify-between shadow-xl hover:shadow-2xl">
             <div>
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/30 group-hover:scale-105 transition-transform duration-200">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/30 group-hover:scale-105 transition-transform duration-200">
                 <LayoutDashboard className="w-7 h-7" />
               </div>
               <h2 className="text-2xl font-black mb-2 text-white flex items-center gap-2">
@@ -98,7 +98,7 @@ export default function HomePage() {
           </div>
 
           <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-            <Microscope className="w-5 h-5 text-purple-400 mb-2" />
+            <Microscope className="w-5 h-5 text-indigo-400 mb-2" />
             <h4 className="text-xs font-bold text-white">Thí nghiệm ảo</h4>
             <p className="text-[11px] text-slate-400 mt-0.5">Mô phỏng điện dung, điện áp và nạp xả tụ điện</p>
           </div>

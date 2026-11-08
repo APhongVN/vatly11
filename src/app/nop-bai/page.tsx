@@ -402,7 +402,7 @@ function NopBaiContent() {
                         type="button"
                         onClick={handleOcrImage}
                         disabled={ocrLoading}
-                        className="flex-1 md:flex-none px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-2"
+                        className="flex-1 md:flex-none px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-2"
                       >
                         {ocrLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                         {ocrLoading ? "Đang quét ảnh..." : "Quét chữ & công thức từ ảnh"}

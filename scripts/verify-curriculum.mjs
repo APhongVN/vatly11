@@ -1002,7 +1002,7 @@ assert.match(guestPortalComponentText, /Mở nội dung và học liệu/);
 assert.match(guestPortalComponentText, /Mở nhanh hoạt động học/);
 assert.match(guestPortalComponentText, /Sản phẩm cần hoàn thành/);
 assert.match(guestPortalComponentText, /Mở hoạt động thực nghiệm 8/);
-assert.match(guestPortalComponentText, /Chuyên đề <span className="text-cyan-300">Tụ điện<\/span>/);
+assert.match(guestPortalComponentText, /Chuyên đề <span className="text-indigo-300">Tụ điện<\/span>/);
 assert.match(guestPortalComponentText, /mergeActivities\(remoteRows: CatalogRow\[\]\)/);
 assert.match(guestPortalComponentText, /ACTIVITIES\.map\(\(activity\) => activity\.id\), \.\.\.remoteById\.keys\(\)/);
 assert.match(guestPortalComponentText, /Các thí nghiệm liên quan đến tụ điện/);

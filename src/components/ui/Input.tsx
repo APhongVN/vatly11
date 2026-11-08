@@ -10,7 +10,7 @@ function Input({ className, type, ...props }: InputProps) {
     <input
       type={type}
       className={cn(
-        "flex h-10 w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-10 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
@@ -23,7 +23,7 @@ function Textarea({ className, ...props }: TextareaProps) {
   return (
     <textarea
       className={cn(
-        "flex w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none disabled:cursor-not-allowed disabled:opacity-50",
+        "flex w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
@@ -34,7 +34,7 @@ function Textarea({ className, ...props }: TextareaProps) {
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {}
 function Select({ className, children, ...props }: SelectProps) {
   return (
-    <select className={cn("flex h-10 w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none disabled:cursor-not-allowed disabled:opacity-50", className)} {...props}>
+    <select className={cn("flex h-10 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none disabled:cursor-not-allowed disabled:opacity-50", className)} {...props}>
       {children}
     </select>
   );

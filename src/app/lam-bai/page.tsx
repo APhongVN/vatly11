@@ -108,21 +108,21 @@ function QuizContent() {
   if (!quiz) return <div className="min-h-screen text-center p-10 font-bold">{loadError || "Không tìm thấy bài trắc nghiệm."}</div>;
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-20">
+    <main className="min-h-screen bg-slate-50 pb-20">
       <header className="bg-white shadow-sm sticky top-0 z-10 border-b">
         <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-          <h1 className="font-bold text-lg text-gray-800 truncate pr-4">{quiz.title}</h1>
-          {!submitted ? <div className={`flex items-center gap-2 font-mono text-xl font-bold px-4 py-1.5 rounded-lg ${timeLeft < 60 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-blue-50 text-blue-700'}`}><Clock className="w-5 h-5" /> {formatTime(timeLeft)}</div> : <span className="font-bold text-green-600">Đã nộp bài</span>}
+          <h1 className="font-bold text-lg text-slate-800 truncate pr-4">{quiz.title}</h1>
+          {!submitted ? <div className={`flex items-center gap-2 font-mono text-xl font-bold px-4 py-1.5 rounded-lg ${timeLeft < 60 ? 'bg-rose-100 text-rose-600 animate-pulse' : 'bg-blue-50 text-blue-700'}`}><Clock className="w-5 h-5" /> {formatTime(timeLeft)}</div> : <span className="font-bold text-emerald-600">Đã nộp bài</span>}
         </div>
       </header>
 
       <div className="max-w-4xl mx-auto px-4 mt-8 space-y-6">
         {submitted && (
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 text-white text-center shadow-xl">
-            <Trophy className="w-16 h-16 mx-auto mb-4 text-yellow-300" />
+            <Trophy className="w-16 h-16 mx-auto mb-4 text-amber-300" />
             <h2 className="text-3xl font-bold mb-2">Kết quả của em</h2>
             <div className="text-5xl font-extrabold mb-4">{score.toFixed(1)} <span className="text-2xl font-normal opacity-80">/ 10</span></div>
-            <Link href="/hoc-sinh" className="inline-block mt-6 bg-white text-blue-700 px-6 py-2 rounded-xl font-bold hover:bg-gray-100">Quay lại trang chủ</Link>
+            <Link href="/hoc-sinh" className="inline-block mt-6 bg-white text-blue-700 px-6 py-2 rounded-xl font-bold hover:bg-slate-100">Quay lại trang chủ</Link>
           </div>
         )}
 
@@ -135,10 +135,10 @@ function QuizContent() {
               <div className="grid md:grid-cols-2 gap-3 mb-4">
                 {q.options.map((opt: string, optIdx: number) => {
                   const isSelected = answers[q.id] === optIdx;
-                  let btnClass = "border-gray-200 hover:border-blue-400 hover:bg-blue-50";
+                  let btnClass = "border-slate-200 hover:border-blue-400 hover:bg-blue-50";
                   if (isSelected && !submitted) btnClass = "border-blue-600 bg-blue-50 ring-1 ring-blue-600";
                   if (submitted) {
-                    btnClass = isSelected ? "border-blue-500 bg-blue-50" : "border-gray-200 opacity-70";
+                    btnClass = isSelected ? "border-blue-500 bg-blue-50" : "border-slate-200 opacity-70";
                   }
                   return (
                     <button key={optIdx} onClick={() => handleSelect(q.id, optIdx)} disabled={submitted || submitting} className={`text-left p-4 rounded-xl border-2 transition-all flex items-center justify-between ${btnClass}`}>

@@ -145,7 +145,7 @@ export default function StudentPortalPreview() {
           </div>
           <h3 className="mt-3 text-lg font-extrabold leading-snug text-slate-900">{title}</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">{guide?.summary || activity.description}</p>
-          {activity.id === 8 && <p className="mt-3 inline-flex rounded-lg bg-violet-50 px-2.5 py-1.5 text-xs font-bold text-violet-800">Đã gộp nội dung nguồn 8, 9, 10 và 11</p>}
+          {activity.id === 8 && <p className="mt-3 inline-flex rounded-lg bg-indigo-50 px-2.5 py-1.5 text-xs font-bold text-indigo-800">Đã gộp nội dung nguồn 8, 9, 10 và 11</p>}
           {guide?.task && <div className="mt-4 rounded-xl bg-slate-50 p-3.5 text-sm leading-5 text-slate-700"><span className="font-bold text-slate-900">Em sẽ làm:</span> {guide.task}</div>}
           {activity.deliverable && <p className="mt-3 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2 text-xs leading-5 text-slate-700"><b className="text-slate-900">Sản phẩm cần hoàn thành:</b> {activity.deliverable}</p>}
         </div>
@@ -181,31 +181,31 @@ export default function StudentPortalPreview() {
       <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 md:px-8 md:py-9">
         <section className="relative isolate overflow-hidden rounded-[2rem] bg-[#101c39] p-6 text-white shadow-xl shadow-blue-950/10 md:p-10">
           <div aria-hidden="true" className="absolute -right-16 -top-24 -z-10 h-80 w-80 rounded-full bg-blue-500/25 blur-3xl" />
-          <div aria-hidden="true" className="absolute bottom-[-8rem] right-[30%] -z-10 h-64 w-64 rounded-full bg-cyan-400/15 blur-3xl" />
+          <div aria-hidden="true" className="absolute bottom-[-8rem] right-[30%] -z-10 h-64 w-64 rounded-full bg-indigo-400/15 blur-3xl" />
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-center">
             <div>
-              <p className="inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-white/5 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-cyan-200"><GraduationCap className="h-4 w-4" /> Không gian học tập học sinh</p>
-              <h1 className="mt-5 max-w-3xl text-3xl font-black leading-tight tracking-tight md:text-5xl">Chuyên đề <span className="text-cyan-300">Tụ điện</span></h1>
+              <p className="inline-flex items-center gap-2 rounded-full border border-indigo-200/20 bg-white/5 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-indigo-200"><GraduationCap className="h-4 w-4" /> Không gian học tập học sinh</p>
+              <h1 className="mt-5 max-w-3xl text-3xl font-black leading-tight tracking-tight md:text-5xl">Chuyên đề <span className="text-indigo-300">Tụ điện</span></h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">Mở bài học để đọc tài liệu, xem hướng dẫn, làm thí nghiệm ảo và tự kiểm tra. Em có thể học và xem học liệu tự do; gửi bài để cô xem cần tài khoản lớp.</p>
               <div className="mt-6 flex flex-wrap gap-3">
-                {firstOpenActivity && <Link href={"/hoat-dong/" + firstOpenActivity.id} className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-5 py-3 text-sm font-extrabold text-slate-950 transition hover:bg-cyan-200">Mở bài học đầu tiên <ArrowRight className="h-4 w-4" /></Link>}
+                {firstOpenActivity && <Link href={"/hoat-dong/" + firstOpenActivity.id} className="inline-flex items-center gap-2 rounded-xl bg-indigo-300 px-5 py-3 text-sm font-extrabold text-slate-950 transition hover:bg-indigo-200">Mở bài học đầu tiên <ArrowRight className="h-4 w-4" /></Link>}
                 {mainLab && <Link href="/hoat-dong/8" className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"><FlaskConical className="h-4 w-4" /> Mở hoạt động thực nghiệm 8</Link>}
               </div>
               <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-xs font-medium text-slate-300">
                 <span className="inline-flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-300" /> Xem bài không cần đăng nhập</span>
-                <span className="inline-flex items-center gap-2"><BookOpen className="h-4 w-4 text-cyan-300" /> 14 mục nguồn · 11 hoạt động</span>
-                <span className="inline-flex items-center gap-2"><FlaskConical className="h-4 w-4 text-violet-300" /> Gộp đúng mục 8–11</span>
+                <span className="inline-flex items-center gap-2"><BookOpen className="h-4 w-4 text-indigo-300" /> 14 mục nguồn · 11 hoạt động</span>
+                <span className="inline-flex items-center gap-2"><FlaskConical className="h-4 w-4 text-indigo-300" /> Gộp đúng mục 8–11</span>
               </div>
             </div>
             <div className="rounded-3xl border border-white/10 bg-white/[0.07] p-5 backdrop-blur-sm">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-200"><Sparkles className="h-4 w-4" /> Bản đồ chương</div>
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-200"><Sparkles className="h-4 w-4" /> Bản đồ chương</div>
               <div className="mt-5 space-y-4">
                 {(["Trước lớp", "Trên lớp", "Sau lớp"] as const).map((item, index) => {
                   const info = phaseInfo[item];
                   const Icon = info.icon;
                   const count = activities.filter((activity) => activity.phase === item).length;
                   return <div key={item} className="flex items-center gap-3">
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10 text-cyan-200"><Icon className="h-5 w-5" /></span>
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10 text-indigo-200"><Icon className="h-5 w-5" /></span>
                     <div className="min-w-0 flex-1"><p className="text-sm font-bold text-white">{info.title}</p><p className="mt-0.5 text-xs text-slate-400">{count} hoạt động</p></div>
                     <span className="text-xs font-bold text-slate-500">0{index + 1}</span>
                   </div>;
@@ -213,7 +213,7 @@ export default function StudentPortalPreview() {
               </div>
               <div className="mt-5 rounded-2xl bg-[#0b142b] p-4">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Công thức cần nhớ</p>
-                <p className="mt-2 text-2xl font-black tracking-wide text-white">C = <span className="text-cyan-300">Q</span>/<span className="text-amber-300">U</span></p>
+                <p className="mt-2 text-2xl font-black tracking-wide text-white">C = <span className="text-indigo-300">Q</span>/<span className="text-amber-300">U</span></p>
                 <p className="mt-1 text-xs leading-5 text-slate-400">Q đo bằng coulomb (C), U bằng volt (V), điện dung C bằng farad (F).</p>
               </div>
             </div>

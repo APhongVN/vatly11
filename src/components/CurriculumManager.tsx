@@ -279,8 +279,8 @@ export default function CurriculumManager({ previewMode = false }: { previewMode
   if (loading) return <div className="flex min-h-72 items-center justify-center rounded-3xl border border-slate-200 bg-white text-sm text-slate-500"><LoaderCircle className="mr-2 h-5 w-5 animate-spin" /> Đang tải lộ trình học…</div>;
 
   return <div className="mx-auto max-w-7xl space-y-6 pb-10">
-    <header className="flex flex-col justify-between gap-4 rounded-3xl bg-gradient-to-br from-slate-950 via-cyan-950 to-blue-900 p-6 text-white shadow-xl md:flex-row md:items-end md:p-8">
-      <div><p className="mb-2 text-xs font-bold uppercase tracking-[.18em] text-cyan-200">Cấu trúc mở rộng</p><h1 className="text-3xl font-black md:text-4xl">Lộ trình môn học</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">Tạo môn, chương và đặt từng bài học vào đúng vị trí. Cây này là nền tảng để mở rộng từ bài mẫu Tụ điện sang nhiều chương và nguồn tài liệu khác.</p></div>
+    <header className="flex flex-col justify-between gap-4 rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-blue-900 p-6 text-white shadow-xl md:flex-row md:items-end md:p-8">
+      <div><p className="mb-2 text-xs font-bold uppercase tracking-[.18em] text-indigo-200">Cấu trúc mở rộng</p><h1 className="text-3xl font-black md:text-4xl">Lộ trình môn học</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">Tạo môn, chương và đặt từng bài học vào đúng vị trí. Cây này là nền tảng để mở rộng từ bài mẫu Tụ điện sang nhiều chương và nguồn tài liệu khác.</p></div>
       <div className="flex gap-3"><div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3"><b className="block text-2xl">{courses.length}</b><span className="text-xs text-blue-100">môn học</span></div><div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3"><b className="block text-2xl">{chapters.length}</b><span className="text-xs text-blue-100">chương</span></div><div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3"><b className="block text-2xl">{activities.length}</b><span className="text-xs text-blue-100">bài học</span></div></div>
     </header>
 
@@ -299,12 +299,12 @@ export default function CurriculumManager({ previewMode = false }: { previewMode
           </form>
         </section>
         <section className="border-t border-slate-100 pt-5">
-          <div className="mb-3 flex items-center gap-2"><Layers3 className="h-5 w-5 text-cyan-700" /><h2 className="font-bold text-slate-900">Thêm chương</h2></div>
+          <div className="mb-3 flex items-center gap-2"><Layers3 className="h-5 w-5 text-indigo-700" /><h2 className="font-bold text-slate-900">Thêm chương</h2></div>
           <form onSubmit={(event) => void addChapter(event)} className="space-y-3">
             <select value={selectedCourseId} onChange={(event) => { setSelectedCourseId(event.target.value); setExpandedCourseId(event.target.value); }} disabled={saving || !courses.length} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 disabled:bg-slate-100"><option value="">Chọn môn học</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.subject ? `${course.subject} · ` : ""}{course.title}</option>)}</select>
             <input value={newChapterTitle} onChange={(event) => setNewChapterTitle(event.target.value)} disabled={saving || !selectedCourseId} maxLength={180} required placeholder="Ví dụ: Chương 2 · Sóng cơ" className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 disabled:bg-slate-100" />
             <textarea value={newChapterDescription} onChange={(event) => setNewChapterDescription(event.target.value)} disabled={saving || !selectedCourseId} maxLength={1000} placeholder="Mục tiêu / giới thiệu chương" className="min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 disabled:bg-slate-100" />
-            <button type="submit" disabled={saving || !selectedCourseId} className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-cyan-800 disabled:bg-slate-300"><CirclePlus className="h-4 w-4" /> Thêm chương</button>
+            <button type="submit" disabled={saving || !selectedCourseId} className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-800 disabled:bg-slate-300"><CirclePlus className="h-4 w-4" /> Thêm chương</button>
           </form>
         </section>
       </aside>
