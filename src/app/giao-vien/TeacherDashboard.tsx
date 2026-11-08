@@ -25,6 +25,7 @@ import ActivityEvidencePanel from "@/components/ActivityEvidencePanel";
 import CapacitanceLabSettings from "@/components/CapacitanceLabSettings";
 import RubricEditor from "@/components/RubricEditor";
 import QuizQuestionEditor from "@/components/QuizQuestionEditor";
+import TeacherSidebar from "@/components/teacher/TeacherSidebar";
 import QuestionCard from "@/components/TeacherQuestionCard";
 import { formatVietnameseName, getFirstName, sortVietnameseNames, isHeaderOrInvalidCell, containsDigit, hasInvalidNameCharacters } from "@/lib/vietnameseName";
 import { ACTIVITIES } from "@/lib/data/activities";
@@ -2758,197 +2759,16 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   return (
     <main className="min-h-screen flex overflow-x-hidden bg-slate-50">
       {previewMode && <div className="fixed bottom-4 right-4 z-50 max-w-sm rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-950 shadow-lg"><p>Đang xem dashboard tương tác với dữ liệu mẫu. Có thể mở tab, thu gọn, lọc và nhập thử; các thao tác ghi/AI sẽ không chạm dữ liệu thật.</p>{previewNotice && <p role="status" className="mt-2 border-t border-amber-200 pt-2 font-normal">{previewNotice}</p>}</div>}
-      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 shadow-sm backdrop-blur lg:hidden">
-        <button type="button" aria-label={mobileNavOpen ? "Đóng menu điều hướng" : "Mở menu điều hướng"} aria-expanded={mobileNavOpen} aria-controls="teacher-navigation" onClick={() => setMobileNavOpen((open) => !open)} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100">
-          {mobileNavOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
-        <div className="min-w-0">
-          <p className="truncate text-xs font-black tracking-wide text-slate-900">GIÁO VIÊN PORTAL</p>
-          <p className="truncate text-[10px] text-slate-500">Lớp 11A1 · Điều hướng nhanh</p>
-        </div>
-      </div>
-      {mobileNavOpen && <button type="button" aria-label="Đóng menu điều hướng" onClick={() => setMobileNavOpen(false)} className="fixed inset-0 z-30 bg-slate-950/50 lg:hidden" />}
-      {/* SIDEBAR ĐỒNG BỘ MÀU SLATE-900 VÀ CÁC PHÂN HỆ RÕ RÀNG */}
-      <aside id="teacher-navigation" className={`fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 transform flex-col border-r border-slate-800 bg-slate-900 text-slate-300 shadow-2xl transition-transform duration-300 motion-reduce:transition-none ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"} lg:sticky lg:top-0 lg:h-screen lg:z-20 lg:translate-x-0 lg:transition-none`}>
-        <div className="p-6 border-b border-slate-800 bg-gradient-to-r from-blue-900/60 to-slate-900 text-white">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black shadow-lg shadow-blue-500/30">
-              V11
-            </div>
-            <div>
-              <h1 className="text-base font-extrabold tracking-wide text-white">GIÁO VIÊN PORTAL</h1>
-              <p className="text-[11px] text-blue-200">Cô Hương Xuân • Lớp 11A1</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 p-4 space-y-6 overflow-y-auto text-xs font-semibold">
-          {/* TỔNG QUAN */}
-          <div>
-            <p className="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tổng quan</p>
-            <button
-              onClick={() => navigateToTab('home')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                activeTab === 'home' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
-              }`}
-            >
-              <Home className="w-4 h-4 text-blue-400" /> Trang chủ Bảng điều khiển
-            </button>
-            <button
-              onClick={() => navigateToTab('analytics')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl mt-1 transition-all ${
-                activeTab === 'analytics' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
-              }`}
-            >
-              <BrainCircuit className="w-4 h-4 text-emerald-400" /> AI Phân tích & Báo cáo Lớp
-            </button>
-          </div>
-
-          {/* QUẢN LÝ BÀI TẬP */}
-          <div>
-            <p className="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Quản lý Bài tập</p>
-            <div className="space-y-1">
-              <button
-                onClick={() => navigateToTab('activities')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                  activeTab === 'activities' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
-                }`}
-              >
-                <BookOpen className="w-4 h-4 text-blue-400" /> Bài học cá nhân ({activities.length})
-              </button>
-              <button
-                onClick={() => navigateToTab('curriculum')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                  activeTab === 'curriculum' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
-                }`}
-              >
-                <Layers className="w-4 h-4 text-indigo-300" /> Lộ trình môn & chương
-              </button>
-              <button
-                onClick={() => navigateToTab('resources')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                  activeTab === 'resources' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
-                }`}
-              >
-                <FolderOpen className="w-4 h-4 text-amber-300" /> Kho học liệu
-              </button>
-              <button
-                onClick={() => navigateToTab('create_activity')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                  activeTab === 'create_activity' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
-                }`}
-              >
-                <PlusCircle className="w-4 h-4 text-emerald-400" /> Tạo bài tập mới
-              </button>
-              <button
-                onClick={() => navigateToTab('group_assignments')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                  activeTab === 'group_assignments' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
-                }`}
-              >
-                <Layers className="w-4 h-4 text-orange-400" /> Bài tập Nhóm ({groupAssignments.length})
-              </button>
-              <button
-                onClick={() => void openTrash()}
-                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all hover:bg-slate-800 text-slate-300"
-              >
-                <Archive className="w-4 h-4 text-slate-400" /> Thùng rác (khôi phục)
-              </button>
-            </div>
-          </div>
-
-          {/* CHẤM ĐIỂM & AI */}
-          <div>
-            <p className="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Chấm điểm & AI</p>
-            <div className="space-y-1">
-              <button
-                onClick={() => navigateToTab('grading')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                  activeTab === 'grading' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
-                }`}
-              >
-                <FileText className="w-4 h-4 text-blue-400" /> Chấm điểm cá nhân
-              </button>
-              <button
-                onClick={() => navigateToTab('activity-evidence')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                  activeTab === 'activity-evidence' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
-                }`}
-              >
-                <ClipboardList className="w-4 h-4 text-indigo-400" /> Sổ tay & bằng chứng
-              </button>
-              <button
-                onClick={() => navigateToTab('ocr')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                  activeTab === 'ocr' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
-                }`}
-              >
-                <Camera className="w-4 h-4 text-indigo-400" /> Chấm từ ảnh (AI OCR)
-              </button>
-              <button
-                onClick={() => navigateToTab('regrade')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                  activeTab === 'regrade' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
-                }`}
-              >
-                <RefreshCw className="w-4 h-4 text-amber-400" /> Chấm lại bài lỗi ({submissions.filter(s => s.ai_score === null || s.ai_score === -1).length})
-              </button>
-            </div>
-          </div>
-
-          {/* LỚP HỌC & TRẮC NGHIỆM */}
-          <div>
-            <p className="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Lớp học</p>
-            <div className="space-y-1">
-              <button
-                onClick={() => navigateToTab('students')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                  activeTab === 'students' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
-                }`}
-              >
-                <Users className="w-4 h-4 text-emerald-400" /> Danh sách sinh viên ({activeStudents.length})
-              </button>
-              <button
-                onClick={() => navigateToTab('quizzes')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                  activeTab === 'quizzes' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
-                }`}
-              >
-                <Sparkles className="w-4 h-4 text-indigo-400" /> Tạo Trắc nghiệm & AI Sinh Đề
-              </button>
-              <button
-                onClick={() => navigateToTab('chat')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                  activeTab === 'chat' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
-                }`}
-              >
-                <MessageSquare className="w-4 h-4 text-blue-400" /> Kênh thảo luận ({messages.length})
-              </button>
-              <button
-                onClick={() => navigateToTab('student_questions')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                  activeTab === 'student_questions' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold' : 'hover:bg-slate-800 text-slate-300'
-                }`}
-              >
-                <HelpCircle className="w-4 h-4 text-indigo-400" /> Góc hỏi đáp ({pendingQuestionCount})
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer Sidebar */}
-        <div className="p-4 border-t border-slate-800 space-y-1 text-xs font-semibold">
-          <Link href="/chapters" className="w-full flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
-            <ExternalLink className="w-4 h-4" /> Xem chương học công khai
-          </Link>
-          <Link href="/" className="w-full flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
-            <Home className="w-4 h-4" /> Về Trang chủ Website
-          </Link>
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-rose-400 hover:text-white hover:bg-rose-600/40 rounded-xl transition-all">
-            {previewMode ? <Home className="w-4 h-4" /> : <LogOut className="w-4 h-4" />} {previewMode ? "Về trang chủ" : "Đăng xuất"}
-          </button>
-        </div>
-      </aside>
+      <TeacherSidebar
+        activeTab={activeTab}
+        navigateToTab={navigateToTab}
+        onOpenTrash={() => void openTrash()}
+        counts={{ activities: activities.length, groups: groupAssignments.length, messages: messages.length, pendingQuestions: pendingQuestionCount, regrade: submissions.filter(s => s.ai_score === null || s.ai_score === -1).length, students: activeStudents.length }}
+        previewMode={previewMode}
+        onLogout={handleLogout}
+        mobileNavOpen={mobileNavOpen}
+        setMobileNavOpen={setMobileNavOpen}
+      />
 
       {/* CONTENT AREA CHÍNH */}
       <div className="min-w-0 flex-1 p-4 pt-20 md:p-8 md:pt-20 lg:p-10 lg:pt-10 h-screen overflow-y-auto relative">
