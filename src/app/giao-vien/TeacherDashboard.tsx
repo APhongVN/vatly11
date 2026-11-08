@@ -30,6 +30,8 @@ import StudentProgressChart from "@/components/teacher/StudentProgressChart";
 import LoadingState from "@/components/LoadingState";
 import TeacherRegradeTab from "@/components/teacher/TeacherRegradeTab";
 import TeacherOcrTab from "@/components/teacher/TeacherOcrTab";
+import TeacherAnalyticsTab from "@/components/teacher/TeacherAnalyticsTab";
+import TeacherQuestionsTab from "@/components/teacher/TeacherQuestionsTab";
 import QuestionCard from "@/components/TeacherQuestionCard";
 import { formatVietnameseName, getFirstName, sortVietnameseNames, isHeaderOrInvalidCell, containsDigit, hasInvalidNameCharacters } from "@/lib/vietnameseName";
 import { ACTIVITIES } from "@/lib/data/activities";
@@ -2801,103 +2803,15 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
 
         {/* 2. TAB AI ANALYTICS & BÁO CÁO PHỔ ĐIỂM */}
         {activeTab === 'analytics' && (
-          <div className="space-y-6 max-w-5xl animate-in fade-in">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-3xl font-extrabold text-slate-900 flex items-center gap-2">
-                  <BrainCircuit className="w-8 h-8 text-indigo-600" /> Báo Cáo Phân Tích Lớp Học AI
-                </h2>
-                <p className="text-slate-500 text-sm mt-1">
-                  Đánh giá phổ điểm, nhận diện 3 lỗ hổng kiến thức phổ biến và đề xuất kế hoạch dạy học đảo ngược trên lớp.
-                </p>
-              </div>
-              <button
-                onClick={handleRunAIAnalytics}
-                disabled={isAnalyzingClass}
-                className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-2xl text-xs font-bold shadow-lg shadow-indigo-500/25 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-              >
-                <Sparkles className="w-4 h-4" />
-                {isAnalyzingClass ? "AI đang phân tích toàn bộ lớp..." : "Kích hoạt AI Phân tích Lỗ hổng"}
-              </button>
-            </div>
-
-            {/* Thống kê phổ điểm nhanh */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-5 rounded-2xl bg-white border border-emerald-100 shadow-sm">
-                <span className="text-xs font-bold text-emerald-700 uppercase block">Xuất sắc (8 - 10đ)</span>
-                <p className="text-3xl font-extrabold text-emerald-600 mt-1">{excellentCount}</p>
-                <p className="text-[11px] text-slate-400 mt-1">Nắm vững hiện tượng & công thức</p>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-white border border-blue-100 shadow-sm">
-                <span className="text-xs font-bold text-blue-700 uppercase block">Khá (6.5 - 7.9đ)</span>
-                <p className="text-3xl font-extrabold text-blue-600 mt-1">{goodCount}</p>
-                <p className="text-[11px] text-slate-400 mt-1">Sai sót nhỏ về đơn vị/trình bày</p>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-white border border-amber-100 shadow-sm">
-                <span className="text-xs font-bold text-amber-700 uppercase block">Trung bình (5 - 6.4đ)</span>
-                <p className="text-3xl font-extrabold text-amber-600 mt-1">{avgCount}</p>
-                <p className="text-[11px] text-slate-400 mt-1">Cần củng cố cách suy luận</p>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-white border border-rose-100 shadow-sm">
-                <span className="text-xs font-bold text-rose-700 uppercase block">Cần hỗ trợ (&lt; 5đ)</span>
-                <p className="text-3xl font-extrabold text-rose-600 mt-1">{weakCount}</p>
-                <p className="text-[11px] text-slate-400 mt-1">Hổng kiến thức cơ bản</p>
-              </div>
-            </div>
-
-            {/* Báo cáo phân tích chuyên sâu của AI */}
-            {analyticsReport ? (
-              <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/90 shadow-sm space-y-6 animate-in fade-in">
-                <div className="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-100 space-y-2">
-                  <h3 className="font-bold text-sm text-indigo-950 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-indigo-600" /> Nhận định năng lực chung của lớp:
-                  </h3>
-                  <p className="text-xs text-slate-700 leading-relaxed">{analyticsReport.summary}</p>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-500" /> Top 3 Lỗ hổng khái niệm học sinh dễ nhầm lẫn:
-                  </h3>
-                  <div className="grid md:grid-cols-3 gap-4">
-                    {analyticsReport.topWeaknesses?.map((w: string, idx: number) => (
-                      <div key={idx} className="p-4 rounded-2xl bg-rose-50/50 border border-rose-100 text-xs text-slate-700 space-y-1">
-                        <span className="font-bold text-rose-700 block">Lỗ hổng #{idx + 1}</span>
-                        <p>{w}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-5 pt-2">
-                  <div className="p-5 rounded-2xl bg-emerald-50/60 border border-emerald-100 space-y-2">
-                    <h4 className="font-bold text-xs text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
-                      <Lightbulb className="w-4 h-4 text-emerald-600" /> Đề xuất hoạt động trên lớp (Flipped Classroom):
-                    </h4>
-                    <p className="text-xs text-slate-700 leading-relaxed">{analyticsReport.flippedClassroomAdvice}</p>
-                  </div>
-
-                  <div className="p-5 rounded-2xl bg-blue-50/60 border border-blue-100 space-y-2">
-                    <h4 className="font-bold text-xs text-blue-950 uppercase tracking-wider flex items-center gap-1.5">
-                      <Award className="w-4 h-4 text-blue-600" /> Biện pháp bổ trợ học sinh yếu:
-                    </h4>
-                    <p className="text-xs text-slate-700 leading-relaxed">{analyticsReport.remedialAction}</p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="p-12 bg-white rounded-3xl border border-slate-200 text-center space-y-3">
-                <BrainCircuit className="w-12 h-12 text-slate-300 mx-auto" />
-                <h4 className="text-sm font-bold text-slate-700">Chưa kích hoạt báo cáo AI</h4>
-                <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  Bấm nút &quot;Kích hoạt AI Phân tích Lỗ hổng&quot; ở góc trên để hệ thống phân tích bài làm của lớp.
-                </p>
-              </div>
-            )}
-          </div>
+          <TeacherAnalyticsTab
+            excellentCount={excellentCount}
+            goodCount={goodCount}
+            avgCount={avgCount}
+            weakCount={weakCount}
+            isAnalyzing={isAnalyzingClass}
+            report={analyticsReport}
+            onRunAnalysis={handleRunAIAnalytics}
+          />
         )}
 
         {/* 3. TAB BÀI HỌC CÁ NHÂN & GỘP BÀI TẬP */}
@@ -4134,52 +4048,18 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
 
         {/* 11. TAB GÓC HỎI ĐÁP (CÂU HỎI HỌC SINH) */}
         {activeTab === 'student_questions' && (
-          <div className="space-y-6 max-w-5xl animate-in fade-in">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 flex items-center gap-2">
-                  <HelpCircle className="w-7 h-7 text-indigo-600" /> Góc hỏi đáp · Câu hỏi của học sinh
-                </h1>
-                <p className="text-xs text-slate-500 mt-1">Đọc câu hỏi, gửi phản hồi và cập nhật trạng thái xử lý. Học sinh thấy phản hồi ngay trong mục “Câu hỏi của tôi”.</p>
-              </div>
-              <button onClick={() => void loadStudentQuestions()} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50">
-                <RefreshCw className={`w-4 h-4 ${questionLoading ? "animate-spin" : ""}`} /> Tải lại
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {[{ id: "all", label: `Tất cả (${studentQuestions.length})` }].concat(
-                QUESTION_STATUS_IDS.map((id: string) => ({ id, label: `${questionStatusLabel(id)} (${studentQuestions.filter((q) => q.status === id).length})` })),
-              ).map((chip) => (
-                <button
-                  key={chip.id}
-                  onClick={() => setQuestionFilter(chip.id)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-all ${
-                    questionFilter === chip.id ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
-                  }`}
-                >{chip.label}</button>
-              ))}
-            </div>
-
-            <div className="space-y-4">
-              {questionLoading && studentQuestions.length === 0 ? (
-                <p className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">Đang tải câu hỏi…</p>
-              ) : (questionFilter === "all" ? studentQuestions : studentQuestions.filter((q) => q.status === questionFilter)).length === 0 ? (
-                <p className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">Chưa có câu hỏi nào trong mục này. Dữ liệu sẽ được cập nhật sau khi học sinh gửi câu hỏi.</p>
-              ) : (
-                (questionFilter === "all" ? studentQuestions : studentQuestions.filter((q) => q.status === questionFilter)).map((q) => (
-                  <QuestionCard
-                    key={q.id}
-                    question={q}
-                    saving={questionSaving === q.id}
-                    topicLabel={questionTopicLabel(q.topic)}
-                    onRespond={(response, status) => void respondToQuestion(q.id, response, status)}
-                    onSuggest={(questionId) => suggestQuestionAnswer(questionId)}
-                  />
-                ))
-              )}
-            </div>
-          </div>
+          <TeacherQuestionsTab
+            questions={studentQuestions as never}
+            loading={questionLoading}
+            filter={questionFilter}
+            setFilter={setQuestionFilter}
+            savingId={questionSaving}
+            statusLabel={questionStatusLabel}
+            topicLabelOf={questionTopicLabel}
+            onReload={() => void loadStudentQuestions()}
+            onRespond={(id: string, response: string, status: string) => void respondToQuestion(id, response, status)}
+            onSuggest={(id: string) => suggestQuestionAnswer(id)}
+          />
         )}
 
         {/* 11. TAB KÊNH THẢO LUẬN */}
