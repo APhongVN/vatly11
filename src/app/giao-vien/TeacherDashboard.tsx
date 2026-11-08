@@ -315,6 +315,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   const [analyticsReport, setAnalyticsReport] = useState<any>(null);
   const [isAnalyzingClass, setIsAnalyzingClass] = useState(false);
   const [isExportingReport, setIsExportingReport] = useState(false);
+  const [reportClassFilter, setReportClassFilter] = useState("");
   const [reportExportError, setReportExportError] = useState("");
   const [reportExportSuccess, setReportExportSuccess] = useState("");
   const [previewNotice, setPreviewNotice] = useState("");
@@ -2097,6 +2098,20 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
         readAllReportRows((from, to) => supabase.from("group_submissions").select("*").order("id").range(from, to), "Bài nộp nhóm"),
       ]);
     }
+
+    // Đề xuất bổ sung: lọc báo cáo theo lớp nếu giáo viên chọn.
+    if (reportClassFilter) {
+      const wanted = reportClassFilter.normalize("NFC").trim().toLocaleLowerCase("vi");
+      reportStudents = reportStudents.filter((student: any) => String(student.class_name ?? "").normalize("NFC").trim().toLocaleLowerCase("vi") === wanted);
+      const allowedStudentIds = new Set(reportStudents.map((student: any) => String(student.id)));
+      reportSubmissions = reportSubmissions.filter((row: any) => allowedStudentIds.has(String(row.student_id)));
+      reportEvidence = reportEvidence.filter((row: any) => allowedStudentIds.has(String(row.student_id)));
+      reportQuizResults = reportQuizResults.filter((row: any) => allowedStudentIds.has(String(row.student_id)));
+      reportGroups = reportGroups.filter((group: any) => (group.group_assignment_members || []).some((member: any) => allowedStudentIds.has(String(member.student_id))));
+      const allowedGroupIds = new Set(reportGroups.map((group: any) => String(group.id)));
+      reportGroupSubmissions = reportGroupSubmissions.filter((row: any) => allowedGroupIds.has(String(row.group_id)));
+    }
+
     const workbook = new ExcelJS.Workbook();
     const generatedAt = new Date();
     workbook.creator = "Vật lí 11";
@@ -3520,7 +3535,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
                       <p className="text-xs text-slate-500">Tổng cộng {currentSubmissions.length} bài đã nộp từ học sinh</p>
                     </div>
                     <div className="flex flex-col items-end gap-1.5">
-                      <button type="button" disabled={isExportingReport} onClick={() => void exportExcelReport()} className="bg-emerald-600 hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                      <select value={reportClassFilter} onChange={(event) => setReportClassFilter(event.target.value)} aria-label="Lọc báo cáo theo lớp" className="rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs font-semibold"><option value="">Tất cả lớp</option>{studentClassOptions.map((className) => <option key={className} value={className}>{className}</option>)}</select><button type="button" disabled={isExportingReport} onClick={() => void exportExcelReport()} className="bg-emerald-600 hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm">
                         <Download className="w-3.5 h-3.5" /> {isExportingReport ? "Đang tạo báo cáo…" : "Xuất báo cáo Excel"}
                       </button>
                       {reportExportError && <p role="alert" className="max-w-md text-right text-[11px] font-semibold text-rose-700">{reportExportError}</p>}
