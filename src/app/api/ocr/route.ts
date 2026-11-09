@@ -8,7 +8,9 @@ import { logGeminiUsage } from "@/lib/gemini-usage";
 const MODELS = GEMINI_MODELS;
 
 export async function POST(req: Request) {
-  const access = await authorizeApi(["teacher", "student"], 10, "ocr");
+  // OCR (trích chữ từ ảnh) giờ chỉ còn ở tab giáo viên (tab Chấm từ ảnh).
+  // Học sinh đã bỏ OCR ở trang nộp bài nên khóa với học sinh cho gọn.
+  const access = await authorizeApi(["teacher"], 10, "ocr");
   if ("response" in access) return access.response;
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "Dịch vụ OCR chưa được cấu hình." }, { status: 503 });
