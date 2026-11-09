@@ -173,7 +173,6 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [activities, setActivities] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const activeStudents = students.filter((student) => student.is_active !== false);
-  const archivedStudents = students.filter((student) => student.is_active === false);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [activityEvidence, setActivityEvidence] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
@@ -251,7 +250,6 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [searchTerm, setSearchTerm] = useState("");
   const [studentClassName, setStudentClassName] = useState("");
   const [studentClassFilter, setStudentClassFilter] = useState("");
-  const [showArchivedStudents, setShowArchivedStudents] = useState(false);
   const [studentArchiveBusyId, setStudentArchiveBusyId] = useState<string | null>(null);
   const [importPreviewNames, setImportPreviewNames] = useState<string[]>([]);
 const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
@@ -524,6 +522,11 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [fetchData, previewMode]);
+
+  // Tự động tải dữ liệu thùng rác khi chuyển sang tab
+  useEffect(() => {
+    if (activeTab === "trash") void openTrash();
+  }, [activeTab]);
 
   useEffect(() => {
     void loadStudentQuestions();
@@ -1039,6 +1042,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   const openClass = (className: string) => {
     setActiveClassName(className);
     setStudentClassFilter(className);
+    setActiveTab("students"); // chuyen thang sang danh sach hoc sinh cua lop
   };
 
   // --- ĐỔI MẬT KHẨU TÀI KHOẢN GIÁO VIÊN ---
@@ -2869,7 +2873,7 @@ const handleRubricFileUpload = async (file: File | null) => {
   const currentSubmissions = selectedGradingAct ? submissions.filter(s => s.activity_id === selectedGradingAct.id) : [];
   const currentGroupSubs = expandedGroupAct ? groupSubmissions.filter(s => s.assignment_id === expandedGroupAct) : [];
   const newActivityChapters = curriculumChapters.filter((chapter) => chapter.course_id === newActCourseId);
-  const currentRoster = showArchivedStudents ? archivedStudents : activeStudents;
+  const currentRoster = activeStudents;
   const studentClassOptions = getStudentClassNames(currentRoster);
   const visibleStudents = filterStudentRoster(currentRoster, studentClassFilter, searchTerm);
   const groupTargetCount = newGroupClassName === "__all__" ? activeStudents.length : newGroupClassName === "__choose__" ? 0 : filterStudentRoster(activeStudents, newGroupClassName, "").length;
@@ -3555,25 +3559,21 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
             </div>
 
             <div className="bg-white p-6 rounded-3xl border shadow-sm space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => setShowArchivedStudents(false)} aria-pressed={!showArchivedStudents} className={"rounded-xl px-3 py-2 text-xs font-bold " + (!showArchivedStudents ? "bg-blue-700 text-white" : "border bg-white text-slate-600")}>Đang hoạt động ({activeStudents.length})</button>
-                <button type="button" onClick={() => setShowArchivedStudents(true)} aria-pressed={showArchivedStudents} className={"rounded-xl px-3 py-2 text-xs font-bold " + (showArchivedStudents ? "bg-slate-700 text-white" : "border bg-white text-slate-600")}>Đã lưu trữ ({archivedStudents.length})</button>
-              </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <div className="relative min-w-0 flex-1">
                   <Search className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400" />
                   <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Tìm kiếm tên học sinh..." className="w-full pl-11 pr-4 py-3 border rounded-xl bg-slate-50/50 outline-none text-sm" />
                 </div>
-                <label className="text-xs font-semibold text-slate-600">Lọc lớp<select value={studentClassFilter} onChange={(event) => setStudentClassFilter(event.target.value)} className="mt-1 block min-w-40 rounded-xl border bg-white px-3 py-3 text-sm"><option value="">Tất cả lớp ({currentRoster.length})</option>{studentClassOptions.map((className) => <option key={className} value={className}>{className}</option>)}</select></label>
+                <label className="text-xs font-semibold text-slate-600">Lọc lớp<select value={studentClassFilter} onChange={(event) => setStudentClassFilter(event.target.value)} className="mt-1 block min-w-40 rounded-xl border bg-white px-3 py-3 text-sm"><option value="">Tất cả lớp ({activeStudents.length})</option>{studentClassOptions.map((className) => <option key={className} value={className}>{className}</option>)}</select></label>
               </div>
-              <p className="text-xs text-slate-500">Đang hiển thị {visibleStudents.length} / {currentRoster.length} hồ sơ{showArchivedStudents ? " đã lưu trữ" : " đang hoạt động"}. Hồ sơ trùng tên vẫn giữ mã học sinh riêng.</p>
+              <p className="text-xs text-slate-500">Đang hiển thị {visibleStudents.length} / {activeStudents.length} học sinh đang học. Hồ sơ trùng tên vẫn giữ mã học sinh riêng.</p>
               <div className="flex flex-col gap-2">
                 {visibleStudents.map((s: any, idx: number) => (
                   <div key={s.id} className="min-w-0 rounded-xl border bg-slate-50 px-3 py-2.5 text-xs group">
                     <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
                       <span className="min-w-0 flex-1 truncate font-bold">{idx + 1}. {s.full_name}<span className="ml-1.5 rounded bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">{s.class_name || "Chưa xếp lớp"}</span>{(() => { const seen = s.last_seen_at ? new Date(s.last_seen_at).getTime() : 0; const online = seen && Date.now() - seen < 5 * 60 * 1000; return <span className={`ml-1.5 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold ${online ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}><span className={`h-1.5 w-1.5 rounded-full ${online ? "bg-emerald-500" : "bg-slate-400"}`} />{online ? "Online" : "Offline"}</span>; })()}</span>
                       <div className="flex shrink-0 items-center gap-1">
-                        {s.is_active === false ? <span className="rounded-md bg-slate-200 px-1.5 py-1 text-[9px] font-bold text-slate-600">Đã lưu trữ</span> : s.password_changed ? <button type="button" title="Học sinh đã tự đổi mật khẩu. Bấm để cấp lại mật khẩu tạm mới." disabled={previewMode || !canProvisionStudentAccounts} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-amber-800 hover:bg-amber-50 disabled:opacity-50">Cấp lại mật khẩu</button> : s.auth_user_id ? <button type="button" disabled={previewMode || !canProvisionStudentAccounts} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-amber-800 disabled:opacity-50">Cấp lại mật khẩu</button> : <button type="button" disabled={previewMode || !canProvisionStudentAccounts} title={!canProvisionStudentAccounts ? "Cần áp dụng migration tài khoản mới." : undefined} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
+                        {s.password_changed ? <button type="button" title="Học sinh đã tự đổi mật khẩu. Bấm để cấp lại mật khẩu tạm mới." disabled={previewMode || !canProvisionStudentAccounts} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-amber-800 hover:bg-amber-50 disabled:opacity-50">Cấp lại mật khẩu</button> : s.auth_user_id ? <button type="button" disabled={previewMode || !canProvisionStudentAccounts} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-amber-800 disabled:opacity-50">Cấp lại mật khẩu</button> : <button type="button" disabled={previewMode || !canProvisionStudentAccounts} title={!canProvisionStudentAccounts ? "Cần áp dụng migration tài khoản mới." : undefined} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
                         <button type="button" aria-label={(s.is_active === false ? "Khôi phục học sinh " : "Lưu trữ học sinh ") + s.full_name} title={s.is_active === false ? "Khôi phục hồ sơ" : "Lưu trữ, giữ nguyên lịch sử"} disabled={studentArchiveBusyId === s.id || studentArchiveSchemaMissing && !previewMode} onClick={() => void deleteStudent(s.id)} className={"rounded-md p-1 disabled:opacity-40 " + (s.is_active === false ? "text-blue-600 hover:bg-blue-50" : "text-slate-400 hover:text-amber-700")}>{studentArchiveBusyId === s.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin"/> : s.is_active === false ? <RotateCcw className="h-3.5 w-3.5"/> : <Archive className="h-3.5 w-3.5"/>}</button>
                         <button type="button" aria-label={"Xóa hẳn học sinh " + s.full_name} title="Xóa hẳn (mất toàn bộ hồ sơ, điểm, bài nộp)" disabled={studentArchiveBusyId === s.id} onClick={() => void hardDeleteStudent(s.id)} className="rounded-md p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5"/></button>
                       </div>
@@ -3586,7 +3586,7 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
                   </div>
                 ))}
                 {visibleStudents.length === 0 && (
-                  <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-slate-500">{currentRoster.length ? "Không tìm thấy học sinh phù hợp trong lớp này." : showArchivedStudents ? "Chưa có hồ sơ học sinh được lưu trữ." : "Chưa có học sinh. Thêm tên hoặc nhập danh sách để bắt đầu."}</p>
+                  <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-slate-500">{currentRoster.length ? "Không tìm thấy học sinh phù hợp trong lớp này." : "Chưa có học sinh. Thêm tên hoặc nhập danh sách để bắt đầu."}</p>
                 )}
               </div>
             </div>
