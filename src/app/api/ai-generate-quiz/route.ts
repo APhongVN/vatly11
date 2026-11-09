@@ -6,7 +6,7 @@ import { logGeminiUsage } from "@/lib/gemini-usage";
 import { normalizeGeneratedQuiz } from "@/lib/ai-quiz-validation.mjs";
 import { readBoundedRequestText } from "@/lib/read-bounded-request.mjs";
 
-const MAX_REQUEST_BYTES = 8_000;
+const MAX_REQUEST_BYTES = 10_000_000;
 const DIFFICULTIES = new Set(["Dễ", "Trung bình", "Khó"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   if (!topic || topic.length > 500 || !Number.isInteger(count) || (count as number) < 1 || (count as number) > 20 || typeof difficulty !== "string" || !DIFFICULTIES.has(difficulty)) {
     return NextResponse.json({ error: "Chủ đề, số câu hoặc mức độ chưa hợp lệ." }, { status: 400 });
   }
-  if (fileContent && fileContent.length > 60_000) {
+  if (fileContent && fileContent.length > 2_000_000) {
     return NextResponse.json({ error: "Nội dung file đề thi tối đa 60.000 ký tự." }, { status: 400 });
   }
 

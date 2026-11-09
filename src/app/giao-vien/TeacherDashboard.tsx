@@ -26,6 +26,7 @@ import RubricEditor from "@/components/RubricEditor";
 import MathText from "@/components/MathText";
 import QuizQuestionEditor from "@/components/QuizQuestionEditor";
 import TeacherSidebar from "@/components/teacher/TeacherSidebar";
+import ClassCatalog, { type ClassItem } from "@/components/teacher/ClassCatalog";
 import StudentProgressChart from "@/components/teacher/StudentProgressChart";
 import LoadingState from "@/components/LoadingState";
 import TeacherRegradeTab from "@/components/teacher/TeacherRegradeTab";
@@ -335,6 +336,12 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   const [isChangingTeacherPassword, setIsChangingTeacherPassword] = useState(false);
   const [teacherPasswordError, setTeacherPasswordError] = useState("");
   const [passwordChangedSuccess, setPasswordChangedSuccess] = useState(false);
+  // Danh mục lớp học (lớp -> học sinh)
+  const [classCatalog, setClassCatalog] = useState<ClassItem[]>([]);
+  const [classCatalogLoading, setClassCatalogLoading] = useState(false);
+  const [activeClassName, setActiveClassName] = useState<string | null>(null);
+  // Lưu mật khẩu tạm theo student_id để xuất Excel (chỉ tồn tại trong phiên, không lưu DB).
+  const [studentPasswordMap, setStudentPasswordMap] = useState<Record<string, string>>({});
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [showQuizMathPreview, setShowQuizMathPreview] = useState(true);
 
@@ -513,6 +520,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   useEffect(() => {
     if (previewMode) { void fetchData(); return; }
     void fetchData();
+    void loadClassCatalog();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [fetchData, previewMode]);
@@ -990,6 +998,47 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
     } finally {
       setIsSavingGroupEdit(false);
     }
+  };
+
+  // --- DANH MỤC LỚP HỌC ---
+  const loadClassCatalog = async () => {
+    if (previewMode) { setClassCatalog([]); return; }
+    setClassCatalogLoading(true);
+    try {
+      const response = await fetch("/api/teacher/classes", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Không tải được danh mục lớp.");
+      setClassCatalog(result.classes || []);
+    } catch (error) {
+      setPreviewNotice(error instanceof Error ? error.message : "Không tải được danh mục lớp.");
+    } finally {
+      setClassCatalogLoading(false);
+    }
+  };
+
+  const createClass = async (payload: { name: string; grade_level?: string; school_year?: string; homeroom_teacher?: string }) => {
+    const response = await fetch("/api/teacher/classes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Không tạo được lớp.");
+    await loadClassCatalog();
+  };
+
+  const deleteClass = async (name: string) => {
+    if (!confirm(`Xóa lớp "${name}"? Học sinh trong lớp vẫn được giữ (chỉ mất khỏi danh mục).`)) return;
+    const response = await fetch(`/api/teacher/classes?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Không xóa được lớp.");
+    if (activeClassName === name) setActiveClassName(null);
+    await loadClassCatalog();
+  };
+
+  const openClass = (className: string) => {
+    setActiveClassName(className);
+    setStudentClassFilter(className);
   };
 
   // --- ĐỔI MẬT KHẨU TÀI KHOẢN GIÁO VIÊN ---
@@ -1812,6 +1861,7 @@ const handleRubricFileUpload = async (file: File | null) => {
       setStudents((current) => [...current.filter((student) => student.id !== result.student.id), result.student].sort(sortVietnameseNames));
       setAccountStudent({ full_name: formattedName });
       setStudentAccountCredentials([{ username: result.credentials.username, password: result.credentials.password, studentName: formattedName }]);
+      setStudentPasswordMap((current) => ({ ...current, [result.student.id]: result.credentials.password }));
       setStudentAccountNotice("Tài khoản đã được tạo. Mật khẩu chỉ hiển thị một lần; hãy sao chép hoặc in phiếu cho học sinh.");
       setStudentAccountError("");
       setNewStudentName(""); setNewStudentBirthDate("");
@@ -2001,6 +2051,11 @@ const handleRubricFileUpload = async (file: File | null) => {
       if (successful.length) {
         setAccountStudent({ full_name: `${successful.length} tài khoản học sinh` });
         setStudentAccountCredentials(successful.map((row) => ({ username: row.credentials!.username, password: row.credentials!.password, studentName: row.student.full_name })));
+        setStudentPasswordMap((current) => {
+          const next = { ...current };
+          for (const row of successful) next[row.student.id] = row.credentials!.password;
+          return next;
+        });
         setStudentAccountNotice(`Đã tạo ${successful.length} tài khoản. Mật khẩu chỉ hiển thị trong phiên này; hãy sao chép hoặc in ngay.`);
         setStudentAccountError("");
       }
@@ -2029,6 +2084,7 @@ const handleRubricFileUpload = async (file: File | null) => {
         { header: "Họ và tên", key: "fullName", width: 28 },
         { header: "Lớp", key: "className", width: 10 },
         { header: "Tên đăng nhập", key: "username", width: 24 },
+        { header: "Mật khẩu", key: "password", width: 16 },
         { header: "Trạng thái mật khẩu", key: "passwordState", width: 22 },
         { header: "Tài khoản", key: "accountState", width: 16 },
       ];
@@ -2040,7 +2096,10 @@ const handleRubricFileUpload = async (file: File | null) => {
           fullName: student.full_name || "",
           className: student.class_name || "",
           username: student.username || "",
-          passwordState: student.password_changed ? "Đã đổi mật khẩu" : (student.auth_user_id ? "Mật khẩu tạm (xem phiên cấp)" : "Chưa cấp"),
+          // Mật khẩu hiển thị để giáo viên gửi cho học sinh.
+          // Nếu học sinh đã tự đổi mật khẩu thì không hiển thị (bảo mật).
+          password: student.password_changed ? "—" : (studentPasswordMap[student.id] || ""),
+          passwordState: student.password_changed ? "Đã đổi mật khẩu" : (student.auth_user_id ? "Mật khẩu tạm" : "Chưa cấp"),
           accountState: student.auth_user_id ? "Đã cấp" : "Chưa cấp",
         });
       });
@@ -2172,6 +2231,7 @@ const handleRubricFileUpload = async (file: File | null) => {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Không cấp được tài khoản.");
       setStudentAccountCredentials([{ username: result.credentials.username, password: result.credentials.password, studentName: accountStudent.full_name }]);
+      setStudentPasswordMap((current) => ({ ...current, [accountStudent.id]: result.credentials.password }));
       setStudentAccountNotice("Mật khẩu tạm chỉ hiển thị trong lần này. Hãy sao chép hoặc in và gửi riêng cho học sinh.");
       await fetchData();
     } catch (accountError) {
@@ -3446,13 +3506,24 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
 
         {activeTab === 'activity-evidence' && <ActivityEvidencePanel previewMode={previewMode} />}
 
-        {/* 9. TAB SINH VIÊN */}
+        {/* 9. TAB SINH VIÊN — danh mục lớp trước, chọn lớp rồi xem học sinh */}
         {activeTab === 'students' && (
+          !activeClassName ? (
+            <ClassCatalog
+              classes={classCatalog}
+              loading={classCatalogLoading}
+              onReload={() => void loadClassCatalog()}
+              onCreate={(payload) => createClass(payload)}
+              onDelete={(name) => deleteClass(name)}
+              onOpenClass={openClass}
+            />
+          ) : (
           <div className="space-y-6 max-w-7xl animate-in fade-in">
             <div className="flex flex-wrap justify-between items-center gap-3">
               <div>
-                <h2 className="text-3xl font-extrabold text-slate-900">Danh sách Học sinh ({activeStudents.length})</h2>
-                <p className="text-slate-500 text-sm mt-1">Quản lý tài khoản học sinh, thêm từng em hoặc nhập hàng loạt từ Excel.</p>
+                <button type="button" onClick={() => setActiveClassName(null)} className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:underline"><ArrowLeft className="h-3.5 w-3.5" /> Tất cả lớp</button>
+                <h2 className="mt-2 text-3xl font-extrabold text-slate-900">Lớp {activeClassName} · Học sinh ({students.filter((s: any) => s.class_name === activeClassName).length})</h2>
+                <p className="text-slate-500 text-sm mt-1">Quản lý tài khoản học sinh của lớp {activeClassName}.</p>
               </div>
               <button
                 type="button"
@@ -3511,7 +3582,6 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       <button type="button" onClick={() => setDetailStudent(s)} className="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-700 hover:bg-indigo-100">Xem chi tiết</button>
                       {s.username && <button type="button" onClick={() => { void navigator.clipboard.writeText(s.username).then(() => setPreviewNotice(`Đã sao chép tên đăng nhập của ${s.full_name}.`)).catch(() => setPreviewNotice("Không sao chép tự động được.")); }} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-slate-50">Sao chép username</button>}
-                      <button type="button" onClick={() => void changeStudentUsername(s)} title="Đặt lại tên đăng nhập theo họ tên hiện tại" className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-100">Đổi tên đăng nhập</button>
                     </div>
                   </div>
                 ))}
@@ -3656,6 +3726,7 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
               </div>
             )}
           </div>
+          )
         )}
 
 
