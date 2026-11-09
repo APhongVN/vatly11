@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 type AdminClient = ReturnType<typeof createSupabaseAdminClient>;
 
-const DEFAULT_STUDENT_AUTH_EMAIL_DOMAIN = "vatly11.com";
+const DEFAULT_STUDENT_AUTH_EMAIL_DOMAIN = "vatly.com";
 const EMAIL_DOMAIN_PATTERN = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
 const MAX_USERNAME_LENGTH = 32;
 
@@ -19,10 +19,12 @@ export function studentUsernameBase(fullName: string) {
 }
 
 export function generateTemporaryStudentPassword(fullName: string) {
-  const givenName = fullName.trim().split(/\s+/).at(-1) || "HocSinh";
-  const readableName = givenName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "d").replace(/[^a-zA-Z]/g, "").slice(0, 8) || "HocSinh";
-  // Phần ngẫu nhiên dùng CSPRNG; không dựa vào ngày sinh hoặc dữ liệu dễ đoán.
-  return `${readableName[0].toLocaleUpperCase("en-US")}${readableName.slice(1)}-${randomBytes(6).toString("base64url")}!`;
+  // Mật khẩu tạm dạng SỐ ngắn gọn, đúng 6 chữ số, dễ nhập cho học sinh.
+  // Dùng CSPRNG (randomBytes) nên không dự đoán được; không lưu plaintext.
+  const min = 100000;
+  const range = 900000; // 100000..999999
+  const randomValue = randomBytes(4).readUInt32BE(0);
+  return String(min + (randomValue % range));
 }
 
 export function studentInternalEmail(username: string) {

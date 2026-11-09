@@ -3556,48 +3556,6 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
                 </section>
               </div>
             )}
-            {showTrash && (
-              <div className="fixed inset-0 z-[87] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowTrash(false); }}>
-                <section role="dialog" aria-modal="true" aria-labelledby="trash-title" className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 id="trash-title" className="text-xl font-black text-slate-900 flex items-center gap-2"><Archive className="h-5 w-5 text-slate-600" /> Thùng rác</h3>
-                      <p className="mt-1 text-sm text-slate-500">Các bài đã xóa. Có thể khôi phục hoặc xóa vĩnh viễn.</p>
-                    </div>
-                    <button type="button" aria-label="Đóng" onClick={() => setShowTrash(false)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
-                  </div>
-                  {isLoadingTrash ? <div className="mt-4"><LoadingState label="Đang tải thùng rác…" variant="card" /></div> : (
-                    <div className="mt-4 space-y-4">
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-800">Bài trắc nghiệm đã xóa ({trashQuizzes.length})</h4>
-                        {trashQuizzes.length === 0 ? <p className="mt-1 text-xs text-slate-400">Không có.</p> : <ul className="mt-2 space-y-2">{trashQuizzes.map((item) => (
-                          <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
-                            <span className="font-semibold text-slate-800">{item.title}</span>
-                            <span className="flex gap-1.5">
-                              <button type="button" onClick={() => void restoreTrashItem("quiz", item.id)} className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-emerald-700"><Undo className="h-3 w-3" /> Khôi phục</button>
-                              <button type="button" onClick={() => void purgeTrashItem("quiz", item.id)} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-[10px] font-bold text-rose-700 hover:bg-rose-50"><Trash2 className="h-3 w-3" /> Xóa hẳn</button>
-                            </span>
-                          </li>
-                        ))}</ul>}
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-800">Bài tập nhóm đã xóa ({trashGroups.length})</h4>
-                        {trashGroups.length === 0 ? <p className="mt-1 text-xs text-slate-400">Không có.</p> : <ul className="mt-2 space-y-2">{trashGroups.map((item) => (
-                          <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
-                            <span className="font-semibold text-slate-800">{item.title}</span>
-                            <span className="flex gap-1.5">
-                              <button type="button" onClick={() => void restoreTrashItem("group", item.id)} className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-emerald-700"><Undo className="h-3 w-3" /> Khôi phục</button>
-                              <button type="button" onClick={() => void purgeTrashItem("group", item.id)} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-[10px] font-bold text-rose-700 hover:bg-rose-50"><Trash2 className="h-3 w-3" /> Xóa hẳn</button>
-                            </span>
-                          </li>
-                        ))}</ul>}
-                      </div>
-                    </div>
-                  )}
-                  <div className="mt-5 flex justify-end"><button type="button" onClick={() => setShowTrash(false)} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600">Đóng</button></div>
-                </section>
-              </div>
-            )}
             {accountStudent && (
               <div className="fixed inset-0 z-[85] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeStudentAccountModal(); }}>
                 <section role="dialog" aria-modal="true" aria-labelledby="student-account-title" className="student-credentials-print w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
@@ -3630,6 +3588,61 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
           </div>
         )}
 
+
+        {/* THÙNG RÁC — trang riêng, luôn truy cập được từ menu */}
+        {activeTab === 'trash' && (
+          <div className="space-y-6 w-full animate-in fade-in">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-3xl font-extrabold text-slate-900 flex items-center gap-2">
+                  <Archive className="w-7 h-7 text-slate-600" /> Thùng rác
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">Các bài đã xóa. Có thể khôi phục hoặc xóa vĩnh viễn.</p>
+              </div>
+              <button type="button" onClick={() => void openTrash()} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"><RefreshCw className="h-4 w-4" /> Tải lại</button>
+            </div>
+
+            {isLoadingTrash ? <LoadingState label="Đang tải thùng rác…" variant="card" /> : (
+              <div className="space-y-6">
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="text-base font-extrabold text-slate-900">Bài trắc nghiệm đã xóa ({trashQuizzes.length})</h3>
+                  {trashQuizzes.length === 0 ? <p className="mt-3 rounded-xl border border-dashed p-6 text-center text-sm text-slate-400">Không có bài trắc nghiệm nào trong thùng rác.</p> : (
+                    <ul className="mt-4 space-y-2">{trashQuizzes.map((item) => (
+                      <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900">{item.title}</p>
+                          <p className="text-xs text-slate-400">Đã xóa: {item.archived_at ? new Date(item.archived_at).toLocaleString("vi-VN") : "—"}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => void restoreTrashItem("quiz", item.id)} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"><Undo className="h-3.5 w-3.5" /> Khôi phục</button>
+                          <button type="button" onClick={() => void purgeTrashItem("quiz", item.id)} className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50"><Trash2 className="h-3.5 w-3.5" /> Xóa hẳn</button>
+                        </div>
+                      </li>
+                    ))}</ul>
+                  )}
+                </section>
+
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="text-base font-extrabold text-slate-900">Bài tập nhóm đã xóa ({trashGroups.length})</h3>
+                  {trashGroups.length === 0 ? <p className="mt-3 rounded-xl border border-dashed p-6 text-center text-sm text-slate-400">Không có bài tập nhóm nào trong thùng rác.</p> : (
+                    <ul className="mt-4 space-y-2">{trashGroups.map((item) => (
+                      <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900">{item.title}</p>
+                          <p className="text-xs text-slate-400">Đã xóa: {item.archived_at ? new Date(item.archived_at).toLocaleString("vi-VN") : "—"}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => void restoreTrashItem("group", item.id)} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"><Undo className="h-3.5 w-3.5" /> Khôi phục</button>
+                          <button type="button" onClick={() => void purgeTrashItem("group", item.id)} className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50"><Trash2 className="h-3.5 w-3.5" /> Xóa hẳn</button>
+                        </div>
+                      </li>
+                    ))}</ul>
+                  )}
+                </section>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 10. TAB TẠO TRẮC NGHIỆM & AI SINH ĐỀ */}
         {activeTab === 'quizzes' && (

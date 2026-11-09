@@ -116,7 +116,7 @@ export default function TeacherSidebar({
           {/* Thùng rác luôn hiện ở cuối menu để cô không phải tìm theo tab */}
           <div>
             <p className="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Công cụ</p>
-            <button type="button" onClick={onOpenTrash} className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all hover:bg-slate-800 text-slate-300">
+            <button type="button" onClick={() => navigateToTab("trash")} aria-current={activeTab === "trash" ? "page" : undefined} className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${activeTab === "trash" ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold" : "hover:bg-slate-800 text-slate-300"}`}>
               <Archive className="w-4 h-4 text-slate-400" /> Thùng rác (khôi phục)
             </button>
           </div>

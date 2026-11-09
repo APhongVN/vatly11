@@ -6,7 +6,7 @@ DECLARE
 BEGIN
   SELECT id INTO teacher_user_id
   FROM auth.users
-  WHERE lower(email) = lower('huongxuan@vatly11.com')
+  WHERE lower(email) = lower('huongxuan@vatly.com')
   LIMIT 1;
 
   IF teacher_user_id IS NULL THEN
