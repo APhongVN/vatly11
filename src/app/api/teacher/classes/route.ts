@@ -108,7 +108,7 @@ export async function GET() {
 
 // POST: tạo lớp mới.
 export async function POST(request: Request) {
-  const access = await authorizeApi(["teacher"], 10, "student-account");
+  const access = await authorizeApi(["teacher"], 60, "class-catalog");
   if ("response" in access) return access.response;
 
   try {
@@ -143,7 +143,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const access = await authorizeApi(["teacher"], 10, "student-account");
+  const access = await authorizeApi(["teacher"], 60, "class-catalog");
   if ("response" in access) return access.response;
 
   try {

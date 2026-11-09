@@ -1309,7 +1309,7 @@ BEGIN
     WHEN 'analytics' THEN 5
     WHEN 'readiness-analysis' THEN 5
     WHEN 'student-account' THEN 10
-    WHEN 'class-catalog' THEN 40
+    WHEN 'class-catalog' THEN 120
     WHEN 'account-password' THEN 6
     ELSE NULL
   END;
@@ -1459,7 +1459,7 @@ BEGIN
     WHEN 'analytics' THEN 5
     WHEN 'readiness-analysis' THEN 5
     WHEN 'student-account' THEN 10
-    WHEN 'class-catalog' THEN 40
+    WHEN 'class-catalog' THEN 120
     WHEN 'account-password' THEN 6
     WHEN 'submission' THEN 12
     WHEN 'group-submission' THEN 12
@@ -2190,12 +2190,12 @@ BEGIN
     WHEN 'analytics' THEN 5
     WHEN 'readiness-analysis' THEN 5
     WHEN 'student-account' THEN 10
-    WHEN 'class-catalog' THEN 40
+    WHEN 'class-catalog' THEN 120
     WHEN 'account-password' THEN 6
     WHEN 'submission' THEN 12
     WHEN 'group-submission' THEN 12
     WHEN 'student-question' THEN 20
-    WHEN 'class-catalog' THEN 40
+    WHEN 'class-catalog' THEN 120
     ELSE NULL
   END;
   IF expected_limit IS NULL OR p_limit < 1 OR p_limit > expected_limit THEN
@@ -2614,3 +2614,15 @@ SELECT DISTINCT btrim(s.class_name)
 FROM public.students AS s
 WHERE s.class_name IS NOT NULL AND btrim(s.class_name) <> ''
 ON CONFLICT (name) DO NOTHING;
+
+
+-- ===== 20261106000300_students_require_class.sql =====
+-- Bắt buộc học sinh thuộc một lớp rõ ràng: bỏ giá trị mặc định '11A1'.
+-- Trước đây DEFAULT '11A1' khiến mọi hồ sơ tạo thiếu lớp đều bị "nhét" vào lớp 11A1.
+ALTER TABLE public.students ALTER COLUMN class_name DROP DEFAULT;
+
+-- Chặn lớp rỗng: mỗi học sinh phải có lớp (đã trim khoảng trắng).
+ALTER TABLE public.students DROP CONSTRAINT IF EXISTS students_class_name_not_blank;
+ALTER TABLE public.students
+  ADD CONSTRAINT students_class_name_not_blank
+  CHECK (btrim(class_name) <> '');

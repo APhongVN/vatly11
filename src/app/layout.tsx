@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "katex/dist/katex.min.css";
-import ChatbotLoader from "@/components/ChatbotLoader";
 
 export const metadata: Metadata = {
   title: "Tụ điện - Vật lí 11",
@@ -13,7 +12,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="vi">
       <body>
         {children}
-        <ChatbotLoader />
       </body>
     </html>
   );
