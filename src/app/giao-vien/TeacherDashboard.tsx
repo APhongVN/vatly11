@@ -338,6 +338,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   // Danh mục lớp học (lớp -> học sinh)
   const [classCatalog, setClassCatalog] = useState<ClassItem[]>([]);
   const [classCatalogLoading, setClassCatalogLoading] = useState(false);
+  const [classCatalogError, setClassCatalogError] = useState("");
   const [activeClassName, setActiveClassName] = useState<string | null>(null);
   // Lưu mật khẩu tạm theo student_id để xuất Excel (chỉ tồn tại trong phiên, không lưu DB).
   const [studentPasswordMap, setStudentPasswordMap] = useState<Record<string, string>>({});
@@ -1013,8 +1014,11 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Không tải được danh mục lớp.");
       setClassCatalog(result.classes || []);
+      setClassCatalogError("");
     } catch (error) {
-      setPreviewNotice(error instanceof Error ? error.message : "Không tải được danh mục lớp.");
+      const message = error instanceof Error ? error.message : "Không tải được danh mục lớp.";
+      setClassCatalogError(message);
+      setPreviewNotice(message);
     } finally {
       setClassCatalogLoading(false);
     }
@@ -1026,8 +1030,9 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "Không tạo được lớp.");
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || `Không tạo được lớp (mã lỗi ${response.status}).`);
+    setClassCatalogError("");
     await loadClassCatalog();
   };
 
@@ -1042,6 +1047,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
 
   const openClass = (className: string) => {
     setActiveClassName(className);
+    setStudentClassName(className); // lớp áp dụng cho học sinh mới = lớp đang mở
     setStudentClassFilter(className);
     setActiveTab("students"); // chuyen thang sang danh sach hoc sinh cua lop
   };
@@ -2876,9 +2882,13 @@ const handleRubricFileUpload = async (file: File | null) => {
   const currentSubmissions = selectedGradingAct ? submissions.filter(s => s.activity_id === selectedGradingAct.id) : [];
   const currentGroupSubs = expandedGroupAct ? groupSubmissions.filter(s => s.assignment_id === expandedGroupAct) : [];
   const newActivityChapters = curriculumChapters.filter((chapter) => chapter.course_id === newActCourseId);
-  const currentRoster = activeStudents;
-  const studentClassOptions = getStudentClassNames(currentRoster);
-  const visibleStudents = filterStudentRoster(currentRoster, studentClassFilter, searchTerm);
+  // Khi đang mở một lớp cụ thể (activeClassName), danh sách lớp học sinh chỉ gồm học sinh của lớp đó.
+  const classScopedStudents = activeClassName
+    ? activeStudents.filter((student: any) => student.class_name === activeClassName)
+    : activeStudents;
+  const currentRoster = classScopedStudents;
+  const studentClassOptions = getStudentClassNames(activeStudents);
+  const visibleStudents = filterStudentRoster(currentRoster, activeClassName ? "" : studentClassFilter, searchTerm);
   const groupTargetCount = newGroupClassName === "__all__" ? activeStudents.length : newGroupClassName === "__choose__" ? 0 : filterStudentRoster(activeStudents, newGroupClassName, "").length;
 
   // Thống kê phổ điểm
@@ -3536,6 +3546,7 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
             <ClassCatalog
               classes={classCatalog}
               loading={classCatalogLoading}
+              loadError={classCatalogError}
               onReload={() => void loadClassCatalog()}
               onCreate={(payload) => createClass(payload)}
               onDelete={(name) => deleteClass(name)}
@@ -3546,12 +3557,12 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
             <div className="flex flex-wrap justify-between items-center gap-3">
               <div>
                 <button type="button" onClick={() => setActiveClassName(null)} className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:underline"><ArrowLeft className="h-3.5 w-3.5" /> Tất cả lớp</button>
-                <h2 className="mt-2 text-3xl font-extrabold text-slate-900">Lớp {activeClassName} · Học sinh ({students.filter((s: any) => s.class_name === activeClassName).length})</h2>
+                <h2 className="mt-2 text-3xl font-extrabold text-slate-900">Lớp {activeClassName} · Học sinh ({classScopedStudents.length})</h2>
                 <p className="text-slate-500 text-sm mt-1">Quản lý tài khoản học sinh của lớp {activeClassName}.</p>
               </div>
               <button
                 type="button"
-                onClick={() => exportStudentAccountsExcel(activeStudents)}
+                onClick={() => exportStudentAccountsExcel(classScopedStudents)}
                 disabled={activeStudents.length === 0}
                 className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-40"
               >

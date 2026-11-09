@@ -18,6 +18,7 @@ export type ClassItem = {
 export type ClassCatalogProps = {
   classes: ClassItem[];
   loading: boolean;
+  loadError?: string;
   onReload: () => void;
   onCreate: (payload: { name: string; grade_level?: string; school_year?: string; homeroom_teacher?: string }) => Promise<void>;
   onDelete: (name: string) => Promise<void>;
@@ -40,7 +41,7 @@ function smartSort(list: ClassItem[]) {
   });
 }
 
-export default function ClassCatalog({ classes, loading, onReload, onCreate, onDelete, onOpenClass }: ClassCatalogProps) {
+export default function ClassCatalog({ classes, loading, loadError = "", onReload, onCreate, onDelete, onOpenClass }: ClassCatalogProps) {
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [gradeLevel, setGradeLevel] = useState("");
@@ -81,6 +82,23 @@ export default function ClassCatalog({ classes, loading, onReload, onCreate, onD
           <button type="button" onClick={() => setCreating((value) => !value)} className="inline-flex items-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-800"><Plus className="h-4 w-4" /> Tạo lớp mới</button>
         </div>
       </div>
+
+      {loadError && (
+        <div role="alert" className="rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-900">
+          <p className="font-bold">Không tải được danh mục lớp</p>
+          <p className="mt-1 text-xs">{loadError}</p>
+          {/classes|relation|does not exist|schema cache/i.test(loadError) && (
+            <p className="mt-2 rounded-lg bg-white/70 p-2 text-xs">
+              Gợi ý: bảng <code className="font-mono font-bold">classes</code> chưa tồn tại trên Supabase. Hãy chạy
+              file <code className="font-mono font-bold">supabase/sql-editor/full_setup.sql</code> trong SQL Editor
+              (đã bao gồm migration <code className="font-mono">20261104001300_classes_management.sql</code>), rồi bấm Tải lại.
+            </p>
+          )}
+          <button type="button" onClick={onReload} className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3 py-2 text-xs font-bold text-white hover:bg-rose-700">
+            <RefreshCw className="h-3.5 w-3.5" /> Thử tải lại
+          </button>
+        </div>
+      )}
 
       {creating && (
         <form onSubmit={(event) => void submit(event)} className="rounded-2xl border border-blue-200 bg-blue-50/60 p-5 space-y-4">

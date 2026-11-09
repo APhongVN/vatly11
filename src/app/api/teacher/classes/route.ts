@@ -40,7 +40,20 @@ export async function GET() {
       .select("id,name,grade_level,school_year,homeroom_teacher,created_at,updated_at")
       .order("name")
       .limit(500);
-    if (classError) throw new Error("Không đọc được danh mục lớp.");
+    if (classError) {
+      const missingTable = classError.code === "42P01" || /does not exist|schema cache/i.test(classError.message || "");
+      if (missingTable) {
+        return NextResponse.json(
+          {
+            error:
+              "Bảng classes chưa tồn tại trên Supabase. Chạy file supabase/sql-editor/full_setup.sql (gồm migration 20261104001300_classes_management.sql) trong SQL Editor rồi tải lại.",
+            missingTable: "classes",
+          },
+          { status: 503, headers: noStore },
+        );
+      }
+      throw new Error("Không đọc được danh mục lớp.");
+    }
 
     const { data: studentRows, error: studentError } = await access.supabase
       .from("students")
