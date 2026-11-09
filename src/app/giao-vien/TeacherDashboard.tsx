@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import Image from "next/image";
@@ -34,6 +34,7 @@ import TeacherOcrTab from "@/components/teacher/TeacherOcrTab";
 import TeacherCreateActivityTab from "@/components/teacher/TeacherCreateActivityTab";
 import TeacherChatTab from "@/components/teacher/TeacherChatTab";
 import TeacherAnalyticsTab from "@/components/teacher/TeacherAnalyticsTab";
+import ScoreHeatmap from "@/components/teacher/ScoreHeatmap";
 import TeacherQuestionsTab from "@/components/teacher/TeacherQuestionsTab";
 import TeacherGradingTab from "@/components/teacher/TeacherGradingTab";
 import QuestionCard from "@/components/TeacherQuestionCard";
@@ -1004,7 +1005,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   };
 
   // --- DANH MỤC LỚP HỌC ---
-  const loadClassCatalog = async () => {
+  async function loadClassCatalog() {
     if (previewMode) { setClassCatalog([]); return; }
     setClassCatalogLoading(true);
     try {
@@ -1077,7 +1078,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   };
 
   // --- THÙNG RÁC: xem và khôi phục các bài đã xóa mềm ---
-  const openTrash = async () => {
+  async function openTrash() {
     setShowTrash(true);
     setIsLoadingTrash(true);
     try {
@@ -1573,18 +1574,20 @@ const handleRubricFileUpload = async (file: File | null) => {
     }
   };
 
-  const saveTeacherGrade = async (submissionId: string, scoreInputId: string, feedbackInputId: string) => {
+  const saveTeacherGrade = async (submissionId: string, scoreInputId: string, feedbackInputId: string, modelAnswerInputId?: string) => {
     const scoreElement = document.getElementById(scoreInputId) as HTMLInputElement | null;
     const feedbackElement = document.getElementById(feedbackInputId) as HTMLInputElement | null;
+    const modelAnswerElement = modelAnswerInputId ? (document.getElementById(modelAnswerInputId) as HTMLTextAreaElement | null) : null;
     const score = Number(scoreElement?.value);
     if (!Number.isFinite(score) || score < 0 || score > 10) { alert("Điểm giáo viên phải nằm trong khoảng từ 0 đến 10."); return; }
     const teacher_feedback = feedbackElement?.value.trim() || null;
+    const teacher_model_answer = modelAnswerElement?.value.trim() || null;
     if (previewMode) {
-      setSubmissions((current) => current.map((submission) => submission.id === submissionId ? { ...submission, final_score: score, teacher_feedback, status: "graded" } : submission));
-      setPreviewNotice("Đã lưu điểm giáo viên vào bài nộp mẫu; điểm AI vẫn được giữ riêng để đối chiếu.");
+      setSubmissions((current) => current.map((submission) => submission.id === submissionId ? { ...submission, final_score: score, teacher_feedback, teacher_model_answer, status: "graded" } : submission));
+      setPreviewNotice("Đã lưu điểm, nhận xét và đáp án mẫu của cô vào bài nộp mẫu.");
       return;
     }
-    const { error } = await supabase.from("submissions").update({ final_score: score, teacher_feedback, status: "graded" }).eq("id", submissionId);
+    const { error } = await supabase.from("submissions").update({ final_score: score, teacher_feedback, teacher_model_answer, status: "graded" }).eq("id", submissionId);
     if (error) { alert("Không lưu được điểm giáo viên: " + error.message); return; }
     await fetchData();
   };
@@ -2885,6 +2888,20 @@ const handleRubricFileUpload = async (file: File | null) => {
   const avgCount = gradedSubs.filter(s => s.ai_score >= 5 && s.ai_score < 6.5).length;
   const weakCount = gradedSubs.filter(s => s.ai_score < 5).length;
 
+  // Bảng điểm trực quan (heatmap): điểm cuối cùng (cô duyệt > AI) theo từng học sinh × hoạt động.
+  // Không dùng useMemo thủ công: React Compiler (Next 16) tự memo hóa phần render này.
+  const heatmapScores: Record<string, Record<number, number | null>> = {};
+  for (const student of activeStudents) heatmapScores[student.id] = {};
+  for (const sub of submissions) {
+    const score = sub.final_score ?? (sub.ai_score !== null && sub.ai_score !== -1 ? sub.ai_score : null);
+    if (score === null || !heatmapScores[sub.student_id]) continue;
+    const numeric = Number(score);
+    if (!Number.isFinite(numeric)) continue;
+    const previous = heatmapScores[sub.student_id][sub.activity_id];
+    if (previous === undefined || previous === null) heatmapScores[sub.student_id][sub.activity_id] = numeric;
+  }
+  const heatmapActivities = activities.map((act: any) => ({ id: act.id, title: act.title })).slice(0, 12);
+
   return (
     <main className="min-h-screen flex overflow-x-hidden bg-slate-50">
       {previewMode && <div className="fixed bottom-4 right-4 z-50 max-w-sm rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-950 shadow-lg"><p>Đang xem dashboard tương tác với dữ liệu mẫu. Có thể mở tab, thu gọn, lọc và nhập thử; các thao tác ghi/AI sẽ không chạm dữ liệu thật.</p>{previewNotice && <p role="status" className="mt-2 border-t border-amber-200 pt-2 font-normal">{previewNotice}</p>}</div>}
@@ -2927,15 +2944,18 @@ const handleRubricFileUpload = async (file: File | null) => {
 
         {/* 2. TAB AI ANALYTICS & BÁO CÁO PHỔ ĐIỂM */}
         {activeTab === 'analytics' && (
-          <TeacherAnalyticsTab
-            excellentCount={excellentCount}
-            goodCount={goodCount}
-            avgCount={avgCount}
-            weakCount={weakCount}
-            isAnalyzing={isAnalyzingClass}
-            report={analyticsReport}
-            onRunAnalysis={handleRunAIAnalytics}
-          />
+          <div className="space-y-6">
+            <TeacherAnalyticsTab
+              excellentCount={excellentCount}
+              goodCount={goodCount}
+              avgCount={avgCount}
+              weakCount={weakCount}
+              isAnalyzing={isAnalyzingClass}
+              report={analyticsReport}
+              onRunAnalysis={handleRunAIAnalytics}
+            />
+            <ScoreHeatmap students={activeStudents} activities={heatmapActivities} scores={heatmapScores} />
+          </div>
         )}
 
         {/* 3. TAB BÀI HỌC CÁ NHÂN & GỘP BÀI TẬP */}

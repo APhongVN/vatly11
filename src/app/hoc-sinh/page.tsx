@@ -758,9 +758,9 @@ export default function HocSinhPage() {
                             <p className="text-[11px] text-slate-400 mt-0.5">Nộp lúc: {formatTime(sub.submitted_at)}</p>
                           </div>
                           <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-                            isGraded ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                            sub.status === 'graded' ? 'bg-blue-100 text-blue-700' : isGraded ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                           }`}>
-                            {isGraded ? `Điểm AI: ${sub.ai_score}/10` : 'Đang chờ chấm'}
+                            {sub.status === 'graded' ? `Điểm cô: ${sub.final_score}/10` : isGraded ? `Điểm AI: ${sub.ai_score}/10` : 'Đang chờ chấm'}
                           </span>
                         </div>
 
@@ -779,6 +779,21 @@ export default function HocSinhPage() {
                               <div className="bg-white/90 p-3 rounded-lg border border-indigo-100 text-slate-800 mt-2">
                                 <span className="font-bold text-indigo-900 block mb-0.5">Đáp án mẫu:</span>
                                 {sub.ai_model_answer}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {sub.status === 'graded' && (sub.teacher_feedback || sub.teacher_model_answer) && (
+                          <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl space-y-1.5 text-xs">
+                            <p className="font-bold text-blue-950">Phản hồi của cô</p>
+                            {sub.teacher_feedback && (
+                              <p className="text-slate-800"><span className="font-bold text-blue-900">Nhận xét của cô:</span> {sub.teacher_feedback}</p>
+                            )}
+                            {sub.teacher_model_answer && (
+                              <div className="bg-white/90 p-3 rounded-lg border border-blue-100 text-slate-800 mt-2 whitespace-pre-line">
+                                <span className="font-bold text-blue-900 block mb-0.5">Đáp án đúng của cô:</span>
+                                {sub.teacher_model_answer}
                               </div>
                             )}
                           </div>

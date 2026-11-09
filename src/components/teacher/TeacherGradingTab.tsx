@@ -29,7 +29,7 @@ type TeacherGradingTabProps = {
   reportExportSuccess: string;
   exportExcelReport: () => void;
   gradeWithAI: (id: string, answer: string) => void;
-  saveTeacherGrade: (id: string, scoreInputId: string, feedbackInputId: string) => void;
+  saveTeacherGrade: (id: string, scoreInputId: string, feedbackInputId: string, modelAnswerInputId?: string) => void;
   handleRubricFileUpload: (file: File) => void;
   downloadRubricDocument: (act: any) => void;
   rubricDocumentSchemaReady: boolean;
@@ -192,9 +192,14 @@ export default function TeacherGradingTab({
                     </button>
                     <input type="number" min="0" max="10" step="0.1" placeholder="Điểm cô" className="border p-2 rounded-xl w-20 text-xs bg-slate-50" id={`score-${sub.id}`} defaultValue={sub.final_score ?? sub.ai_score ?? ""} />
                     <input type="text" placeholder="Nhận xét của cô..." className="border p-2 rounded-xl flex-1 text-xs bg-slate-50" id={`fb-${sub.id}`} defaultValue={sub.teacher_feedback || ""} />
-                    <button onClick={() => void saveTeacherGrade(sub.id, `score-${sub.id}`, `fb-${sub.id}`)} className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-xl shadow-sm" title="Lưu điểm & nhận xét">
+                    <button onClick={() => void saveTeacherGrade(sub.id, `score-${sub.id}`, `fb-${sub.id}`, `model-${sub.id}`)} className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-xl shadow-sm" title="Lưu điểm & nhận xét">
                       <CheckCircle className="w-4 h-4"/>
                     </button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <label htmlFor={"model-" + sub.id} className="text-[11px] font-semibold text-slate-500 shrink-0">Đáp án mẫu của cô:</label>
+                    <textarea id={"model-" + sub.id} rows={2} placeholder="Gõ đáp án đúng / gợi ý chấm cho học sinh xem sau khi cô chấm…" className="min-w-[260px] flex-1 border border-slate-200 rounded-xl p-2 text-xs bg-amber-50/40 resize-y" defaultValue={sub.teacher_model_answer || ""} />
+                    <span className="text-[10px] text-slate-400">Học sinh chỉ thấy khung này sau khi bài đã được chấm.</span>
                   </div>
                 </div>
               ))}
