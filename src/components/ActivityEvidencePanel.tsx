@@ -33,10 +33,7 @@ export default function ActivityEvidencePanel({ previewMode = false }: { preview
 
   const loadRecords = useCallback(async () => {
     if (previewMode) {
-      setRecords([
-        { id: "demo-evidence-1", activity_id: 4, student_id: "demo-student-1", evidence: { kind: "virtual-lab", stations: { "charge-voltage": { notes: { prediction: "Q tăng theo U.", evidence: "5 điểm đo gần tuyến tính.", conclusion: "C là hệ số góc Q=f(U)." }, measurements: [{ U: 1, Q: 8.8e-11 }, { U: 2, Q: 1.77e-10 }] } } }, score: null, score_max: null, completed_at: new Date().toISOString(), updated_at: new Date().toISOString(), students: { full_name: "Nguyễn Minh Anh", class_name: "11A1" } },
-        { id: "demo-evidence-2", activity_id: 6, student_id: "demo-student-2", evidence: { kind: "readiness-check", answers: { R1: 1, R2: 1 }, muddyTopics: ["disconnected-charge"], muddyPoint: "Em chưa hiểu vì sao điện tích còn lại sau khi ngắt nguồn.", confidence: "partial" }, score: null, score_max: null, completed_at: new Date().toISOString(), updated_at: new Date().toISOString(), students: { full_name: "Trần Gia Bảo", class_name: "11A1" } },
-      ]);
+      setRecords([]);
       return;
     }
     setLoading(true); setError("");

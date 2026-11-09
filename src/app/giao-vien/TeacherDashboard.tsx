@@ -248,7 +248,7 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const [newStudentName, setNewStudentName] = useState("");
   const [newStudentBirthDate, setNewStudentBirthDate] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [studentClassName, setStudentClassName] = useState("11A1");
+  const [studentClassName, setStudentClassName] = useState("");
   const [studentClassFilter, setStudentClassFilter] = useState("");
   const [showArchivedStudents, setShowArchivedStudents] = useState(false);
   const [studentArchiveBusyId, setStudentArchiveBusyId] = useState<string | null>(null);
@@ -352,19 +352,11 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
       setStudentAccountSchemaMissing(false);
       setStudentArchiveSchemaMissing(false);
       setActivities(ACTIVITIES);
-      setStudents([
-        { id: "demo-student-1", full_name: "Nguyễn Minh Anh", class_name: "11A1" },
-        { id: "demo-student-2", full_name: "Trần Gia Bảo", class_name: "11A1" },
-        { id: "demo-student-3", full_name: "Lê Khánh Linh", class_name: "11A2" },
-      ]);
-      setSubmissions([
-        { id: "demo-submission-1", student_name: "Nguyễn Minh Anh", activity_id: 4, ai_score: null, status: "pending", submitted_at: new Date().toISOString(), answer: "Bài nộp mẫu chỉ hiển thị trong chế độ xem thử." },
-        { id: "demo-submission-2", student_name: "Trần Gia Bảo", activity_id: 4, ai_score: 8, status: "graded", submitted_at: new Date().toISOString(), answer: "Dữ liệu giả lập, không phải bài làm thật." },
-      ]);
-      setMessages([
-        { id: "demo-message-1", sender_name: "Nguyễn Minh Anh", content: "Cô ơi, em đã hoàn thành phiếu thí nghiệm ạ.", created_at: new Date().toISOString() },
-        { id: "demo-message-2", sender_name: "Giáo viên", content: "Các em nhớ ghi rõ đơn vị trong bảng số liệu nhé.", created_at: new Date().toISOString() },
-      ]);
+      // Chế độ xem thử không còn dùng dữ liệu mẫu có tên lớp cụ thể (11A1/11A2)
+      // để tránh nhầm lẫn với dữ liệu thật của cô.
+      setStudents([]);
+      setSubmissions([]);
+      setMessages([]);
       setQuizzes([]);
       setGroupAssignments([]);
       setGroupSubmissions([]);
@@ -450,10 +442,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
 
   const loadStudentQuestions = async () => {
     if (previewMode) {
-      setStudentQuestions([
-        { id: "demo-question-1", students: { full_name: "Nguyễn Minh Anh", class_name: "11A1" }, topic: "capacitance", content: "Cô ơi, điện dung có phụ thuộc vào hiệu điện thế không ạ?", status: "unanswered", teacher_response: null, created_at: new Date().toISOString() },
-        { id: "demo-question-2", students: { full_name: "Trần Gia Bảo", class_name: "11A1" }, topic: "energy", content: "Năng lượng tụ điện tính bằng công thức nào ạ?", status: "answered", teacher_response: "Em xem lại phần III và công thức W = 1/2 C U² nhé.", created_at: new Date().toISOString() },
-      ]);
+      setStudentQuestions([]);
       return;
     }
     setQuestionLoading(true);
@@ -3446,6 +3435,7 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
                       <div className="flex shrink-0 items-center gap-1">
                         {s.is_active === false ? <span className="rounded-md bg-slate-200 px-1.5 py-1 text-[9px] font-bold text-slate-600">Đã lưu trữ</span> : s.password_changed ? <span title="Học sinh đã tự đổi mật khẩu; giáo viên không xem được mật khẩu." className="rounded-md bg-emerald-100 px-1.5 py-1 text-[9px] font-bold text-emerald-700">Đã đổi mật khẩu</span> : s.auth_user_id ? <button type="button" disabled={previewMode || !canProvisionStudentAccounts} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-amber-800 disabled:opacity-50">Cấp lại mật khẩu</button> : <button type="button" disabled={previewMode || !canProvisionStudentAccounts} title={!canProvisionStudentAccounts ? "Cần áp dụng migration tài khoản mới." : undefined} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
                         <button type="button" aria-label={(s.is_active === false ? "Khôi phục học sinh " : "Lưu trữ học sinh ") + s.full_name} title={s.is_active === false ? "Khôi phục hồ sơ" : "Lưu trữ, giữ nguyên lịch sử"} disabled={studentArchiveBusyId === s.id || studentArchiveSchemaMissing && !previewMode} onClick={() => void deleteStudent(s.id)} className={"rounded-md p-1 disabled:opacity-40 " + (s.is_active === false ? "text-blue-600 hover:bg-blue-50" : "text-slate-400 hover:text-amber-700")}>{studentArchiveBusyId === s.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin"/> : s.is_active === false ? <RotateCcw className="h-3.5 w-3.5"/> : <Archive className="h-3.5 w-3.5"/>}</button>
+                        <button type="button" aria-label={"Xóa hẳn học sinh " + s.full_name} title="Xóa hẳn (mất toàn bộ hồ sơ, điểm, bài nộp)" disabled={studentArchiveBusyId === s.id} onClick={() => void hardDeleteStudent(s.id)} className="rounded-md p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5"/></button>
                       </div>
                     </div>
                     <p className="mt-1 truncate text-[10px] font-normal text-slate-500">{s.student_code ? `Mã SV: ${s.student_code} · ` : ""}{s.username ? `Đăng nhập: ${s.username}` : (s.login_email || (s.auth_user_id ? "Tài khoản đã liên kết" : "Chưa có tài khoản đăng nhập"))}</p>
