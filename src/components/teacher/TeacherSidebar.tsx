@@ -3,7 +3,7 @@ import Link from "next/link";
 import {
   Home, BrainCircuit, Video, BookOpen, FolderOpen, PlusCircle, Layers, Archive,
   FileText, ClipboardList, Camera, RefreshCw, Users, Sparkles, MessageSquare,
-  HelpCircle, ExternalLink, LogOut, Menu, X,
+  HelpCircle, ExternalLink, LogOut, Menu, X, KeyRound,
 } from "lucide-react";
 
 export type TeacherNavItem = { tab: string; label: string; icon: React.ReactNode };
@@ -118,6 +118,9 @@ export default function TeacherSidebar({
             <p className="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Công cụ</p>
             <button type="button" onClick={() => navigateToTab("trash")} aria-current={activeTab === "trash" ? "page" : undefined} className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${activeTab === "trash" ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold" : "hover:bg-slate-800 text-slate-300"}`}>
               <Archive className="w-4 h-4 text-slate-400" /> Thùng rác (khôi phục)
+            </button>
+            <button type="button" onClick={() => navigateToTab("account")} aria-current={activeTab === "account" ? "page" : undefined} className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${activeTab === "account" ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold" : "hover:bg-slate-800 text-slate-300"}`}>
+              <KeyRound className="w-4 h-4 text-slate-400" /> Đổi mật khẩu
             </button>
           </div>
         </nav>

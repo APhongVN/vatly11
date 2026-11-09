@@ -14,7 +14,7 @@ import {
   Save, X, Plus, Clock, Layers, BookOpen, Shuffle, RefreshCw, Camera,
   Sparkles, CheckSquare, Square, Merge, AlertTriangle, ExternalLink,
   ChevronRight, LayoutDashboard, PlusCircle, BarChart3, TrendingUp,
-  BrainCircuit, Award, Lightbulb, AlertCircle, FileSpreadsheet, ClipboardList, FolderOpen, Menu, HelpCircle, UploadCloud, Pencil, Undo
+  BrainCircuit, Award, Lightbulb, AlertCircle, FileSpreadsheet, ClipboardList, FolderOpen, Menu, HelpCircle, UploadCloud, Pencil, Undo, KeyRound
 } from "lucide-react";
 import { QUESTION_TOPICS, QUESTION_STATUS_IDS } from "@/lib/student-questions.mjs";
 import TeacherHome from "@/components/TeacherHome";
@@ -328,6 +328,13 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   const [trashQuizzes, setTrashQuizzes] = useState<any[]>([]);
   const [trashGroups, setTrashGroups] = useState<any[]>([]);
   const [isLoadingTrash, setIsLoadingTrash] = useState(false);
+  // Đổi mật khẩu tài khoản giáo viên
+  const [teacherCurrentPassword, setTeacherCurrentPassword] = useState("");
+  const [teacherNewPassword, setTeacherNewPassword] = useState("");
+  const [teacherConfirmPassword, setTeacherConfirmPassword] = useState("");
+  const [isChangingTeacherPassword, setIsChangingTeacherPassword] = useState(false);
+  const [teacherPasswordError, setTeacherPasswordError] = useState("");
+  const [passwordChangedSuccess, setPasswordChangedSuccess] = useState(false);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [showQuizMathPreview, setShowQuizMathPreview] = useState(true);
 
@@ -982,6 +989,37 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
       alert("Không lưu được thay đổi bài nhóm: " + (error instanceof Error ? error.message : "lỗi không rõ."));
     } finally {
       setIsSavingGroupEdit(false);
+    }
+  };
+
+  // --- ĐỔI MẬT KHẨU TÀI KHOẢN GIÁO VIÊN ---
+  const handleTeacherPasswordChange = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (isChangingTeacherPassword) return;
+    setTeacherPasswordError("");
+    setPasswordChangedSuccess(false);
+    if (teacherNewPassword !== teacherConfirmPassword) {
+      setTeacherPasswordError("Mật khẩu mới và xác nhận chưa khớp.");
+      return;
+    }
+    setIsChangingTeacherPassword(true);
+    try {
+      const response = await fetch("/api/teacher/update-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: teacherCurrentPassword, newPassword: teacherNewPassword }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Không đổi được mật khẩu.");
+      setPasswordChangedSuccess(true);
+      setTeacherCurrentPassword("");
+      setTeacherNewPassword("");
+      setTeacherConfirmPassword("");
+      alert("✅ Đã đổi mật khẩu thành công.");
+    } catch (error) {
+      setTeacherPasswordError(error instanceof Error ? error.message : "Không đổi được mật khẩu.");
+    } finally {
+      setIsChangingTeacherPassword(false);
     }
   };
 
@@ -2081,6 +2119,37 @@ const handleRubricFileUpload = async (file: File | null) => {
       setStudentArchiveBusyId(null);
     }
   };
+  // Đổi tên đăng nhập theo họ tên hiện tại (dùng khi cô vừa sửa tên học sinh).
+  const changeStudentUsername = async (student: any) => {
+    if (!student?.id || previewMode) return;
+    if (!canProvisionStudentAccounts) {
+      setPreviewNotice("Cần áp dụng migration tài khoản mới trước khi đổi tên đăng nhập.");
+      return;
+    }
+    const confirmed = confirm(
+      `Đặt lại tên đăng nhập của ${student.full_name} theo họ tên hiện tại? ` +
+      `Tên đăng nhập cũ (${student.username || "chưa có"}) sẽ không dùng được nữa.`,
+    );
+    if (!confirmed) return;
+    setStudentArchiveBusyId(student.id);
+    try {
+      const response = await fetch(`/api/teacher/students/${encodeURIComponent(student.id)}/username`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ full_name: student.full_name }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Không đổi được tên đăng nhập.");
+      const next = result.student;
+      setStudents((current: any[]) => current.map((item: any) => item.id === student.id ? { ...item, username: next.username, login_email: next.login_email } : item));
+      setPreviewNotice(`Đã đổi tên đăng nhập thành ${next.username}.`);
+    } catch (error) {
+      setPreviewNotice(error instanceof Error ? error.message : "Không đổi được tên đăng nhập.");
+    } finally {
+      setStudentArchiveBusyId(null);
+    }
+  };
+
   const openStudentAccountModal = (student: any) => {
     if (previewMode || !canProvisionStudentAccounts || student.is_active === false) return;
     setAccountStudent(student);
@@ -3433,7 +3502,7 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
                     <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
                       <span className="min-w-0 flex-1 truncate font-bold">{idx + 1}. {s.full_name}<span className="ml-1.5 rounded bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">{s.class_name || "Chưa xếp lớp"}</span>{(() => { const seen = s.last_seen_at ? new Date(s.last_seen_at).getTime() : 0; const online = seen && Date.now() - seen < 5 * 60 * 1000; return <span className={`ml-1.5 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold ${online ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}><span className={`h-1.5 w-1.5 rounded-full ${online ? "bg-emerald-500" : "bg-slate-400"}`} />{online ? "Online" : "Offline"}</span>; })()}</span>
                       <div className="flex shrink-0 items-center gap-1">
-                        {s.is_active === false ? <span className="rounded-md bg-slate-200 px-1.5 py-1 text-[9px] font-bold text-slate-600">Đã lưu trữ</span> : s.password_changed ? <span title="Học sinh đã tự đổi mật khẩu; giáo viên không xem được mật khẩu." className="rounded-md bg-emerald-100 px-1.5 py-1 text-[9px] font-bold text-emerald-700">Đã đổi mật khẩu</span> : s.auth_user_id ? <button type="button" disabled={previewMode || !canProvisionStudentAccounts} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-amber-800 disabled:opacity-50">Cấp lại mật khẩu</button> : <button type="button" disabled={previewMode || !canProvisionStudentAccounts} title={!canProvisionStudentAccounts ? "Cần áp dụng migration tài khoản mới." : undefined} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
+                        {s.is_active === false ? <span className="rounded-md bg-slate-200 px-1.5 py-1 text-[9px] font-bold text-slate-600">Đã lưu trữ</span> : s.password_changed ? <button type="button" title="Học sinh đã tự đổi mật khẩu. Bấm để cấp lại mật khẩu tạm mới." disabled={previewMode || !canProvisionStudentAccounts} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-amber-800 hover:bg-amber-50 disabled:opacity-50">Cấp lại mật khẩu</button> : s.auth_user_id ? <button type="button" disabled={previewMode || !canProvisionStudentAccounts} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-amber-200 bg-white px-1.5 py-1 text-[9px] font-bold text-amber-800 disabled:opacity-50">Cấp lại mật khẩu</button> : <button type="button" disabled={previewMode || !canProvisionStudentAccounts} title={!canProvisionStudentAccounts ? "Cần áp dụng migration tài khoản mới." : undefined} onClick={() => openStudentAccountModal(s)} className="rounded-md border border-blue-200 bg-white px-1.5 py-1 text-[9px] font-bold text-blue-700 disabled:opacity-50">Cấp tài khoản</button>}
                         <button type="button" aria-label={(s.is_active === false ? "Khôi phục học sinh " : "Lưu trữ học sinh ") + s.full_name} title={s.is_active === false ? "Khôi phục hồ sơ" : "Lưu trữ, giữ nguyên lịch sử"} disabled={studentArchiveBusyId === s.id || studentArchiveSchemaMissing && !previewMode} onClick={() => void deleteStudent(s.id)} className={"rounded-md p-1 disabled:opacity-40 " + (s.is_active === false ? "text-blue-600 hover:bg-blue-50" : "text-slate-400 hover:text-amber-700")}>{studentArchiveBusyId === s.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin"/> : s.is_active === false ? <RotateCcw className="h-3.5 w-3.5"/> : <Archive className="h-3.5 w-3.5"/>}</button>
                         <button type="button" aria-label={"Xóa hẳn học sinh " + s.full_name} title="Xóa hẳn (mất toàn bộ hồ sơ, điểm, bài nộp)" disabled={studentArchiveBusyId === s.id} onClick={() => void hardDeleteStudent(s.id)} className="rounded-md p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5"/></button>
                       </div>
@@ -3442,6 +3511,7 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       <button type="button" onClick={() => setDetailStudent(s)} className="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-700 hover:bg-indigo-100">Xem chi tiết</button>
                       {s.username && <button type="button" onClick={() => { void navigator.clipboard.writeText(s.username).then(() => setPreviewNotice(`Đã sao chép tên đăng nhập của ${s.full_name}.`)).catch(() => setPreviewNotice("Không sao chép tự động được.")); }} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-slate-50">Sao chép username</button>}
+                      <button type="button" onClick={() => void changeStudentUsername(s)} title="Đặt lại tên đăng nhập theo họ tên hiện tại" className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-100">Đổi tên đăng nhập</button>
                     </div>
                   </div>
                 ))}
@@ -3850,6 +3920,41 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
 
         {activeTab === 'chat' && (
           <TeacherChatTab previewMode={previewMode} onPreviewNotice={setPreviewNotice} getAvatar={(n) => getAvatar(n || "")} formatTime={formatTime} privateFileHref={privateFileHref} />
+        )}
+
+        {/* ĐỔI MẬT KHẨU TÀI KHOẢN GIÁO VIÊN */}
+        {activeTab === 'account' && (
+          <div className="space-y-6 w-full animate-in fade-in">
+            <div>
+              <h2 className="text-3xl font-extrabold text-slate-900 flex items-center gap-2">
+                <KeyRound className="w-7 h-7 text-slate-600" /> Đổi mật khẩu
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">Đổi mật khẩu đăng nhập tài khoản giáo viên của bạn.</p>
+            </div>
+            <section className="max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              {passwordChangedSuccess && (
+                <p role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">Đã đổi mật khẩu thành công.</p>
+              )}
+              <form onSubmit={handleTeacherPasswordChange} className="space-y-4">
+                <label className="block text-sm font-bold text-slate-700">
+                  Mật khẩu hiện tại
+                  <input type="password" value={teacherCurrentPassword} onChange={(e) => setTeacherCurrentPassword(e.target.value)} required className="mt-1.5 w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                </label>
+                <label className="block text-sm font-bold text-slate-700">
+                  Mật khẩu mới (tối thiểu 6 ký tự)
+                  <input type="password" value={teacherNewPassword} onChange={(e) => setTeacherNewPassword(e.target.value)} required minLength={6} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                </label>
+                <label className="block text-sm font-bold text-slate-700">
+                  Xác nhận mật khẩu mới
+                  <input type="password" value={teacherConfirmPassword} onChange={(e) => setTeacherConfirmPassword(e.target.value)} required minLength={6} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                </label>
+                {teacherPasswordError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-800">{teacherPasswordError}</p>}
+                <button type="submit" disabled={isChangingTeacherPassword} className="w-full rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white hover:bg-blue-800 disabled:opacity-50">
+                  {isChangingTeacherPassword ? "Đang đổi…" : "Đổi mật khẩu"}
+                </button>
+              </form>
+            </section>
+          </div>
         )}
       </div>
     </main>
