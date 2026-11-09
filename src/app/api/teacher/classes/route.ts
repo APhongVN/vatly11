@@ -6,6 +6,25 @@ import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 const noStore = { "Cache-Control": "no-store, max-age=0", Pragma: "no-cache" };
 const CLASS_NAME_PATTERN = /^[\p{L}\p{N} ._/-]{2,60}$/u;
 
+/**
+ * Khi bảng classes còn rỗng nhưng học sinh đã có class_name (dữ liệu cũ trước migration
+ * 20261104001300 hoặc trước trigger đồng bộ), tự dựng danh mục lớp từ dữ liệu học sinh
+ * để cô không thấy trạng thái "Chưa có lớp nào" trong khi vẫn có học sinh trong lớp.
+ * Đây chỉ là lớp hiển thị (không ghi DB); lần ghi đầu tiên sẽ do trigger ensure_class_exists tạo thật.
+ */
+function buildClassesFromStudents(countByClass: Map<string, { total: number; active: number }>) {
+  return Array.from(countByClass.keys()).map((name) => ({
+    id: `derived-${name}`,
+    name,
+    grade_level: null,
+    school_year: null,
+    homeroom_teacher: null,
+    created_at: null,
+    updated_at: null,
+    derivedFromStudents: true,
+  }));
+}
+
 /** Sắp xếp lớp thông minh: 11A1 < 11A2 < 12A1 (theo khối rồi theo số). */
 function smartClassCompare(a: string, b: string) {
   const parse = (name: string) => {
@@ -31,7 +50,7 @@ function smartClassCompare(a: string, b: string) {
 
 // GET: danh mục lớp kèm sỉ số (số học sinh) và ngày thành lập.
 export async function GET() {
-  const access = await authorizeApi(["teacher"], 40, "analytics");
+  const access = await authorizeApi(["teacher"], 60, "class-catalog");
   if ("response" in access) return access.response;
 
   try {
@@ -71,8 +90,8 @@ export async function GET() {
       countByClass.set(className, entry);
     }
 
-    const classes = (classRows || [])
-      .map((row) => {
+    const classes = (classRows && classRows.length > 0 ? classRows : buildClassesFromStudents(countByClass))
+      .map((row: any) => {
         const count = countByClass.get(row.name) || { total: 0, active: 0 };
         return { ...row, totalStudents: count.total, activeStudents: count.active };
       })

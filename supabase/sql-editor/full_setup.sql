@@ -1309,6 +1309,7 @@ BEGIN
     WHEN 'analytics' THEN 5
     WHEN 'readiness-analysis' THEN 5
     WHEN 'student-account' THEN 10
+    WHEN 'class-catalog' THEN 40
     WHEN 'account-password' THEN 6
     ELSE NULL
   END;
@@ -1458,6 +1459,7 @@ BEGIN
     WHEN 'analytics' THEN 5
     WHEN 'readiness-analysis' THEN 5
     WHEN 'student-account' THEN 10
+    WHEN 'class-catalog' THEN 40
     WHEN 'account-password' THEN 6
     WHEN 'submission' THEN 12
     WHEN 'group-submission' THEN 12
@@ -2188,10 +2190,12 @@ BEGIN
     WHEN 'analytics' THEN 5
     WHEN 'readiness-analysis' THEN 5
     WHEN 'student-account' THEN 10
+    WHEN 'class-catalog' THEN 40
     WHEN 'account-password' THEN 6
     WHEN 'submission' THEN 12
     WHEN 'group-submission' THEN 12
     WHEN 'student-question' THEN 20
+    WHEN 'class-catalog' THEN 40
     ELSE NULL
   END;
   IF expected_limit IS NULL OR p_limit < 1 OR p_limit > expected_limit THEN

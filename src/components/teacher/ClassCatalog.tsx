@@ -149,7 +149,7 @@ export default function ClassCatalog({ classes, loading, loadError = "", onReloa
               <dl className="mt-4 space-y-1.5 text-xs text-slate-600">
                 <div className="flex items-center justify-between"><dt>Sỉ số</dt><dd className="font-bold text-slate-900">{item.totalStudents} học sinh</dd></div>
                 <div className="flex items-center justify-between"><dt>Đang học</dt><dd className="font-semibold text-emerald-700">{item.activeStudents}</dd></div>
-                <div className="flex items-center justify-between"><dt>Ngày thành lập</dt><dd className="font-semibold">{new Date(item.created_at).toLocaleDateString("vi-VN")}</dd></div>
+                <div className="flex items-center justify-between"><dt>Ngày thành lập</dt><dd className="font-semibold">{item.created_at ? new Date(item.created_at).toLocaleDateString("vi-VN") : "—"}</dd></div>
                 {item.homeroom_teacher && <div className="flex items-center justify-between"><dt>GVCN</dt><dd className="font-semibold">{item.homeroom_teacher}</dd></div>}
               </dl>
               <button type="button" onClick={() => onOpenClass(item.name)} className="mt-4 flex w-full items-center justify-between rounded-xl bg-blue-50 px-3.5 py-2.5 text-sm font-bold text-blue-700 transition-colors hover:bg-blue-100">

@@ -520,10 +520,15 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   useEffect(() => {
     if (previewMode) { void fetchData(); return; }
     void fetchData();
-    void loadClassCatalog();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [fetchData, previewMode]);
+
+  // Tải danh mục lớp chỉ khi giáo viên mở tab "Danh sách sinh viên" (giảm gọi API,
+  // tránh chạm rate-limit và tránh tải lại không cần thiết).
+  useEffect(() => {
+    if (activeTab === "students" && !previewMode) void loadClassCatalog();
+  }, [activeTab, previewMode]);
 
   // Tự động tải dữ liệu thùng rác khi chuyển sang tab
   useEffect(() => {
