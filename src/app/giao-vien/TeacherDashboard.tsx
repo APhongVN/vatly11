@@ -2764,7 +2764,7 @@ const handleRubricFileUpload = async (file: File | null) => {
         onLogout={handleLogout}
         mobileNavOpen={mobileNavOpen}
         setMobileNavOpen={setMobileNavOpen}
-        classSummary={studentClassOptions.length <= 1 ? (studentClassOptions[0] ? `Lớp ${studentClassOptions[0]}` : "Quản lý lớp học") : `${studentClassOptions.length} lớp đang quản lý`}
+        classSummary="Bảng điều khiển"
       />
 
       {/* CONTENT AREA CHÍNH */}
