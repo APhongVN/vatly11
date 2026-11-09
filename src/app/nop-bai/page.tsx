@@ -10,18 +10,10 @@ import { supabase } from "@/lib/supabase";
 import { normalizeSubmissionFileUrl } from "@/lib/submission-validation";
 import {
   CheckCircle2, ArrowLeft, UploadCloud, FileText, Microscope,
-  Loader2, AlertCircle, Edit3, Send, Sparkles, User, Camera,
+  Loader2, AlertCircle, Edit3, Send, User,
   RefreshCw, Check, BookOpen, ExternalLink, HelpCircle
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-
-type GradingResult = {
-  score: number | null;
-  feedback: string;
-  model_answer: string;
-  strengths: string;
-  weaknesses: string;
-};
 
 function NopBaiContent() {
   const searchParams = useSearchParams();
@@ -36,9 +28,6 @@ function NopBaiContent() {
   const [externalLink, setExternalLink] = useState("");
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [grading, setGrading] = useState<GradingResult | null>(null);
-  const [gradingLoading, setGradingLoading] = useState(false);
-  const [ocrLoading, setOcrLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showText, setShowText] = useState(true);
 
@@ -62,42 +51,6 @@ function NopBaiContent() {
 
   const currentActivityData = activities.find(a => String(a.id) === String(selectedActivity));
 
-  // Chấm điểm bằng AI
-  const gradeAnswer = async (): Promise<GradingResult | null> => {
-    if (!textAnswer.trim()) return null;
-    setGradingLoading(true);
-    try {
-      const response = await fetch("/api/grade", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentAnswer: textAnswer,
-          activityId: parseInt(selectedActivity) || undefined,
-          activityTitle: currentActivityData?.title || "",
-          rubricText: ""
-        }),
-      });
-      const result = await response.json();
-      return {
-        score: result.score ?? null,
-        feedback: result.feedback ?? "Không có phản hồi từ AI",
-        model_answer: result.model_answer ?? "",
-        strengths: result.strengths ?? "",
-        weaknesses: result.weaknesses ?? "",
-      };
-    } catch (err: any) {
-      return {
-        score: null,
-        feedback: "Lỗi kết nối AI: " + err.message,
-        model_answer: "",
-        strengths: "",
-        weaknesses: "",
-      };
-    } finally {
-      setGradingLoading(false);
-    }
-  };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null;
     setFile(f);
@@ -106,47 +59,6 @@ function NopBaiContent() {
       setFilePreview(url);
     } else {
       setFilePreview(null);
-    }
-  };
-
-  // Trích xuất chữ từ ảnh (OCR)
-  const handleOcrImage = async () => {
-    if (!file) {
-      alert("Vui lòng chọn ảnh bài làm trước khi quét!");
-      return;
-    }
-    if (!file.type.startsWith("image/")) {
-      alert("Tệp bạn chọn không phải là ảnh. Vui lòng chọn ảnh PNG, JPG hoặc JPEG!");
-      return;
-    }
-
-    setOcrLoading(true);
-    try {
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        const base64Data = evt.target?.result as string;
-        const res = await fetch("/api/ocr", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            imageData: base64Data,
-            mimeType: file.type,
-          }),
-        });
-        const data = await res.json();
-        if (data.text) {
-          setTextAnswer(prev => prev ? `${prev}\n\n[Trích xuất từ ảnh bài làm]:\n${data.text}` : data.text);
-          setShowText(true);
-          alert("✅ Đã nhận diện chữ và công thức từ ảnh thành công! Bạn có thể kiểm tra và bấm 'Chấm điểm bằng AI'.");
-        } else {
-          alert("Lỗi trích xuất: " + (data.error || "Không nhận diện được nội dung trong ảnh."));
-        }
-        setOcrLoading(false);
-      };
-      reader.readAsDataURL(file);
-    } catch (err: any) {
-      alert("Lỗi quét ảnh: " + err.message);
-      setOcrLoading(false);
     }
   };
 
@@ -171,12 +83,6 @@ function NopBaiContent() {
       alert("Vui lòng nhập nội dung bài giải hoặc tải tệp/liên kết trước khi nộp.");
       setLoading(false);
       return;
-    }
-
-    // Chấm điểm AI nếu chưa có kết quả và có bài viết
-    let gradingResult = grading;
-    if (textAnswer.trim() && !gradingResult) {
-      gradingResult = await gradeAnswer();
     }
 
     // Upload file nếu có
@@ -217,7 +123,6 @@ function NopBaiContent() {
     });
     const result = await response.json();
     if (response.ok) {
-      setGrading(gradingResult ?? null);
       setSuccess(true);
     } else {
       if (uploadedUrl) await supabase.storage.from("class-work").remove([uploadedUrl]);
@@ -225,8 +130,6 @@ function NopBaiContent() {
     }
     setLoading(false);
   };
-
-  const isImageFile = file && file.type.startsWith("image/");
 
   if (success) {
     return (
@@ -237,32 +140,13 @@ function NopBaiContent() {
           </div>
           <div>
             <h2 className="text-2xl font-bold text-slate-800">Nộp bài thành công!</h2>
-            <p className="text-slate-500 text-sm mt-1">Bài làm của em đã được ghi nhận trên hệ thống và gửi đến giáo viên.</p>
+            <p className="text-slate-500 text-sm mt-1">Bài làm của em đã được ghi nhận trên hệ thống và gửi đến giáo viên. Giáo viên sẽ chấm và phản hồi sớm.</p>
           </div>
-
-          {grading && grading.score !== null && (
-            <div className="text-left bg-gradient-to-br from-blue-50 to-indigo-50 p-5 rounded-2xl border border-blue-100 space-y-3">
-              <div className="flex justify-between items-center pb-2 border-b border-blue-200/60">
-                  <span className="text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-indigo-600" /> Gợi ý chấm thử của AI · chờ giáo viên duyệt
-                </span>
-                <span className="text-2xl font-black text-blue-700">{grading.score}/10</span>
-              </div>
-              <p className="text-xs text-slate-700 leading-relaxed"><span className="font-semibold text-slate-900">Nhận xét:</span> {grading.feedback}</p>
-              {grading.model_answer && (
-                <div className="bg-white/80 p-3 rounded-xl border border-blue-100 text-xs text-slate-700">
-                  <span className="font-semibold text-blue-900 block mb-1">Đáp án mẫu:</span>
-                  {grading.model_answer}
-                </div>
-              )}
-            </div>
-          )}
 
           <div className="pt-2 flex flex-col gap-3">
             <button
               onClick={() => {
                 setSuccess(false);
-                setGrading(null);
                 setTextAnswer("");
                 setFile(null);
                 setFilePreview(null);
@@ -293,8 +177,8 @@ function NopBaiContent() {
           <Link href="/hoc-sinh" className="inline-flex items-center gap-2 text-slate-500 hover:text-blue-600 font-medium text-sm transition-colors">
             <ArrowLeft className="w-4 h-4" /> Quay lại lớp học
           </Link>
-          <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold border border-blue-100">
-            <Sparkles className="w-3.5 h-3.5" /> AI Chấm điểm tự động
+          <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold border border-emerald-100">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Bài nộp sẽ được giáo viên chấm
           </div>
         </div>
 
@@ -364,25 +248,24 @@ function NopBaiContent() {
             </button>
           </div>
 
-          {/* Khu vực soạn thảo & OCR */}
+          {/* Khu vực soạn thảo */}
           {showText ? (
             <div className="space-y-4">
-              {/* Box hướng dẫn & công cụ OCR */}
-              <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="text-xs text-blue-900">
-                  <p className="font-bold flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-blue-600" /> Hỗ trợ nhận diện chữ viết tay & công thức
-                  </p>
-                  <p className="text-blue-700 mt-0.5">Chụp ảnh bài làm của em rồi bấm nút bên cạnh để AI chuyển thành văn bản và công thức LaTeX!</p>
+              {/* Chọn ảnh bài làm (xem trước, giáo viên sẽ chấm) */}
+              <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="text-xs text-blue-900">
+                    <p className="font-bold">Em có thể chụp ảnh bài làm để đính kèm (giáo viên sẽ chấm trên web).</p>
+                    <p className="text-blue-700 mt-0.5">hoặc soạn nội dung trực tiếp bên dưới.</p>
+                  </div>
+                  <div>
+                    <input id="submission-image-input" type="file" accept="image/*" onChange={handleFileChange} className="sr-only" />
+                    <button type="button" onClick={() => document.getElementById("submission-image-input")?.click()} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-2 cursor-pointer w-full justify-center"
+                    >
+                      <UploadCloud className="w-4 h-4" /> {file ? "Đổi ảnh khác" : "Chọn ảnh bài làm"}
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <input id="submission-image-input" type="file" accept="image/*" onChange={handleFileChange} className="sr-only" />
-                  <button type="button" onClick={() => document.getElementById("submission-image-input")?.click()} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-2 cursor-pointer w-full justify-center"
-                  >
-                    <Camera className="w-4 h-4" /> {file ? "Đổi ảnh khác" : "Chọn ảnh bài làm"}
-                  </button>
-                </div>
-              </div>
 
               {/* Nếu đã chọn ảnh */}
               {file && (
@@ -397,17 +280,6 @@ function NopBaiContent() {
                     </div>
                   </div>
                   <div className="flex gap-2 w-full md:w-auto">
-                    {isImageFile && (
-                      <button
-                        type="button"
-                        onClick={handleOcrImage}
-                        disabled={ocrLoading}
-                        className="flex-1 md:flex-none px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-2"
-                      >
-                        {ocrLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                        {ocrLoading ? "Đang quét ảnh..." : "Quét chữ & công thức từ ảnh"}
-                      </button>
-                    )}
                     <button
                       type="button"
                       onClick={() => { setFile(null); setFilePreview(null); }}
@@ -418,6 +290,7 @@ function NopBaiContent() {
                   </div>
                 </div>
               )}
+              </div>
 
               {/* Trình soạn thảo */}
               <div className="space-y-2">
@@ -432,17 +305,8 @@ function NopBaiContent() {
                 />
               </div>
 
-              {/* Nút thử chấm AI */}
-              <div className="flex flex-wrap items-center gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={gradeAnswer}
-                  disabled={gradingLoading || !textAnswer.trim()}
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-2"
-                >
-                  {gradingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  {gradingLoading ? "AI đang chấm điểm..." : "AI Chấm thử & Góp ý ngay"}
-                </button>
+              {/* Nút xóa nội dung */}
+              <div className="flex items-center gap-3 pt-1">
                 <button
                   type="button"
                   onClick={() => setTextAnswer("")}
@@ -451,27 +315,6 @@ function NopBaiContent() {
                   Xóa nội dung
                 </button>
               </div>
-
-              {/* Hiển thị kết quả AI chấm thử */}
-              {grading && (
-                <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-50/80 to-blue-50/80 border border-indigo-100 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-indigo-600" /> Kết quả chấm thử của AI
-                    </span>
-                    <span className="text-xl font-black text-indigo-700">{grading.score}/10</span>
-                  </div>
-                  <p className="text-xs text-slate-700"><span className="font-bold text-slate-900">Góp ý:</span> {grading.feedback}</p>
-                  {grading.strengths && <p className="text-xs text-emerald-800"><span className="font-bold">Ưu điểm:</span> {grading.strengths}</p>}
-                  {grading.weaknesses && <p className="text-xs text-amber-800"><span className="font-bold">Cần lưu ý:</span> {grading.weaknesses}</p>}
-                  {grading.model_answer && (
-                    <div className="p-3 bg-white/90 rounded-xl border border-indigo-100 text-xs text-slate-800">
-                      <span className="font-bold text-indigo-900 block mb-1">Đáp án gợi ý:</span>
-                      {grading.model_answer}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           ) : (
             <div className="space-y-5">
