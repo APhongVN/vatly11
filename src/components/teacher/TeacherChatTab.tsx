@@ -33,7 +33,7 @@ export default function TeacherChatTab({ previewMode, onPreviewNotice, getAvatar
       return;
     }
     (async () => {
-      const { data: msgs } = await supabase.from("messages").select("id, sender_name, content, attachment_url, attachment_name, attachment_type, created_at").order("created_at");
+      const { data: msgs } = await supabase.from("messages").select("id, sender_id, sender_role, sender_name, content, attachment_url, attachment_name, attachment_type, created_at").order("created_at");
       if (msgs) setMessages([...msgs].reverse());
       const { data: setting } = await supabase.from("chat_settings").select("*").limit(1).maybeSingle();
       if (setting) {
@@ -45,7 +45,7 @@ export default function TeacherChatTab({ previewMode, onPreviewNotice, getAvatar
 
   const reload = async () => {
     if (previewMode) return;
-    const { data: msgs } = await supabase.from("messages").select("id, sender_name, content, attachment_url, attachment_name, attachment_type, created_at").order("created_at");
+    const { data: msgs } = await supabase.from("messages").select("id, sender_id, sender_role, sender_name, content, attachment_url, attachment_name, attachment_type, created_at").order("created_at");
     if (msgs) setMessages([...msgs].reverse());
     // Nạp lại thiết lập kênh để trạng thái khóa/mở cập nhật ngay, không cần tải lại trang.
     const { data: setting } = await supabase.from("chat_settings").select("*").limit(1).maybeSingle();
@@ -91,7 +91,15 @@ export default function TeacherChatTab({ previewMode, onPreviewNotice, getAvatar
         if (uploadError) throw uploadError;
         attachment = { attachment_url: path, attachment_name: chatFile.name, attachment_type: contentType };
       }
-      const { error } = await supabase.from("messages").insert([{ sender_name: "Cô Hương Xuân (Giáo viên)", content: newMsg.trim(), ...attachment }]);
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUserId = authData?.user?.id;
+      // Lấy tên hiển thị thật của giáo viên từ hồ sơ; nếu không có, để DB trigger tự điền theo auth.uid().
+      let senderDisplay = "";
+      if (currentUserId) {
+        const { data: me } = await supabase.from("profiles").select("full_name").eq("id", currentUserId).maybeSingle();
+        senderDisplay = (me as { full_name?: string } | null)?.full_name || "";
+      }
+      const { error } = await supabase.from("messages").insert([{ sender_name: senderDisplay || undefined, content: newMsg.trim(), ...attachment }]);
       if (error) throw error;
       setNewMsg(""); setChatFile(null); await reload();
     } catch (error) {
@@ -135,7 +143,8 @@ export default function TeacherChatTab({ previewMode, onPreviewNotice, getAvatar
 
       <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-slate-50/50">
         {messages.map(m => {
-          const isTeacher = m.sender_name?.includes('Cô') || m.sender_name?.includes('Giáo viên');
+          const isTeacher = m.sender_role === "teacher"
+            || (!m.sender_role && typeof m.sender_name === "string" && m.sender_name.includes("(Giáo viên)"));
           return (
             <div key={m.id} className={`flex gap-3 group ${isTeacher ? 'flex-row-reverse' : ''}`}>
               <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm ${isTeacher ? 'bg-blue-600' : 'bg-emerald-600'}`}>

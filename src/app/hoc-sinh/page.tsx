@@ -926,7 +926,10 @@ export default function HocSinhPage() {
             <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-slate-50/50">
               {messages.map(m => {
                 const isMe = isMessageFromUser(m, student.auth_user_id);
-                const isTeacher = m.sender_name?.includes('Cô') || m.sender_name?.includes('Giáo viên');
+                // Giáo viên được nhận diện bằng cờ sender_role do DB ghi (không đoán theo tên hiển thị),
+                // giữ tương thích với dữ liệu cũ bằng nhãn "(Giáo viên)" do app chèn khi gửi.
+                const isTeacher = m.sender_role === "teacher"
+                  || (!m.sender_role && typeof m.sender_name === "string" && m.sender_name.includes("(Giáo viên)"));
                 return (
                   <div key={m.id} className={`flex gap-3 group ${isMe ? 'flex-row-reverse' : ''}`}>
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 ${
