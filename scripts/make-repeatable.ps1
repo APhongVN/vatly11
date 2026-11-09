@@ -7,10 +7,12 @@ $text = [System.IO.File]::ReadAllText($in)
 # Xac dinh ten policy (chuoi trong ngoac kep) roi xoa truoc khi tao lai.
 $text = [regex]::Replace(
   $text,
-  '(?m)^(CREATE POLICY\s+)"([^"]+)"(\s+ON\s+)([A-Za-z0-9_\.]+)',
+  '(?m)^CREATE POLICY\s+"([^"]+)"\s+ON\s+([A-Za-z0-9_\.]+)',
   {
     param($m)
-    $drop = 'DROP POLICY IF EXISTS ' + $m.Groups[1].Value + ' ON ' + $m.Groups[3].Value + ';' + [System.Environment]::NewLine
+    $name = $m.Groups[1].Value
+    $table = $m.Groups[2].Value
+    $drop = 'DROP POLICY IF EXISTS "' + $name + '" ON ' + $table + ';' + [System.Environment]::NewLine
     return $drop + $m.Value
   }
 )
