@@ -2944,9 +2944,6 @@ const handleRubricFileUpload = async (file: File | null) => {
             </div>
           </div>
         )}
-        <Link href="/" className="absolute top-6 right-8 hidden bg-white text-slate-600 p-3 rounded-full shadow-md border hover:bg-slate-50 transition-all z-10 lg:inline-flex" title="Về trang chủ">
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
 
         {/* 1. TAB TRANG CHỦ GIÁO VIÊN */}
         {activeTab === 'home' && (

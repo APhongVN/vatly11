@@ -11,16 +11,17 @@ export default function ChatbotLoader() {
   const [opened, setOpened] = useState(false);
   const pathname = usePathname();
 
-  // Chỉ hiện trợ lý AI cho học sinh (cổng học sinh / làm bài / nộp bài / phiếu nhóm).
-  // Giáo viên có sẵn nhiều công cụ AI riêng trong bảng điều khiển nên không cần.
-  const studentPaths = ["/hoc-sinh", "/lam-bai", "/nop-bai", "/phieu-nhom", "/doi-mat-khau"];
-  const showForStudent = studentPaths.some((path) => pathname === path || pathname.startsWith(path + "/"));
+  // Trợ lý AI dùng được cho CẢ học sinh và giáo viên.
+  // - Học sinh: chatbot là công cụ AI duy nhất (không có AI chấm điểm).
+  // - Giáo viên: chatbot hỗ trợ soạn đề/giải thích, song song các công cụ AI khác trong bảng điều khiển.
+  const chatbotPaths = ["/hoc-sinh", "/lam-bai", "/nop-bai", "/phieu-nhom", "/doi-mat-khau", "/giao-vien"];
+  const showChatbot = chatbotPaths.some((path) => pathname === path || pathname.startsWith(path + "/"));
 
   useEffect(() => {
-    if (!showForStudent) setOpened(false);
-  }, [showForStudent]);
+    if (!showChatbot) setOpened(false);
+  }, [showChatbot]);
 
-  if (!showForStudent) return null;
+  if (!showChatbot) return null;
   if (opened) return <Chatbot initiallyOpen />;
 
   return (
