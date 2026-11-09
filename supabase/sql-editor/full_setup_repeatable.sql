@@ -229,35 +229,51 @@ END $$;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 GRANT SELECT ON public.courses, public.chapters TO anon;
 
-CREATE POLICY IF NOT EXISTS "profiles_read_self_or_teacher" ON public.profiles FOR SELECT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "profiles_read_self_or_teacher" ON public.profiles FOR SELECT TO authenticated
   USING (id = auth.uid() OR public.is_teacher());
-CREATE POLICY IF NOT EXISTS "profiles_teacher_update" ON public.profiles FOR UPDATE TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "profiles_teacher_update" ON public.profiles FOR UPDATE TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
 
-CREATE POLICY IF NOT EXISTS "courses_read_authenticated" ON public.courses FOR SELECT TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "courses_read_public" ON public.courses FOR SELECT TO anon USING (true);
-CREATE POLICY IF NOT EXISTS "courses_teacher_manage" ON public.courses FOR ALL TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "courses_read_authenticated" ON public.courses FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "courses_read_public" ON public.courses FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "courses_teacher_manage" ON public.courses FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "chapters_read_authenticated" ON public.chapters FOR SELECT TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "chapters_read_public" ON public.chapters FOR SELECT TO anon USING (true);
-CREATE POLICY IF NOT EXISTS "chapters_teacher_manage" ON public.chapters FOR ALL TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "chapters_read_authenticated" ON public.chapters FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "chapters_read_public" ON public.chapters FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "chapters_teacher_manage" ON public.chapters FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "activities_read_authenticated" ON public.activities FOR SELECT TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "activities_teacher_manage" ON public.activities FOR ALL TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "activities_read_authenticated" ON public.activities FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "activities_teacher_manage" ON public.activities FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "activity_guides_teacher_manage" ON public.activity_grading_guides FOR ALL TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "activity_guides_teacher_manage" ON public.activity_grading_guides FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
 
-CREATE POLICY IF NOT EXISTS "students_teacher_manage" ON public.students FOR ALL TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "students_teacher_manage" ON public.students FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "students_read_self" ON public.students FOR SELECT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "students_read_self" ON public.students FOR SELECT TO authenticated
   USING (auth_user_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS "submissions_teacher_manage" ON public.submissions FOR ALL TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "submissions_teacher_manage" ON public.submissions FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "submissions_student_read_own" ON public.submissions FOR SELECT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "submissions_student_read_own" ON public.submissions FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM public.students s WHERE s.id = student_id AND s.auth_user_id = auth.uid()));
-CREATE POLICY IF NOT EXISTS "submissions_student_insert_own" ON public.submissions FOR INSERT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "submissions_student_insert_own" ON public.submissions FOR INSERT TO authenticated
   WITH CHECK (
     EXISTS (SELECT 1 FROM public.students s WHERE s.id = student_id AND s.auth_user_id = auth.uid())
     AND EXISTS (SELECT 1 FROM public.activities a WHERE a.id = activity_id AND a.status = 'available'
@@ -292,31 +308,41 @@ DROP TRIGGER IF EXISTS submissions_protect_student_insert ON public.submissions;
 CREATE TRIGGER submissions_protect_student_insert BEFORE INSERT ON public.submissions
   FOR EACH ROW EXECUTE FUNCTION public.protect_student_submission();
 
-CREATE POLICY IF NOT EXISTS "groups_teacher_manage_assignments" ON public.group_assignments FOR ALL TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "groups_teacher_manage_assignments" ON public.group_assignments FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "groups_student_read_assignments" ON public.group_assignments FOR SELECT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "groups_student_read_assignments" ON public.group_assignments FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.group_assignment_groups g
     JOIN public.group_assignment_members m ON m.group_id = g.id
     JOIN public.students s ON s.id = m.student_id
     WHERE g.assignment_id = group_assignments.id AND s.auth_user_id = auth.uid()
   ));
-CREATE POLICY IF NOT EXISTS "group_structures_teacher_manage" ON public.group_assignment_groups FOR ALL TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "group_structures_teacher_manage" ON public.group_assignment_groups FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "group_structures_student_read" ON public.group_assignment_groups FOR SELECT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "group_structures_student_read" ON public.group_assignment_groups FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM public.group_assignment_members m JOIN public.students s ON s.id=m.student_id WHERE m.group_id=group_assignment_groups.id AND s.auth_user_id=auth.uid()));
-CREATE POLICY IF NOT EXISTS "group_members_teacher_manage" ON public.group_assignment_members FOR ALL TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "group_members_teacher_manage" ON public.group_assignment_members FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "group_members_student_read_own" ON public.group_assignment_members FOR SELECT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "group_members_student_read_own" ON public.group_assignment_members FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM public.students s WHERE s.id=student_id AND s.auth_user_id=auth.uid()));
-CREATE POLICY IF NOT EXISTS "group_submissions_teacher_manage" ON public.group_submissions FOR ALL TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "group_submissions_teacher_manage" ON public.group_submissions FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "group_submissions_student_read_member" ON public.group_submissions FOR SELECT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "group_submissions_student_read_member" ON public.group_submissions FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM public.group_assignment_members m JOIN public.students s ON s.id=m.student_id WHERE m.group_id=group_submissions.group_id AND s.auth_user_id=auth.uid()));
-CREATE POLICY IF NOT EXISTS "group_submissions_student_insert_member" ON public.group_submissions FOR INSERT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "group_submissions_student_insert_member" ON public.group_submissions FOR INSERT TO authenticated
   WITH CHECK (EXISTS (SELECT 1 FROM public.group_assignment_members m JOIN public.students s ON s.id=m.student_id WHERE m.group_id=group_submissions.group_id AND s.auth_user_id=auth.uid())
     AND EXISTS (SELECT 1 FROM public.group_assignments a WHERE a.id=assignment_id AND (a.deadline IS NULL OR a.deadline >= now())));
-CREATE POLICY IF NOT EXISTS "group_submissions_student_update_member" ON public.group_submissions FOR UPDATE TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "group_submissions_student_update_member" ON public.group_submissions FOR UPDATE TO authenticated
   USING (EXISTS (SELECT 1 FROM public.group_assignment_members m JOIN public.students s ON s.id=m.student_id WHERE m.group_id=group_submissions.group_id AND s.auth_user_id=auth.uid()))
   WITH CHECK (EXISTS (SELECT 1 FROM public.group_assignment_members m JOIN public.students s ON s.id=m.student_id WHERE m.group_id=group_submissions.group_id AND s.auth_user_id=auth.uid())
     AND EXISTS (SELECT 1 FROM public.group_assignments a WHERE a.id=assignment_id AND (a.deadline IS NULL OR a.deadline >= now())));
@@ -344,19 +370,29 @@ DROP TRIGGER IF EXISTS group_submissions_normalize ON public.group_submissions;
 CREATE TRIGGER group_submissions_normalize BEFORE INSERT OR UPDATE ON public.group_submissions
   FOR EACH ROW EXECUTE FUNCTION public.normalize_group_submission();
 
-CREATE POLICY IF NOT EXISTS "quizzes_read_authenticated" ON public.quizzes FOR SELECT TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "quizzes_teacher_manage" ON public.quizzes FOR ALL TO authenticated USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "questions_read_authenticated" ON public.quiz_questions FOR SELECT TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "questions_teacher_manage" ON public.quiz_questions FOR ALL TO authenticated USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "question_keys_teacher_manage" ON public.quiz_question_keys FOR ALL TO authenticated USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "quiz_submissions_teacher_read" ON public.quiz_submissions FOR SELECT TO authenticated USING (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "quiz_submissions_student_manage_own" ON public.quiz_submissions FOR ALL TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "quizzes_read_authenticated" ON public.quizzes FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "quizzes_teacher_manage" ON public.quizzes FOR ALL TO authenticated USING (public.is_teacher()) WITH CHECK (public.is_teacher());
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "questions_read_authenticated" ON public.quiz_questions FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "questions_teacher_manage" ON public.quiz_questions FOR ALL TO authenticated USING (public.is_teacher()) WITH CHECK (public.is_teacher());
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "question_keys_teacher_manage" ON public.quiz_question_keys FOR ALL TO authenticated USING (public.is_teacher()) WITH CHECK (public.is_teacher());
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "quiz_submissions_teacher_read" ON public.quiz_submissions FOR SELECT TO authenticated USING (public.is_teacher());
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "quiz_submissions_student_manage_own" ON public.quiz_submissions FOR ALL TO authenticated
   USING (EXISTS (SELECT 1 FROM public.students s WHERE s.id=student_id AND s.auth_user_id=auth.uid()))
   WITH CHECK (EXISTS (SELECT 1 FROM public.students s WHERE s.id=student_id AND s.auth_user_id=auth.uid()));
 
-CREATE POLICY IF NOT EXISTS "messages_read_authenticated" ON public.messages FOR SELECT TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "messages_insert_own" ON public.messages FOR INSERT TO authenticated WITH CHECK (sender_id = auth.uid());
-CREATE POLICY IF NOT EXISTS "messages_delete_own_or_teacher" ON public.messages FOR DELETE TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "messages_read_authenticated" ON public.messages FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "messages_insert_own" ON public.messages FOR INSERT TO authenticated WITH CHECK (sender_id = auth.uid());
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "messages_delete_own_or_teacher" ON public.messages FOR DELETE TO authenticated
   USING (sender_id = auth.uid() OR public.is_teacher());
 CREATE OR REPLACE FUNCTION public.set_message_sender_identity()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
@@ -372,10 +408,14 @@ $$;
 DROP TRIGGER IF EXISTS messages_set_sender_identity ON public.messages;
 CREATE TRIGGER messages_set_sender_identity BEFORE INSERT ON public.messages
   FOR EACH ROW EXECUTE FUNCTION public.set_message_sender_identity();
-CREATE POLICY IF NOT EXISTS "chat_settings_read_authenticated" ON public.chat_settings FOR SELECT TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "chat_settings_teacher_manage" ON public.chat_settings FOR ALL TO authenticated USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "enrollments_teacher_manage" ON public.course_enrollments FOR ALL TO authenticated USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "enrollments_student_read_own" ON public.course_enrollments FOR SELECT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "chat_settings_read_authenticated" ON public.chat_settings FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "chat_settings_teacher_manage" ON public.chat_settings FOR ALL TO authenticated USING (public.is_teacher()) WITH CHECK (public.is_teacher());
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "enrollments_teacher_manage" ON public.course_enrollments FOR ALL TO authenticated USING (public.is_teacher()) WITH CHECK (public.is_teacher());
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "enrollments_student_read_own" ON public.course_enrollments FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM public.students s WHERE s.id=course_enrollments.student_id AND s.auth_user_id=auth.uid()));
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -387,7 +427,8 @@ VALUES ('class-work', 'class-work', FALSE, 26214400, ARRAY[
   'video/mp4','video/webm','text/plain','text/csv','application/zip','application/x-zip-compressed'
 ])
 ON CONFLICT (id) DO UPDATE SET public = FALSE, file_size_limit = 26214400, allowed_mime_types = EXCLUDED.allowed_mime_types;
-CREATE POLICY IF NOT EXISTS "class_work_read_authorized" ON storage.objects FOR SELECT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "class_work_read_authorized" ON storage.objects FOR SELECT TO authenticated
   USING (bucket_id = 'class-work' AND (public.is_teacher()
     OR (storage.foldername(name))[1] = 'chat'
     OR (storage.foldername(name))[2] = auth.uid()::text
@@ -395,12 +436,15 @@ CREATE POLICY IF NOT EXISTS "class_work_read_authorized" ON storage.objects FOR 
       JOIN public.group_assignment_members m ON m.group_id=gs.group_id
       JOIN public.students s ON s.id=m.student_id
       WHERE gs.file_url=storage.objects.name AND s.auth_user_id=auth.uid())));
-CREATE POLICY IF NOT EXISTS "class_work_upload_own" ON storage.objects FOR INSERT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "class_work_upload_own" ON storage.objects FOR INSERT TO authenticated
   WITH CHECK (bucket_id = 'class-work' AND (storage.foldername(name))[2] = auth.uid()::text);
-CREATE POLICY IF NOT EXISTS "class_work_update_own_or_teacher" ON storage.objects FOR UPDATE TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "class_work_update_own_or_teacher" ON storage.objects FOR UPDATE TO authenticated
   USING (bucket_id = 'class-work' AND (public.is_teacher() OR (storage.foldername(name))[2] = auth.uid()::text))
   WITH CHECK (bucket_id = 'class-work' AND (public.is_teacher() OR (storage.foldername(name))[2] = auth.uid()::text));
-CREATE POLICY IF NOT EXISTS "class_work_delete_own_or_teacher" ON storage.objects FOR DELETE TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "class_work_delete_own_or_teacher" ON storage.objects FOR DELETE TO authenticated
   USING (bucket_id = 'class-work' AND (public.is_teacher() OR (storage.foldername(name))[2] = auth.uid()::text));
 
 -- Teacher lesson files are private to authenticated class users. Remove legacy
@@ -426,17 +470,21 @@ VALUES ('videos', 'videos', FALSE, 104857600, ARRAY[
 ])
 ON CONFLICT (id) DO UPDATE SET public = FALSE, file_size_limit = 104857600, allowed_mime_types = EXCLUDED.allowed_mime_types;
 
-CREATE POLICY IF NOT EXISTS "videos_read_activity_document" ON storage.objects FOR SELECT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "videos_read_activity_document" ON storage.objects FOR SELECT TO authenticated
   USING (bucket_id = 'videos' AND (public.is_teacher() OR EXISTS (
     SELECT 1 FROM public.activities a
     WHERE a.document_url = storage.objects.name AND a.status = 'available'
   )));
-CREATE POLICY IF NOT EXISTS "videos_teacher_upload" ON storage.objects FOR INSERT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "videos_teacher_upload" ON storage.objects FOR INSERT TO authenticated
   WITH CHECK (bucket_id = 'videos' AND public.is_teacher());
-CREATE POLICY IF NOT EXISTS "videos_teacher_update" ON storage.objects FOR UPDATE TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "videos_teacher_update" ON storage.objects FOR UPDATE TO authenticated
   USING (bucket_id = 'videos' AND public.is_teacher())
   WITH CHECK (bucket_id = 'videos' AND public.is_teacher());
-CREATE POLICY IF NOT EXISTS "videos_teacher_delete" ON storage.objects FOR DELETE TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "videos_teacher_delete" ON storage.objects FOR DELETE TO authenticated
   USING (bucket_id = 'videos' AND public.is_teacher());
 
 UPDATE public.activities
@@ -536,23 +584,28 @@ CREATE INDEX IF NOT EXISTS idx_learning_resources_created_at ON public.learning_
 
 ALTER TABLE public.learning_resources ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Published resources are readable" ON public.learning_resources
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "Published resources are readable" ON public.learning_resources
   FOR SELECT USING (is_published = TRUE);
 
-CREATE POLICY IF NOT EXISTS "Teachers read all resources" ON public.learning_resources
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "Teachers read all resources" ON public.learning_resources
   FOR SELECT TO authenticated
   USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'teacher');
 
-CREATE POLICY IF NOT EXISTS "Teachers insert resources" ON public.learning_resources
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "Teachers insert resources" ON public.learning_resources
   FOR INSERT TO authenticated
   WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') = 'teacher');
 
-CREATE POLICY IF NOT EXISTS "Teachers update resources" ON public.learning_resources
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "Teachers update resources" ON public.learning_resources
   FOR UPDATE TO authenticated
   USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'teacher')
   WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') = 'teacher');
 
-CREATE POLICY IF NOT EXISTS "Teachers delete resources" ON public.learning_resources
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "Teachers delete resources" ON public.learning_resources
   FOR DELETE TO authenticated
   USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'teacher');
 
@@ -560,7 +613,8 @@ INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 VALUES ('learning-resources', 'learning-resources', FALSE, 104857600, NULL)
 ON CONFLICT (id) DO UPDATE SET public = FALSE, file_size_limit = 104857600, allowed_mime_types = NULL;
 
-CREATE POLICY IF NOT EXISTS "Published resource files are readable" ON storage.objects
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "Published resource files are readable" ON storage.objects
   FOR SELECT USING (
     bucket_id = 'learning-resources'
     AND EXISTS (
@@ -569,14 +623,16 @@ CREATE POLICY IF NOT EXISTS "Published resource files are readable" ON storage.o
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Teachers upload learning resource files" ON storage.objects
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "Teachers upload learning resource files" ON storage.objects
   FOR INSERT TO authenticated
   WITH CHECK (
     bucket_id = 'learning-resources'
     AND (auth.jwt() -> 'app_metadata' ->> 'role') = 'teacher'
   );
 
-CREATE POLICY IF NOT EXISTS "Teachers update learning resource files" ON storage.objects
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "Teachers update learning resource files" ON storage.objects
   FOR UPDATE TO authenticated
   USING (
     bucket_id = 'learning-resources'
@@ -587,13 +643,15 @@ CREATE POLICY IF NOT EXISTS "Teachers update learning resource files" ON storage
     AND (auth.jwt() -> 'app_metadata' ->> 'role') = 'teacher'
   );
 
-CREATE POLICY IF NOT EXISTS "Teachers delete learning resource files" ON storage.objects
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "Teachers delete learning resource files" ON storage.objects
   FOR DELETE TO authenticated
   USING (
     bucket_id = 'learning-resources'
     AND (auth.jwt() -> 'app_metadata' ->> 'role') = 'teacher'
   );
-CREATE POLICY IF NOT EXISTS "Teachers read learning resource files" ON storage.objects
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "Teachers read learning resource files" ON storage.objects
   FOR SELECT TO authenticated
   USING (
     bucket_id = 'learning-resources'
@@ -616,13 +674,17 @@ DROP POLICY IF EXISTS "Teachers read all resources" ON public.learning_resources
 DROP POLICY IF EXISTS "Teachers insert resources" ON public.learning_resources;
 DROP POLICY IF EXISTS "Teachers update resources" ON public.learning_resources;
 DROP POLICY IF EXISTS "Teachers delete resources" ON public.learning_resources;
-CREATE POLICY IF NOT EXISTS "resources_read_published_or_teacher" ON public.learning_resources FOR SELECT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "resources_read_published_or_teacher" ON public.learning_resources FOR SELECT TO authenticated
   USING (is_published OR public.is_teacher());
-CREATE POLICY IF NOT EXISTS "resources_teacher_insert" ON public.learning_resources FOR INSERT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "resources_teacher_insert" ON public.learning_resources FOR INSERT TO authenticated
   WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "resources_teacher_update" ON public.learning_resources FOR UPDATE TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "resources_teacher_update" ON public.learning_resources FOR UPDATE TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
-CREATE POLICY IF NOT EXISTS "resources_teacher_delete" ON public.learning_resources FOR DELETE TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "resources_teacher_delete" ON public.learning_resources FOR DELETE TO authenticated
   USING (public.is_teacher());
 
 DROP POLICY IF EXISTS "Teachers upload learning resource files" ON storage.objects;
@@ -630,16 +692,20 @@ DROP POLICY IF EXISTS "Teachers update learning resource files" ON storage.objec
 DROP POLICY IF EXISTS "Teachers delete learning resource files" ON storage.objects;
 DROP POLICY IF EXISTS "Teachers read learning resource files" ON storage.objects;
 DROP POLICY IF EXISTS "Published resource files are readable" ON storage.objects;
-CREATE POLICY IF NOT EXISTS "learning_resource_objects_read" ON storage.objects FOR SELECT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "learning_resource_objects_read" ON storage.objects FOR SELECT TO authenticated
   USING (bucket_id = 'learning-resources' AND (public.is_teacher() OR EXISTS (
     SELECT 1 FROM public.learning_resources r WHERE r.storage_path = storage.objects.name AND r.is_published
   )));
-CREATE POLICY IF NOT EXISTS "learning_resource_objects_insert" ON storage.objects FOR INSERT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "learning_resource_objects_insert" ON storage.objects FOR INSERT TO authenticated
   WITH CHECK (bucket_id = 'learning-resources' AND public.is_teacher());
-CREATE POLICY IF NOT EXISTS "learning_resource_objects_update" ON storage.objects FOR UPDATE TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "learning_resource_objects_update" ON storage.objects FOR UPDATE TO authenticated
   USING (bucket_id = 'learning-resources' AND public.is_teacher())
   WITH CHECK (bucket_id = 'learning-resources' AND public.is_teacher());
-CREATE POLICY IF NOT EXISTS "learning_resource_objects_delete" ON storage.objects FOR DELETE TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "learning_resource_objects_delete" ON storage.objects FOR DELETE TO authenticated
   USING (bucket_id = 'learning-resources' AND public.is_teacher());
 
 -- ===== 20261031001000_api_rate_limits.sql =====
@@ -778,20 +844,24 @@ REVOKE ALL ON public.quiz_question_keys FROM anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.activity_grading_guides TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.quiz_question_keys TO authenticated;
 DROP POLICY IF EXISTS "activity_guides_teacher_manage" ON public.activity_grading_guides;
-CREATE POLICY IF NOT EXISTS "activity_guides_teacher_manage" ON public.activity_grading_guides FOR ALL TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "activity_guides_teacher_manage" ON public.activity_grading_guides FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
 DROP POLICY IF EXISTS "question_keys_teacher_manage" ON public.quiz_question_keys;
-CREATE POLICY IF NOT EXISTS "question_keys_teacher_manage" ON public.quiz_question_keys FOR ALL TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "question_keys_teacher_manage" ON public.quiz_question_keys FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
 
 -- Students may read their own quiz results, but only the server may write scores.
 DROP POLICY IF EXISTS "quiz_submissions_student_manage_own" ON public.quiz_submissions;
 DROP POLICY IF EXISTS "quiz_submissions_student_read_own" ON public.quiz_submissions;
-CREATE POLICY IF NOT EXISTS "quiz_submissions_student_read_own" ON public.quiz_submissions FOR SELECT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "quiz_submissions_student_read_own" ON public.quiz_submissions FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM public.students s WHERE s.id=student_id AND s.auth_user_id=auth.uid()));
 DROP POLICY IF EXISTS "quiz_submissions_teacher_read" ON public.quiz_submissions;
 DROP POLICY IF EXISTS "quiz_submissions_teacher_manage" ON public.quiz_submissions;
-CREATE POLICY IF NOT EXISTS "quiz_submissions_teacher_manage" ON public.quiz_submissions FOR ALL TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "quiz_submissions_teacher_manage" ON public.quiz_submissions FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
 REVOKE INSERT, UPDATE, DELETE ON public.quiz_submissions FROM authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.quiz_submissions TO service_role;
@@ -839,7 +909,9 @@ REVOKE ALL ON public.quiz_submission_duplicate_archive FROM anon, authenticated;
 GRANT SELECT ON public.quiz_submission_duplicate_archive TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.quiz_submission_duplicate_archive TO service_role;
 DROP POLICY IF EXISTS "quiz_submission_archive_teacher_read" ON public.quiz_submission_duplicate_archive;
-CREATE POLICY IF NOT EXISTS "quiz_submission_archive_teacher_read"
+DROP POLICY IF EXISTS CREATE POLICY  ON 
+  ON ;
+CREATE POLICY "quiz_submission_archive_teacher_read"
   ON public.quiz_submission_duplicate_archive FOR SELECT TO authenticated
   USING (public.is_teacher());
 
@@ -870,14 +942,18 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.activity_evidence TO authenticate
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.activity_evidence TO service_role;
 
 DROP POLICY IF EXISTS "activity_evidence_student_read_own" ON public.activity_evidence;
-CREATE POLICY IF NOT EXISTS "activity_evidence_student_read_own"
+DROP POLICY IF EXISTS CREATE POLICY  ON 
+  ON ;
+CREATE POLICY "activity_evidence_student_read_own"
   ON public.activity_evidence FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.students s
     WHERE s.id = activity_evidence.student_id AND s.auth_user_id = auth.uid()
   ));
 DROP POLICY IF EXISTS "activity_evidence_teacher_manage" ON public.activity_evidence;
-CREATE POLICY IF NOT EXISTS "activity_evidence_teacher_manage"
+DROP POLICY IF EXISTS CREATE POLICY  ON 
+  ON ;
+CREATE POLICY "activity_evidence_teacher_manage"
   ON public.activity_evidence FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
 
@@ -887,12 +963,16 @@ CREATE POLICY IF NOT EXISTS "activity_evidence_teacher_manage"
 GRANT SELECT ON public.learning_resources TO anon, authenticated;
 
 DROP POLICY IF EXISTS "resources_read_published_or_teacher" ON public.learning_resources;
-CREATE POLICY IF NOT EXISTS "resources_read_published_or_teacher"
+DROP POLICY IF EXISTS CREATE POLICY  ON 
+  ON ;
+CREATE POLICY "resources_read_published_or_teacher"
   ON public.learning_resources FOR SELECT TO anon, authenticated
   USING (is_published OR (auth.uid() IS NOT NULL AND public.is_teacher()));
 
 DROP POLICY IF EXISTS "learning_resource_objects_read" ON storage.objects;
-CREATE POLICY IF NOT EXISTS "learning_resource_objects_read"
+DROP POLICY IF EXISTS CREATE POLICY  ON 
+  ON ;
+CREATE POLICY "learning_resource_objects_read"
   ON storage.objects FOR SELECT TO anon, authenticated
   USING (
     bucket_id = 'learning-resources'
@@ -1191,13 +1271,13 @@ GRANT SELECT, INSERT, UPDATE ON public.capacitance_lab_settings TO authenticated
 GRANT SELECT, INSERT, UPDATE ON public.capacitance_lab_settings TO service_role;
 
 DROP POLICY IF EXISTS capacitance_lab_settings_read_authenticated ON public.capacitance_lab_settings;
-CREATE POLICY IF NOT EXISTS capacitance_lab_settings_read_authenticated
+CREATE POLICY capacitance_lab_settings_read_authenticated
   ON public.capacitance_lab_settings FOR SELECT TO authenticated USING (auth.uid() IS NOT NULL);
 DROP POLICY IF EXISTS capacitance_lab_settings_teacher_insert ON public.capacitance_lab_settings;
-CREATE POLICY IF NOT EXISTS capacitance_lab_settings_teacher_insert
+CREATE POLICY capacitance_lab_settings_teacher_insert
   ON public.capacitance_lab_settings FOR INSERT TO authenticated WITH CHECK (public.is_teacher());
 DROP POLICY IF EXISTS capacitance_lab_settings_teacher_update ON public.capacitance_lab_settings;
-CREATE POLICY IF NOT EXISTS capacitance_lab_settings_teacher_update
+CREATE POLICY capacitance_lab_settings_teacher_update
   ON public.capacitance_lab_settings FOR UPDATE TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
 
@@ -1273,7 +1353,8 @@ GRANT EXECUTE ON FUNCTION public.consume_api_rate_limit(UUID, TEXT, INTEGER, INT
 CREATE INDEX IF NOT EXISTS idx_activities_document_url ON public.activities(document_url) WHERE document_url IS NOT NULL;
 DROP POLICY IF EXISTS "videos_read_authenticated" ON storage.objects;
 DROP POLICY IF EXISTS "videos_read_activity_document" ON storage.objects;
-CREATE POLICY IF NOT EXISTS "videos_read_activity_document" ON storage.objects
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "videos_read_activity_document" ON storage.objects
   FOR SELECT TO authenticated
   USING (
     bucket_id = 'videos'
@@ -1438,7 +1519,8 @@ ALTER TABLE public.group_assignments
   CHECK (rubric_document_name IS NULL OR char_length(rubric_document_name) BETWEEN 1 AND 255);
 
 DROP POLICY IF EXISTS "group_rubric_objects_read_members" ON storage.objects;
-CREATE POLICY IF NOT EXISTS "group_rubric_objects_read_members" ON storage.objects FOR SELECT TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "group_rubric_objects_read_members" ON storage.objects FOR SELECT TO authenticated
   USING (
     bucket_id = 'class-work'
     AND (storage.foldername(name))[1] = 'group-rubrics'
@@ -1639,7 +1721,9 @@ ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "activities_read_public" ON public.activities;
 DROP POLICY IF EXISTS "activities_read_published_metadata" ON public.activities;
-CREATE POLICY IF NOT EXISTS "activities_read_published_metadata"
+DROP POLICY IF EXISTS CREATE POLICY  ON 
+  ON ;
+CREATE POLICY "activities_read_published_metadata"
   ON public.activities
   FOR SELECT
   TO anon
@@ -2058,7 +2142,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.student_questions TO authenticate
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.student_questions TO service_role;
 
 DROP POLICY IF EXISTS "student_questions_student_read_own" ON public.student_questions;
-CREATE POLICY IF NOT EXISTS "student_questions_student_read_own"
+DROP POLICY IF EXISTS CREATE POLICY  ON 
+  ON ;
+CREATE POLICY "student_questions_student_read_own"
   ON public.student_questions FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.students s
@@ -2066,7 +2152,9 @@ CREATE POLICY IF NOT EXISTS "student_questions_student_read_own"
   ));
 
 DROP POLICY IF EXISTS "student_questions_student_insert_own" ON public.student_questions;
-CREATE POLICY IF NOT EXISTS "student_questions_student_insert_own"
+DROP POLICY IF EXISTS CREATE POLICY  ON 
+  ON ;
+CREATE POLICY "student_questions_student_insert_own"
   ON public.student_questions FOR INSERT TO authenticated
   WITH CHECK (
     status = 'unanswered'
@@ -2078,7 +2166,9 @@ CREATE POLICY IF NOT EXISTS "student_questions_student_insert_own"
   );
 
 DROP POLICY IF EXISTS "student_questions_teacher_manage" ON public.student_questions;
-CREATE POLICY IF NOT EXISTS "student_questions_teacher_manage"
+DROP POLICY IF EXISTS CREATE POLICY  ON 
+  ON ;
+CREATE POLICY "student_questions_teacher_manage"
   ON public.student_questions FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
 
@@ -2202,11 +2292,15 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.game_scores TO authenticated;
 GRANT ALL ON public.game_statements, public.game_scores TO service_role;
 
 DROP POLICY IF EXISTS "game_statements_read_authenticated" ON public.game_statements;
-CREATE POLICY IF NOT EXISTS "game_statements_read_authenticated"
+DROP POLICY IF EXISTS CREATE POLICY  ON 
+  ON ;
+CREATE POLICY "game_statements_read_authenticated"
   ON public.game_statements FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "game_scores_student_read_own" ON public.game_scores;
-CREATE POLICY IF NOT EXISTS "game_scores_student_read_own"
+DROP POLICY IF EXISTS CREATE POLICY  ON 
+  ON ;
+CREATE POLICY "game_scores_student_read_own"
   ON public.game_scores FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.students s
@@ -2214,7 +2308,9 @@ CREATE POLICY IF NOT EXISTS "game_scores_student_read_own"
   ));
 
 DROP POLICY IF EXISTS "game_scores_student_insert_own" ON public.game_scores;
-CREATE POLICY IF NOT EXISTS "game_scores_student_insert_own"
+DROP POLICY IF EXISTS CREATE POLICY  ON 
+  ON ;
+CREATE POLICY "game_scores_student_insert_own"
   ON public.game_scores FOR INSERT TO authenticated
   WITH CHECK (EXISTS (
     SELECT 1 FROM public.students s
@@ -2222,7 +2318,9 @@ CREATE POLICY IF NOT EXISTS "game_scores_student_insert_own"
   ));
 
 DROP POLICY IF EXISTS "game_scores_teacher_manage" ON public.game_scores;
-CREATE POLICY IF NOT EXISTS "game_scores_teacher_manage"
+DROP POLICY IF EXISTS CREATE POLICY  ON 
+  ON ;
+CREATE POLICY "game_scores_teacher_manage"
   ON public.game_scores FOR ALL TO authenticated
   USING (public.is_teacher()) WITH CHECK (public.is_teacher());
 
@@ -2262,7 +2360,8 @@ ALTER TABLE public.students ADD COLUMN IF NOT EXISTS password_changed BOOLEAN NO
 ALTER TABLE public.chat_settings ADD COLUMN IF NOT EXISTS deletion_blocked BOOLEAN NOT NULL DEFAULT FALSE;
 
 DROP POLICY IF EXISTS "messages_delete_own_or_teacher" ON public.messages;
-CREATE POLICY IF NOT EXISTS "messages_delete_own_or_teacher" ON public.messages FOR DELETE TO authenticated
+DROP POLICY IF EXISTS CREATE POLICY  ON  ON ;
+CREATE POLICY "messages_delete_own_or_teacher" ON public.messages FOR DELETE TO authenticated
   USING (
     public.is_teacher()
     OR (
