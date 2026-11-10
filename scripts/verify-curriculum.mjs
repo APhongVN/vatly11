@@ -661,7 +661,7 @@ assert.match(rubricEditor, /remarkMath/);
 assert.match(rubricEditor, /rehypeKatex/);
 assert.match(teacherDashboardSource, /handleGroupRubricFileUpload\(event, gAct\.id\)/);
 assert.match(teacherDashboardSource, /const readRubricFile = \(file: File\) => extractRubricFile\(file, previewMode \? async/);
-assert.equal((teacherDashboardSource.match(/await readRubricFile\(file\)/g) || []).length, 4, "All rubric upload paths must support the no-login preview flow.");
+assert.equal((teacherDashboardSource.match(/await readRubricFile\(file\)/g) || []).length, 6, "All rubric upload paths must support the no-login preview flow.");
 assert.match(teacherDashboardSource, /Nội dung thật sẽ được nhận dạng trong phiên giáo viên/);
 assert.match(teacherDashboardSource, /accept="\.txt,\.md,\.csv,\.docx,\.xlsx,\.pdf,\.png,\.jpg,\.jpeg,\.webp"/);
 assert.match(teacherDashboardSource, /downloadGroupRubricDocument\(gAct\)/);

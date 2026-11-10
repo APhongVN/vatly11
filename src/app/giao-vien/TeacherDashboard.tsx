@@ -304,6 +304,8 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   const [ocrStudentName, setOcrStudentName] = useState("");
   const [ocrActivityId, setOcrActivityId] = useState<number>(1);
   const [ocrResult, setOcrResult] = useState<any>(null);
+  const [ocrRubricFileName, setOcrRubricFileName] = useState("");
+  const [ocrAnswerFileName, setOcrAnswerFileName] = useState("");
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
   const [isSavingOcr, setIsSavingOcr] = useState(false);
 
@@ -313,6 +315,8 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   const [quizTime, setQuizTime] = useState(15);
   const [newQs, setNewQs] = useState([{ question: "", image_url: "", options: ["", "", "", ""], correct_option: 0, explanation: "" }]);
   const [aiQuizTopic, setAiQuizTopic] = useState("Đặc tính của tụ điện, công thức điện dung và năng lượng");
+  const [aiQuizTheory, setAiQuizTheory] = useState("");
+  const [aiQuizDifficulty, setAiQuizDifficulty] = useState("Trung bình");
   const [aiQuizCount, setAiQuizCount] = useState(4);
   const [aiQuizFile, setAiQuizFile] = useState<File | null>(null);
   const [isGeneratingGroupAI, setIsGeneratingGroupAI] = useState(false);
@@ -1634,6 +1638,59 @@ const handleRubricFileUpload = async (file: File | null) => {
     }
   };
 
+  // nạp ma trận chấm điểm từ file (Word/Excel/PDF/TXT/ảnh) vào ô rubric của tab OCR
+  const handleOcrRubricFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (previewMode) {
+      setOcrRubric(`[Ma trận mô phỏng từ “${file.name}”]\n- Nêu đúng cấu tạo tụ điện: 3 điểm\n- Viết đúng công thức và đơn vị: 4 điểm\n- Lập luận và kết luận: 3 điểm`);
+      setOcrRubricFileName(file.name);
+      setPreviewNotice("Tệp ma trận chỉ được đọc cục bộ trong bản xem trước.");
+      return;
+    }
+    try {
+      const extracted = await readRubricFile(file);
+      if (!extracted.text.trim()) throw new Error("Không trích được nội dung từ tệp ma trận.");
+      setOcrRubric(extracted.text);
+      setOcrRubricFileName(file.name);
+      if (extracted.warning) alert(extracted.warning);
+    } catch (err: unknown) {
+      alert("Không đọc được tệp ma trận: " + (err instanceof Error ? err.message : "tệp có thể bị hỏng hoặc sai định dạng."));
+    }
+  };
+
+  // nạp nội dung bài làm từ file (PDF/Word/TXT/ảnh) — ảnh dùng OCR, file văn bản đọc trực tiếp
+  const handleOcrAnswerFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const isImage = /image\/(png|jpeg|webp)/i.test(file.type) || /\.(png|jpe?g|webp)$/i.test(file.name);
+    if (isImage) {
+      await handleOcrImageUpload({ target: { files: [file] } } as unknown as React.ChangeEvent<HTMLInputElement>);
+      return;
+    }
+    if (previewMode) {
+      setOcrText(`[Nội dung mô phỏng từ “${file.name}”]\nÁp dụng C = εS / (9·10⁹·4π·d), thay số và rút ra kết luận.`);
+      setOcrAnswerFileName(file.name);
+      setPreviewNotice("Tệp bài làm chỉ được đọc cục bộ trong bản xem trước.");
+      return;
+    }
+    setIsOcrProcessing(true);
+    setOcrResult(null);
+    try {
+      const extracted = await readRubricFile(file);
+      if (!extracted.text.trim()) throw new Error("Không trích được nội dung từ tệp bài làm.");
+      setOcrText(extracted.text);
+      setOcrAnswerFileName(file.name);
+      if (extracted.warning) alert(extracted.warning);
+    } catch (err: unknown) {
+      alert("Không đọc được tệp bài làm: " + (err instanceof Error ? err.message : "tệp có thể bị hỏng hoặc sai định dạng."));
+    } finally {
+      setIsOcrProcessing(false);
+    }
+  };
+
   const executeOcrGrading = async () => {
     if (!ocrText.trim()) {
       alert("Chưa có nội dung văn bản để chấm điểm.");
@@ -1711,8 +1768,8 @@ const handleRubricFileUpload = async (file: File | null) => {
 
   // --- TẠO CÂU HỎI TRẮC NGHIỆM BẰNG AI ---
   const handleGenerateQuizWithAI = async () => {
-    if (!aiQuizTopic.trim()) {
-      alert("Vui lòng nhập chủ đề câu hỏi!");
+    if (!aiQuizTopic.trim() && !aiQuizTheory.trim() && !aiQuizFile) {
+      alert("Hãy nhập chủ đề, dán nội dung lý thuyết hoặc tải file để AI biên soạn!");
       return;
     }
     if (previewMode) {
@@ -1738,7 +1795,7 @@ const handleRubricFileUpload = async (file: File | null) => {
       const res = await fetch('/api/ai-generate-quiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: aiQuizTopic, count: aiQuizCount, fileContent }),
+        body: JSON.stringify({ topic: aiQuizTopic.trim() || "Bộ câu hỏi theo nội dung lý thuyết đính kèm", theory: aiQuizTheory.trim(), difficulty: aiQuizDifficulty, count: aiQuizCount, fileContent }),
       });
       const data = await res.json();
       if (data.questions && Array.isArray(data.questions)) {
@@ -3507,6 +3564,10 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
             result={ocrResult}
             isSaving={isSavingOcr}
             onSelectImage={handleOcrImageUpload}
+            onSelectRubricFile={(event) => void handleOcrRubricFile(event)}
+            onSelectAnswerFile={(event) => void handleOcrAnswerFile(event)}
+            rubricFileName={ocrRubricFileName}
+            answerFileName={ocrAnswerFileName}
             onGrade={executeOcrGrading}
             onSave={saveOcrSubmissionToDB}
           />
@@ -3648,69 +3709,6 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
                 </section>
               </div>;
             })}
-            {editingQuiz && (
-              <div className="fixed inset-0 z-[86] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditingQuiz(null); }}>
-                <section role="dialog" aria-modal="true" aria-labelledby="edit-quiz-title" className="max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
-                  <div className="flex items-start justify-between gap-4">
-                    <h3 id="edit-quiz-title" className="text-xl font-black text-slate-900">Sửa bài trắc nghiệm</h3>
-                    <button type="button" aria-label="Đóng" onClick={() => setEditingQuiz(null)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
-                  </div>
-                  <div className="mt-4 space-y-3">
-                    <label className="block text-xs font-bold text-slate-700">Tiêu đề
-                      <input value={editingQuiz.title} onChange={(e) => setEditingQuiz({ ...editingQuiz, title: e.target.value })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
-                    </label>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <label className="block text-xs font-bold text-slate-700">Gắn với bài
-                        <select value={editingQuiz.activity_id || ""} onChange={(e) => setEditingQuiz({ ...editingQuiz, activity_id: e.target.value ? Number(e.target.value) : null })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal">
-                          <option value="">Không gắn bài</option>
-                          {activities.map((a: any) => <option key={a.id} value={a.id}>Bài {a.id}: {a.title}</option>)}
-                        </select>
-                      </label>
-                      <label className="block text-xs font-bold text-slate-700">Thời gian (phút)
-                        <input type="number" min={1} value={editingQuiz.time_limit} onChange={(e) => setEditingQuiz({ ...editingQuiz, time_limit: Number(e.target.value) })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
-                      </label>
-                    </div>
-                    <QuizQuestionEditor quiz={editingQuiz} setQuiz={setEditingQuiz} />
-                  </div>
-                  <div className="mt-5 flex justify-end gap-2">
-                    <button type="button" onClick={() => setEditingQuiz(null)} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600">Hủy</button>
-                    <button type="button" onClick={() => void saveQuizEdit()} disabled={isSavingQuizEdit} className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isSavingQuizEdit ? "Đang lưu..." : "Lưu thay đổi"}</button>
-                  </div>
-                </section>
-              </div>
-            )}
-
-            {editingGroup && (
-              <div className="fixed inset-0 z-[86] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditingGroup(null); }}>
-                <section role="dialog" aria-modal="true" aria-labelledby="edit-group-title" className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
-                  <div className="flex items-start justify-between gap-4">
-                    <h3 id="edit-group-title" className="text-xl font-black text-slate-900">Sửa bài tập nhóm</h3>
-                    <button type="button" aria-label="Đóng" onClick={() => setEditingGroup(null)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
-                  </div>
-                  <div className="mt-4 space-y-3">
-                    <label className="block text-xs font-bold text-slate-700">Tên bài tập nhóm
-                      <input value={editingGroup.title} onChange={(e) => setEditingGroup({ ...editingGroup, title: e.target.value })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
-                    </label>
-                    <label className="block text-xs font-bold text-slate-700">Hạn nộp
-                      <input type="datetime-local" value={editingGroup.deadline ? new Date(editingGroup.deadline).toISOString().slice(0, 16) : ""} onChange={(e) => setEditingGroup({ ...editingGroup, deadline: e.target.value })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
-                    </label>
-                    <label className="block text-xs font-bold text-slate-700">Mô tả / yêu cầu
-                      <textarea value={editingGroup.description || ""} onChange={(e) => setEditingGroup({ ...editingGroup, description: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
-                    </label>
-                    <label className="block text-xs font-bold text-slate-700">Link tài liệu
-                      <input value={editingGroup.document_url || ""} onChange={(e) => setEditingGroup({ ...editingGroup, document_url: e.target.value })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
-                    </label>
-                    <label className="block text-xs font-bold text-slate-700">Ma trận điểm
-                      <textarea value={editingGroup.rubric || ""} onChange={(e) => setEditingGroup({ ...editingGroup, rubric: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
-                    </label>
-                  </div>
-                  <div className="mt-5 flex justify-end gap-2">
-                    <button type="button" onClick={() => setEditingGroup(null)} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600">Hủy</button>
-                    <button type="button" onClick={() => void saveGroupEdit()} disabled={isSavingGroupEdit} className="rounded-xl bg-orange-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isSavingGroupEdit ? "Đang lưu..." : "Lưu thay đổi"}</button>
-                  </div>
-                </section>
-              </div>
-            )}
             {accountStudent && (
               <div className="fixed inset-0 z-[85] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeStudentAccountModal(); }}>
                 <section role="dialog" aria-modal="true" aria-labelledby="student-account-title" className="student-credentials-print w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
@@ -3883,15 +3881,28 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-3">
-                <div className="md:col-span-2">
-                  <input
+              <div className="space-y-3">
+                <div>
+                  <label htmlFor="ai-quiz-topic" className="text-xs font-bold text-indigo-900 block mb-1">Chủ đề / phạm vi kiến thức cần ra đề</label>
+                  <textarea
+                    id="ai-quiz-topic"
                     value={aiQuizTopic}
                     onChange={(e) => setAiQuizTopic(e.target.value)}
-                    placeholder="Nhập chủ đề..."
-                    className="w-full p-2.5 rounded-xl border border-indigo-200 bg-white text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="VD: Điện dung của tụ điện phẳng; ảnh hưởng của diện tích, khoảng cách và điện môi; ghép tụ nối tiếp - song song."
+                    className="w-full p-2.5 rounded-xl border border-indigo-200 bg-white text-sm outline-none resize-y min-h-[64px] focus:ring-2 focus:ring-indigo-500"
                   />
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                </div>
+                <div>
+                  <label htmlFor="ai-quiz-theory" className="text-xs font-bold text-indigo-900 block mb-1">Nội dung lý thuyết / tài liệu tham chiếu cho AI đọc (không bắt buộc)</label>
+                  <textarea
+                    id="ai-quiz-theory"
+                    value={aiQuizTheory}
+                    onChange={(e) => setAiQuizTheory(e.target.value)}
+                    placeholder="Dán định nghĩa, công thức, ví dụ hoặc yêu cầu ra đề để AI bám sát đúng bài học trên lớp..."
+                    className="w-full p-2.5 rounded-xl border border-indigo-200 bg-white text-sm outline-none resize-y min-h-[96px] focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
                     <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50">
                       <UploadCloud className="h-4 w-4" /> Tải file đề thi (để AI đọc)
                       <input
@@ -3903,22 +3914,36 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
                     </label>
                     {aiQuizFile ? <span className="text-[11px] text-indigo-700">Đã chọn: {aiQuizFile.name} <button type="button" onClick={() => setAiQuizFile(null)} className="ml-1 font-bold text-rose-600">×</button></span> : <span className="text-[10px] text-indigo-500">Hỗ trợ TXT, Word, Excel, PDF, ảnh (tối đa 10 MB)</span>}
                   </div>
-                </div>
-                <div className="flex gap-2">
-                  <select
-                    value={aiQuizCount}
-                    onChange={(e) => setAiQuizCount(Number(e.target.value))}
-                    className="p-2.5 rounded-xl border border-indigo-200 bg-white text-xs outline-none"
-                  >
-                    <option value={3}>3 câu</option>
-                    <option value={4}>4 câu</option>
-                    <option value={5}>5 câu</option>
-                    <option value={8}>8 câu</option>
-                  </select>
+                <div className="flex flex-wrap items-end gap-2">
+                  <label className="text-[11px] font-bold text-indigo-900">Số câu
+                    <select
+                      value={aiQuizCount}
+                      onChange={(e) => setAiQuizCount(Number(e.target.value))}
+                      className="mt-1 block p-2.5 rounded-xl border border-indigo-200 bg-white text-xs outline-none"
+                    >
+                      <option value={3}>3 câu</option>
+                      <option value={4}>4 câu</option>
+                      <option value={5}>5 câu</option>
+                      <option value={8}>8 câu</option>
+                      <option value={10}>10 câu</option>
+                      <option value={15}>15 câu</option>
+                    </select>
+                  </label>
+                  <label className="text-[11px] font-bold text-indigo-900">Mức độ
+                    <select
+                      value={aiQuizDifficulty}
+                      onChange={(e) => setAiQuizDifficulty(e.target.value)}
+                      className="mt-1 block p-2.5 rounded-xl border border-indigo-200 bg-white text-xs outline-none"
+                    >
+                      <option value="Dễ">Dễ</option>
+                      <option value="Trung bình">Trung bình</option>
+                      <option value="Khó">Khó</option>
+                    </select>
+                  </label>
                   <button
                     onClick={handleGenerateQuizWithAI}
                     disabled={isGeneratingQuiz}
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="ml-auto min-w-[180px] bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl px-4 py-2.5 text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     {isGeneratingQuiz ? "Đang tạo đề..." : "Sinh câu hỏi AI"}
@@ -4035,6 +4060,72 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
                   {isChangingTeacherPassword ? "Đang đổi…" : "Đổi mật khẩu"}
                 </button>
               </form>
+            </section>
+          </div>
+        )}
+
+        {/* MODAL SỬA BÀI TRẮC NGHIỆM — đặt cấp cao nhất để hiển thị ở mọi tab */}
+        {editingQuiz && (
+          <div className="fixed inset-0 z-[86] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditingQuiz(null); }}>
+            <section role="dialog" aria-modal="true" aria-labelledby="edit-quiz-title" className="max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+              <div className="flex items-start justify-between gap-4">
+                <h3 id="edit-quiz-title" className="text-xl font-black text-slate-900">Sửa bài trắc nghiệm</h3>
+                <button type="button" aria-label="Đóng" onClick={() => setEditingQuiz(null)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+              </div>
+              <div className="mt-4 space-y-3">
+                <label className="block text-xs font-bold text-slate-700">Tiêu đề
+                  <input value={editingQuiz.title} onChange={(e) => setEditingQuiz({ ...editingQuiz, title: e.target.value })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
+                </label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block text-xs font-bold text-slate-700">Gắn với bài
+                    <select value={editingQuiz.activity_id || ""} onChange={(e) => setEditingQuiz({ ...editingQuiz, activity_id: e.target.value ? Number(e.target.value) : null })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal">
+                      <option value="">Không gắn bài</option>
+                      {activities.map((a: any) => <option key={a.id} value={a.id}>Bài {a.id}: {a.title}</option>)}
+                    </select>
+                  </label>
+                  <label className="block text-xs font-bold text-slate-700">Thời gian (phút)
+                    <input type="number" min={1} value={editingQuiz.time_limit} onChange={(e) => setEditingQuiz({ ...editingQuiz, time_limit: Number(e.target.value) })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
+                  </label>
+                </div>
+                <QuizQuestionEditor quiz={editingQuiz} setQuiz={setEditingQuiz} />
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <button type="button" onClick={() => setEditingQuiz(null)} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600">Hủy</button>
+                <button type="button" onClick={() => void saveQuizEdit()} disabled={isSavingQuizEdit} className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isSavingQuizEdit ? "Đang lưu..." : "Lưu thay đổi"}</button>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* MODAL SỬA BÀI TẬP NHÓM — đặt cấp cao nhất để hiển thị ở mọi tab */}
+        {editingGroup && (
+          <div className="fixed inset-0 z-[86] flex items-center justify-center bg-slate-950/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditingGroup(null); }}>
+            <section role="dialog" aria-modal="true" aria-labelledby="edit-group-title" className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+              <div className="flex items-start justify-between gap-4">
+                <h3 id="edit-group-title" className="text-xl font-black text-slate-900">Sửa bài tập nhóm</h3>
+                <button type="button" aria-label="Đóng" onClick={() => setEditingGroup(null)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+              </div>
+              <div className="mt-4 space-y-3">
+                <label className="block text-xs font-bold text-slate-700">Tên bài tập nhóm
+                  <input value={editingGroup.title} onChange={(e) => setEditingGroup({ ...editingGroup, title: e.target.value })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
+                </label>
+                <label className="block text-xs font-bold text-slate-700">Hạn nộp
+                  <input type="datetime-local" value={editingGroup.deadline ? new Date(editingGroup.deadline).toISOString().slice(0, 16) : ""} onChange={(e) => setEditingGroup({ ...editingGroup, deadline: e.target.value })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
+                </label>
+                <label className="block text-xs font-bold text-slate-700">Mô tả / yêu cầu
+                  <textarea value={editingGroup.description || ""} onChange={(e) => setEditingGroup({ ...editingGroup, description: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
+                </label>
+                <label className="block text-xs font-bold text-slate-700">Link tài liệu
+                  <input value={editingGroup.document_url || ""} onChange={(e) => setEditingGroup({ ...editingGroup, document_url: e.target.value })} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
+                </label>
+                <label className="block text-xs font-bold text-slate-700">Ma trận điểm
+                  <textarea value={editingGroup.rubric || ""} onChange={(e) => setEditingGroup({ ...editingGroup, rubric: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border p-2.5 text-sm font-normal" />
+                </label>
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <button type="button" onClick={() => setEditingGroup(null)} className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-600">Hủy</button>
+                <button type="button" onClick={() => void saveGroupEdit()} disabled={isSavingGroupEdit} className="rounded-xl bg-orange-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isSavingGroupEdit ? "Đang lưu..." : "Lưu thay đổi"}</button>
+              </div>
             </section>
           </div>
         )}

@@ -108,50 +108,95 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Cot phai: anh vat ly lon, khung trong suot + duong net vat ly */}
-          <div className="relative lg:-mr-4">
-            {/* duong net song dien tu phia sau anh */}
+          {/* Cot phai: doi mat vector duong net vat ly — khong dung anh */}
+          <div className="relative">
+            {/* duong net song dien tu phia sau */}
             <div className="physics-lines absolute -inset-x-16 -inset-y-10 opacity-70 pointer-events-none hidden md:block" aria-hidden="true" />
-            {/* cong thuc vat ly lo lung, khong khung */}
-            <div className="pointer-events-none absolute -top-6 -right-6 hidden md:block text-slate-500/70 text-lg font-mono tracking-wider select-none">F = qE</div>
-            <div className="pointer-events-none absolute top-1/3 -left-10 hidden md:block text-slate-500/50 text-base font-mono tracking-wider select-none">W = ½CU²</div>
-            <div className="pointer-events-none absolute bottom-1/4 right-[-2rem] hidden md:block text-slate-500/60 text-base font-mono tracking-wider select-none">C = εS / 4πkd</div>
-            <HomeParallax strength={18}>
-              <div className="relative parallax-img">
-                {/* aurand glow sau anh */}
-                <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-tr from-blue-600/30 via-indigo-500/20 to-cyan-400/30 blur-2xl" aria-hidden="true" />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/images/physics-field-3d.jpg"
-                  alt="Mô hình 3D đường sức điện trường"
-                  className="img-fade relative w-full max-h-[520px] object-cover shadow-2xl shadow-blue-950/60"
-                  loading="eager"
-                />
-                {/* chip công thức nổi trên ảnh */}
-                <div className="absolute top-4 right-4 glass-strong rounded-full px-3.5 py-1.5 text-[11px] font-bold text-cyan-200 flex items-center gap-1.5 shadow-lg">
-                  <Zap className="w-3.5 h-3.5 text-cyan-300" /> E = k·q/r²
-                </div>
-                <div className="absolute bottom-4 left-4 glass-strong rounded-2xl px-4 py-2.5 shadow-lg">
-                  <p className="text-[9px] uppercase tracking-widest text-slate-400 font-bold mb-0.5">Đường sức điện trường</p>
-                  <p className="text-[11px] font-bold text-slate-100">Mô phỏng 3D trực quan hóa vector E</p>
-                </div>
-              </div>
-            </HomeParallax>
-
-            {/* thẻ phụ: Van de Graaff — không khung, nổi lệch dưới */}
-            <HomeParallax strength={26}>
-              <div className="absolute -bottom-14 -left-4 md:-left-16 hidden md:block w-72 parallax-img">
-                <div className="absolute -inset-3 rounded-3xl bg-blue-600/20 blur-xl" aria-hidden="true" />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/images/physics-vdg.jpg"
-                  alt="Phóng điện tia lửa giữa hai cực"
-                  className="img-fade-sm relative w-full h-44 object-cover shadow-2xl shadow-slate-950/80"
-                  loading="lazy"
-                />
-                <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between">
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/90 drop-shadow">Phóng điện tia lửa</span>
-                  <span className="glass-strong rounded-full px-2 py-0.5 text-[9px] font-bold text-amber-200">U lớn → đánh thủng</span>
+            <HomeParallax strength={16}>
+              <div className="relative">
+                {/* aura glow */}
+                <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-tr from-blue-600/25 via-indigo-500/15 to-cyan-400/25 blur-3xl" aria-hidden="true" />
+                {/* do mat duong suc dien truong — vector line-art, khong khung */}
+                <svg viewBox="0 0 460 440" className="relative w-full max-w-[460px] h-auto drop-shadow-[0_0_40px_rgba(59,130,246,0.35)]" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="fluxA" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0" stopColor="#38bdf8" />
+                      <stop offset="1" stopColor="#6366f1" />
+                    </linearGradient>
+                    <linearGradient id="fluxB" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0" stopColor="#f59e0b" />
+                      <stop offset="1" stopColor="#ef4444" />
+                    </linearGradient>
+                    <radialGradient id="nodeGlow" cx="0.5" cy="0.5" r="0.5">
+                      <stop offset="0" stopColor="#fbbf24" stopOpacity="0.9" />
+                      <stop offset="1" stopColor="#fbbf24" stopOpacity="0" />
+                    </radialGradient>
+                  </defs>
+                  {/* hai bien tu */}
+                  <rect x="70" y="170" width="20" height="120" rx="4" className="fill-cyan-400/90" />
+                  <rect x="112" y="170" width="20" height="120" rx="4" className="fill-cyan-400/90" />
+                  <text x="80" y="160" className="fill-cyan-300 text-[15px] font-bold" textAnchor="middle">+</text>
+                  <text x="80" y="312" className="fill-cyan-300 text-[15px] font-bold" textAnchor="middle">+</text>
+                  <rect x="328" y="170" width="20" height="120" rx="4" className="fill-amber-400/90" />
+                  <rect x="370" y="170" width="20" height="120" rx="4" className="fill-amber-400/90" />
+                  <text x="380" y="160" className="fill-amber-300 text-[15px] font-bold" textAnchor="middle">−</text>
+                  <text x="380" y="312" className="fill-amber-300 text-[15px] font-bold" textAnchor="middle">−</text>
+                  {/* duong suc dien truong giua hai ban */}
+                  <g className="stroke-blue-400/70" strokeWidth="2" fill="none" strokeLinecap="round">
+                    <path d="M132 190 C 200 178, 260 178, 328 190" />
+                    <path d="M132 215 C 200 205, 260 205, 328 215" />
+                    <path d="M132 230 L 328 230" />
+                    <path d="M132 245 C 200 255, 260 255, 328 245" />
+                    <path d="M132 270 C 200 282, 260 282, 328 270" />
+                  </g>
+                  {/* dau mũi tuc cho duong suc */}
+                  <g className="fill-blue-400/80">
+                    <path d="M328 184 L322 190 L328 196 Z" />
+                    <path d="M328 209 L322 215 L328 221 Z" />
+                    <path d="M328 224 L322 230 L328 236 Z" />
+                    <path d="M328 239 L322 245 L328 251 Z" />
+                    <path d="M328 264 L322 270 L328 276 Z" />
+                  </g>
+                  {/* nuoc dien truong phan roi (vector) */}
+                  <g className="stroke-amber-400/50" strokeWidth="1.5" fill="none" strokeLinecap="round">
+                    <path d="M348 230 L404 210" />
+                    <path d="M348 230 L404 250" />
+                    <path d="M348 230 L398 178" />
+                    <path d="M348 230 L398 282" />
+                  </g>
+                  <g className="fill-amber-400/60">
+                    <path d="M404 208 L398 214 L406 214 Z" />
+                    <path d="M404 252 L398 246 L406 246 Z" />
+                  </g>
+                  {/* nhan dien tich tren mat trong */}
+                  <g className="fill-white/80">
+                    <circle cx="112" cy="185" r="2.5" />
+                    <circle cx="112" cy="205" r="2.5" />
+                    <circle cx="112" cy="225" r="2.5" />
+                    <circle cx="112" cy="245" r="2.5" />
+                    <circle cx="112" cy="265" r="2.5" />
+                  </g>
+                  <g className="fill-amber-200/80">
+                    <circle cx="328" cy="185" r="2.5" />
+                    <circle cx="328" cy="205" r="2.5" />
+                    <circle cx="328" cy="225" r="2.5" />
+                    <circle cx="328" cy="245" r="2.5" />
+                    <circle cx="328" cy="265" r="2.5" />
+                  </g>
+                  {/* nhan nuoc dien - glow */}
+                  <circle cx="348" cy="230" r="14" className="fill-[url(#nodeGlow)]" />
+                  {/* goi chung C = eS/4pkd */}
+                  <g className="fill-white/70 text-[13px] font-mono" >
+                    <text x="230" y="345" textAnchor="middle">C = εS / 4πkd</text>
+                  </g>
+                  <g className="fill-cyan-200/80 text-[11px] font-mono">
+                    <text x="230" y="366" textAnchor="middle">E = k·Q/d²  ·  W = ½CU²</text>
+                  </g>
+                </svg>
+                {/* chip cong thuc noi (vector, khong khung anh) */}
+                <div className="mt-5 glass-strong rounded-2xl px-4 py-3 inline-flex items-center gap-2.5 shadow-lg">
+                  <Zap className="w-4 h-4 text-cyan-300" />
+                  <span className="text-[11px] font-bold text-slate-100 tracking-wide">Đường sức điện trường · mô phỏng 3D trực quan</span>
                 </div>
               </div>
             </HomeParallax>
