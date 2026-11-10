@@ -82,9 +82,14 @@ export default function LoginPage() {
       // Bắt buộc có session thật trước khi chuyển trang (tránh chuyển trang khi cookie chưa ghi).
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData?.session) throw new Error("Phiên đăng nhập chưa sẵn sàng. Vui lòng thử lại.");
+      // Đồng bộ cookie về máy chủ trước khi chuyển trang.
+      await supabase.auth.refreshSession();
       setVerifying(true);
       await new Promise((resolve) => setTimeout(resolve, 900));
-      router.push("/giao-vien");
+      // Full page load: đảm bảo middleware đọc được session ở lần đăng nhập đầu (máy mới).
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- cố ý dùng full load để cookie được ghi trước khi middleware chạy.
+      window.location.assign("/giao-vien");
+      return;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không thể đăng nhập. Vui lòng thử lại.");
     } finally {

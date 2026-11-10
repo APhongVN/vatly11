@@ -54,7 +54,14 @@ export async function proxy(request: NextRequest) {
     const { data } = await supabase.auth.getClaims();
     claims = data?.claims || null;
   } catch {
-    return redirectWithRefreshedCookies(response, request, "/login");
+    // getClaims() có thể lỗi ở lần đầu sau khi đăng nhập (token mới chưa phổ biến).
+    // Thử đọc session trực tiếp; nếu vẫn không có thì mới yêu cầu đăng nhập lại.
+    try {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) claims = { sub: data.user.id };
+    } catch {
+      return redirectWithRefreshedCookies(response, request, "/login");
+    }
   }
   if (!claims?.sub) return redirectWithRefreshedCookies(response, request, "/login");
 
