@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   GraduationCap, LayoutDashboard, Sparkles, BookOpen, ChevronRight, Microscope,
-  Bot, Target, CheckCircle2, Zap, BatteryCharging, Waves, Gauge, ArrowRight,
+  Bot, Target, CheckCircle2, BatteryCharging, Gauge, ArrowRight,
   Sigma, Atom, ShieldCheck, Timer, Users, Mail, Github, Play, BarChart,
 } from "lucide-react";
 import { CapacitorIcon, CapacitorDiagram, CircuitDiagram } from "@/components/home/PhysicsIllustrations";
@@ -155,41 +155,20 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* HOA VIET: so do tu dien + mach tich dien — 1 khong duy nhat, day dan */}
+      {/* HOA VIET: so do tu dien + mach tich dien — khong khung, tran, duong net sac sao */}
       <section id="chu-de" className="relative z-10 max-w-5xl mx-auto px-5 md:px-8 pb-16">
-        <div className="flex flex-col lg:flex-row items-center gap-10 reveal reveal-d2">
-          <div className="relative w-full lg:w-1/2">
-            <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-tr from-blue-600/25 via-indigo-500/15 to-cyan-400/25 blur-2xl" aria-hidden="true" />
-            <div className="glass-strong relative rounded-3xl p-6 shadow-2xl shadow-blue-950/50">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                    <Zap className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="leading-tight">
-                    <p className="text-xs font-black text-white">Tụ điện & điện trường</p>
-                    <p className="text-[10px] text-blue-300 font-semibold">Mô phỏng trực quan</p>
-                  </div>
-                </div>
-                <span className="glass rounded-full px-3 py-1 text-[10px] font-bold text-cyan-200">3D</span>
-              </div>
-              <CapacitorDiagram className="w-full h-auto" />
-            </div>
+        <div className="flex flex-col lg:flex-row items-center justify-center gap-10 md:gap-16 reveal reveal-d2">
+          {/* So do tu dien — tran, khong khung, duong net sac */}
+          <div className="relative w-full max-w-md">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-300 mb-2 text-center">Cấu tạo & điện trường</p>
+            <CapacitorDiagram className="w-full h-auto" />
+            <p className="text-[10px] font-mono text-cyan-300/80 text-center mt-2 tracking-wide">C = εS / 4πkd · E = U/d</p>
           </div>
-          <div className="relative w-full lg:w-1/2">
-            <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-tr from-amber-500/15 to-cyan-400/15 blur-2xl" aria-hidden="true" />
-            <div className="glass-strong relative rounded-3xl p-6 shadow-2xl shadow-blue-950/50">
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-                  <Waves className="w-5 h-5 text-white" />
-                </div>
-                <div className="leading-tight">
-                  <p className="text-xs font-black text-white">Mạch tích điện & phóng điện</p>
-                  <p className="text-[10px] text-amber-300 font-semibold">Nối nguồn, ngắt, đèn sáng</p>
-                </div>
-              </div>
-              <CircuitDiagram className="w-full h-auto" />
-            </div>
+          {/* Mach tich dien — tran, khong khung */}
+          <div className="relative w-full max-w-md">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-300 mb-2 text-center">Tích điện & phóng điện</p>
+            <CircuitDiagram className="w-full h-auto" />
+            <p className="text-[10px] font-mono text-amber-300/80 text-center mt-2 tracking-wide">U lớn → đánh thủng không khí</p>
           </div>
         </div>
       </section>
