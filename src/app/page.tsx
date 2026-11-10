@@ -4,7 +4,6 @@ import {
   Bot, Target, CheckCircle2, BatteryCharging, Gauge, ArrowRight,
   Sigma, Atom, ShieldCheck, Timer, Users, Mail, Github, Play, BarChart,
 } from "lucide-react";
-import { CapacitorIcon, CapacitorDiagram, CircuitDiagram } from "@/components/home/PhysicsIllustrations";
 import HomeReveal from "@/components/home/HomeReveal";
 
 const TOPICS = [
@@ -54,8 +53,6 @@ export default function HomePage() {
         <div className="absolute -top-40 -left-32 w-[620px] h-[620px] bg-blue-600/25 rounded-full blur-[150px]" />
         <div className="absolute top-1/3 -right-40 w-[560px] h-[560px] bg-indigo-600/20 rounded-full blur-[150px]" />
         <div className="absolute bottom-0 left-1/4 w-[520px] h-[520px] bg-cyan-500/12 rounded-full blur-[140px]" />
-        <div className="physics-grid absolute inset-0 opacity-[0.05]" />
-        <div className="physics-lines absolute inset-x-0 top-[20%] h-[400px] opacity-50" />
       </div>
 
       {/* THANH DIEU HUONG */}
@@ -63,7 +60,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-5 md:px-8 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
             <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-600/30">
-              <CapacitorIcon className="w-5 h-5 text-white" />
+              <span className="text-white text-[10px] font-black tracking-tight">VL</span>
             </div>
             <div className="leading-none">
               <span className="font-black tracking-wide text-base">KHÁM PHÁ VẬT LÝ</span>
@@ -155,21 +152,21 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* HOA VIET: so do tu dien + mach tich dien — khong khung, tran, duong net sac sao */}
+      {/* CHU DE — bang 4 o tu, khong duong net, chi chu + nüt */}
       <section id="chu-de" className="relative z-10 max-w-5xl mx-auto px-5 md:px-8 pb-16">
-        <div className="flex flex-col lg:flex-row items-center justify-center gap-10 md:gap-16 reveal reveal-d2">
-          {/* So do tu dien — tran, khong khung, duong net sac */}
-          <div className="relative w-full max-w-md">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-300 mb-2 text-center">Cấu tạo & điện trường</p>
-            <CapacitorDiagram className="w-full h-auto" />
-            <p className="text-[10px] font-mono text-cyan-300/80 text-center mt-2 tracking-wide">C = εS / 4πkd · E = U/d</p>
-          </div>
-          {/* Mach tich dien — tran, khong khung */}
-          <div className="relative w-full max-w-md">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-300 mb-2 text-center">Tích điện & phóng điện</p>
-            <CircuitDiagram className="w-full h-auto" />
-            <p className="text-[10px] font-mono text-amber-300/80 text-center mt-2 tracking-wide">U lớn → đánh thủng không khí</p>
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 reveal reveal-d2">
+          {TOPICS.map((t) => {
+            const Ico = t.icon;
+            return (
+              <div key={t.title} className="glass rounded-3xl p-5 hover:-translate-y-1 hover:bg-white/10 transition-all duration-300">
+                <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-br from-blue-300 to-cyan-400 mb-3">{t.title}</div>
+                <p className="text-xs text-slate-400 leading-relaxed mb-4">{t.desc}</p>
+                <Link href="/hoc-sinh" className="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-300 hover:text-white transition-colors">
+                  Học ngay <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -272,7 +269,7 @@ export default function HomePage() {
             <div className="space-y-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                  <CapacitorIcon className="w-4 h-4 text-white" />
+                  <span className="text-white text-[9px] font-black tracking-tight">VL</span>
                 </div>
                 <div className="leading-none">
                   <span className="font-black text-sm">KHÁM PHÁ VẬT LÝ</span>
