@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState("");
   const [classes, setClasses] = useState<ClassGroup[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
@@ -78,6 +79,11 @@ export default function LoginPage() {
         await supabase.auth.signOut();
         throw new Error("Tài khoản chưa được cấp quyền giáo viên.");
       }
+      // Bắt buộc có session thật trước khi chuyển trang (tránh chuyển trang khi cookie chưa ghi).
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) throw new Error("Phiên đăng nhập chưa sẵn sàng. Vui lòng thử lại.");
+      setVerifying(true);
+      await new Promise((resolve) => setTimeout(resolve, 900));
       router.push("/giao-vien");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không thể đăng nhập. Vui lòng thử lại.");
@@ -164,11 +170,17 @@ export default function LoginPage() {
             </div>
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold text-sm shadow-md shadow-blue-500/25 transition-all mt-2"
+              disabled={loading || verifying}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white py-3.5 rounded-xl font-bold text-sm shadow-md shadow-blue-500/25 transition-all mt-2"
             >
-              {loading ? "Đang xử lý..." : "Vào Bảng Điều Khiển Giáo Viên"}
+              {verifying ? "Đang xác thực quyền giáo viên..." : loading ? "Đang xử lý..." : "Vào Bảng Điều Khiển Giáo Viên"}
             </button>
+            {verifying && (
+              <div role="status" className="mt-3 flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs font-semibold text-blue-800">
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-300 border-t-blue-700" />
+                Đã đăng nhập thành công — hệ thống đang kiểm tra quyền giáo viên và chuyển bạn vào lớp.
+              </div>
+            )}
           </form>
         ) : (
           <form onSubmit={handleLogin} className="space-y-4">

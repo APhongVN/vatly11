@@ -66,7 +66,6 @@ export default function TeacherSidebar({
       items: [
         { tab: "students", label: `Danh sách sinh viên (${counts.students})`, icon: <Users className="w-4 h-4 text-emerald-400" /> },
         { tab: "quizzes", label: "Tạo Trắc nghiệm & AI Sinh Đề", icon: <Sparkles className="w-4 h-4 text-indigo-400" /> },
-        { tab: "chat", label: `Kênh thảo luận (${counts.messages})`, icon: <MessageSquare className="w-4 h-4 text-blue-400" /> },
         { tab: "student_questions", label: `Góc hỏi đáp (${counts.pendingQuestions})`, icon: <HelpCircle className="w-4 h-4 text-indigo-400" /> },
       ],
     },

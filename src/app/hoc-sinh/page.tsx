@@ -3,17 +3,16 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
-import { CHAT_ATTACHMENT_ACCEPT, chatAttachmentMimeType, isInlineChatImage, MAX_CHAT_ATTACHMENT_BYTES } from "@/lib/chat-attachments.mjs";
+import { CHAT_ATTACHMENT_ACCEPT, chatAttachmentMimeType, MAX_CHAT_ATTACHMENT_BYTES } from "@/lib/chat-attachments.mjs";
 import {
-  BookOpen, Clock, FileText, Download, MessageSquare, Send,
-  ChevronRight, Lock, X, LogOut, ArrowLeft, CheckCircle2,
-  Volume2, Users, Trophy, Target, Sparkles, Microscope,
+  BookOpen, Clock, FileText, Download, Send,
+  ChevronRight, Lock, X, LogOut, CheckCircle2,
+  Users, Trophy, Target, Sparkles, Microscope,
   Award, TrendingUp, HelpCircle, ExternalLink
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import VirtualLab from "@/components/VirtualLab";
 import { filterSubmissionsForStudentGroups } from "@/lib/group-submissions.mjs";
-import { isMessageFromUser } from "@/lib/chat-identity.mjs";
 import ActivityResources from "@/components/ActivityResources";
 import StudentPortalPreview from "@/components/StudentPortalPreview";
 import { QUESTION_TOPICS } from "@/lib/student-questions.mjs";
@@ -24,19 +23,13 @@ export default function HocSinhPage() {
   const [student, setStudent] = useState<any>(null);
   const [activities, setActivities] = useState<any[]>([]);
   const [groupActs, setGroupActs] = useState<any[]>([]);
-  const [messages, setMessages] = useState<any[]>([]);
   const [mySubmissions, setMySubmissions] = useState<any[]>([]);
   const [myGroupSubs, setMyGroupSubs] = useState<any[]>([]);
   const [quizzes, setQuizzes] = useState<any[]>([]);
   const [myQuizSubs, setMyQuizSubs] = useState<any[]>([]);
-  const [newMsg, setNewMsg] = useState("");
-  const [chatFile, setChatFile] = useState<File | null>(null);
-  const [isSendingChat, setIsSendingChat] = useState(false);
   const [activeTab, setActiveTab] = useState("personal");
   const [now, setNow] = useState(new Date());
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isChatMuted, setIsChatMuted] = useState(false);
-  const [isDeletionBlocked, setIsDeletionBlocked] = useState(false);
   const [myQuestions, setMyQuestions] = useState<any[]>([]);
   const [myEvidence, setMyEvidence] = useState<any[]>([]);
   const [newQuestionTopic, setNewQuestionTopic] = useState("");
@@ -64,25 +57,13 @@ export default function HocSinhPage() {
       const authenticatedStudent = { ...profile, auth_user_id: user.id };
       localStorage.setItem('student_session', JSON.stringify(authenticatedStudent));
       setStudent(authenticatedStudent);
+      // eslint-disable-next-line react-hooks/immutability -- fetchData được khai báo function hoist phía dưới, gọi an toàn.
       fetchData(authenticatedStudent);
     };
     void loadIdentity();
     return () => { cancelled = true; };
   }, [router]);
 
-  useEffect(() => {
-    if (!student) return;
-    const refreshChat = async () => {
-      if (document.visibilityState !== "visible") return;
-      const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(300);
-      if (data) setMessages([...data].reverse());
-    };
-    const channel = supabase.channel("class-chat-student")
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => void refreshChat())
-      .subscribe();
-    const timer = window.setInterval(() => void refreshChat(), 30000);
-    return () => { window.clearInterval(timer); void supabase.removeChannel(channel); };
-  }, [student]);
   useEffect(() => {
     if (!student) return;
     // Mục 7: cập nhật trạng thái hoạt động để giáo viên biết online/offline.
@@ -99,9 +80,6 @@ export default function HocSinhPage() {
 
     const { data: gActs } = await supabase.from('group_assignments').select('*').is('archived_at', null).order('created_at', { ascending: false });
     if (gActs) setGroupActs(gActs);
-
-    const { data: msgs } = await supabase.from('messages').select('*').order('created_at', { ascending: false }).limit(300);
-    if (msgs) setMessages([...msgs].reverse());
 
     const { data: subs } = await supabase.from('submissions').select('*').eq('student_id', student.id);
     if (subs) setMySubmissions(subs);
@@ -121,8 +99,6 @@ export default function HocSinhPage() {
     if (myQzSubs) setMyQuizSubs(myQzSubs);
     const { data: ev } = await supabase.from('activity_evidence').select('activity_id,score,score_max,completed_at,first_attempt_correct,correct_after_hint,attempts_count,hint_count,review_topics').eq('student_id', student.id).order('updated_at', { ascending: false });
     if (ev) setMyEvidence(ev);
-    const { data: setting } = await supabase.from('chat_settings').select('is_muted,deletion_blocked').eq('id', 1).single();
-    if (setting) { setIsChatMuted(setting.is_muted); setIsDeletionBlocked(Boolean((setting as any).deletion_blocked)); }
     await fetchMyQuestions();
   }
 
@@ -191,49 +167,6 @@ export default function HocSinhPage() {
     localStorage.removeItem('student_session');
     await supabase.auth.signOut();
     router.push("/login");
-  };
-
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if ((!newMsg.trim() && !chatFile) || isChatMuted || isSendingChat) return;
-    setIsSendingChat(true);
-    try {
-      let attachment: Record<string, string> = {};
-      if (chatFile) {
-        if (chatFile.size > MAX_CHAT_ATTACHMENT_BYTES) throw new Error("Tệp chat tối đa 25 MB.");
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Phiên đăng nhập hết hạn. Em hãy đăng nhập lại.");
-        const contentType = chatAttachmentMimeType(chatFile);
-        const safeName = chatFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const path = `chat/${user.id}/${Date.now()}-${safeName}`;
-        const { error: uploadError } = await supabase.storage.from("class-work").upload(path, chatFile, { upsert: false, contentType });
-        if (uploadError) throw uploadError;
-        attachment = { attachment_url: path, attachment_name: chatFile.name, attachment_type: contentType };
-      }
-      const { error } = await supabase.from("messages").insert([{ sender_name: student.full_name, content: newMsg.trim(), ...attachment }]);
-      if (error) throw error;
-      setNewMsg(""); setChatFile(null); await fetchData(student);
-    } catch (error) { alert(error instanceof Error ? error.message : "Không gửi được tin nhắn."); }
-    finally { setIsSendingChat(false); }
-  };
-  const deleteOwnMessage = async (message: any) => {
-    if (!isMessageFromUser(message, student?.auth_user_id)) return;
-    if (!confirm("Xóa tin nhắn của em?")) return;
-    const { error } = await supabase.from("messages").delete().eq("id", message.id);
-    if (error) { alert("Không xóa được tin nhắn: " + error.message); return; }
-    setMessages((current) => current.filter((item) => item.id !== message.id));
-    if (message.attachment_url && !message.attachment_url.startsWith("http")) {
-      const { error: fileError } = await supabase.storage.from("class-work").remove([message.attachment_url]);
-      if (fileError) alert("Tin nhắn đã xóa, nhưng chưa dọn được tệp đính kèm: " + fileError.message);
-    }
-  };
-  const speakText = (text: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'vi-VN';
-      window.speechSynthesis.speak(utterance);
-    }
   };
 
   const getAvatar = (name: string) => (name ? name.split(' ').pop()?.charAt(0).toUpperCase() || "?" : "?");
@@ -913,68 +846,6 @@ export default function HocSinhPage() {
               </div>
             </section>
 
-            {/* --- KÊNH CHAT LỚP --- */}
-            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 h-[65vh] flex flex-col overflow-hidden">
-            <div className="p-4 border-b bg-slate-900 text-white flex justify-between items-center">
-              <div>
-                <h2 className="font-bold text-sm">Kênh hỏi đáp môn Vật lí 11</h2>
-                <p className="text-[11px] text-slate-400">Trao đổi với Cô giáo và các bạn trong lớp</p>
-              </div>
-              {isChatMuted && <span className="text-xs bg-rose-500 px-2.5 py-1 rounded-full font-bold">Giáo viên đã khóa chat</span>}
-            </div>
-
-            <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-slate-50/50">
-              {messages.map(m => {
-                const isMe = isMessageFromUser(m, student.auth_user_id);
-                // Giáo viên được nhận diện bằng cờ sender_role do DB ghi (không đoán theo tên hiển thị),
-                // giữ tương thích với dữ liệu cũ bằng nhãn "(Giáo viên)" do app chèn khi gửi.
-                const isTeacher = m.sender_role === "teacher"
-                  || (!m.sender_role && typeof m.sender_name === "string" && m.sender_name.includes("(Giáo viên)"));
-                return (
-                  <div key={m.id} className={`flex gap-3 group ${isMe ? 'flex-row-reverse' : ''}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 ${
-                      isTeacher ? 'bg-indigo-600' : isMe ? 'bg-blue-600' : 'bg-emerald-600'
-                    }`}>
-                      {getAvatar(m.sender_name)}
-                    </div>
-                    <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[70%]`}>
-                      <div className={`p-3.5 rounded-2xl text-xs leading-relaxed shadow-sm ${
-                        isMe ? 'bg-blue-600 text-white' : isTeacher ? 'bg-indigo-50 border border-indigo-200 text-indigo-950 font-medium' : 'bg-white border text-slate-800'
-                      }`}>
-                        <p>{m.content}</p>
-                        {isMe && !isDeletionBlocked && <button onClick={() => void deleteOwnMessage(m)} className="mt-2 text-[10px] opacity-70 hover:opacity-100">Xóa tin nhắn</button>}
-                        {isMe && isDeletionBlocked && <span className="mt-2 block text-[10px] text-slate-400">Giáo viên đang khóa xóa tin nhắn</span>}
-                        {m.attachment_url && (isInlineChatImage(m.attachment_type) ? <a href={attachmentHref(m.attachment_url)} target="_blank" rel="noreferrer"><Image unoptimized width={800} height={600} src={attachmentHref(m.attachment_url)} alt={m.attachment_name || "Ảnh đính kèm"} className="mt-2 max-h-64 rounded-xl object-contain" /></a> : <a href={attachmentHref(m.attachment_url)} target="_blank" rel="noreferrer" className="mt-2 block underline">📎 {m.attachment_name || "Tải tệp"}</a>)}
-                        <button onClick={() => speakText(m.content)} className={`mt-1.5 ${isMe ? 'text-blue-200 hover:text-white' : 'text-slate-400 hover:text-blue-600'}`} title="Nghe đọc giọng nói">
-                          <Volume2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <span className="text-[10px] text-slate-400 mt-1 px-1">
-                        {m.sender_name} • {formatTime(m.created_at)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <form onSubmit={sendMessage} className="p-4 border-t bg-white flex gap-2">
-              <input type="file" accept={CHAT_ATTACHMENT_ACCEPT} onChange={(e) => setChatFile(e.target.files?.[0] || null)} className="max-w-28 text-[10px]" aria-label="Đính kèm tệp hoặc ảnh" />{chatFile && <button type="button" onClick={() => setChatFile(null)} className="max-w-24 truncate text-[10px]">{chatFile.name} ×</button>}<input
-                value={newMsg}
-                onChange={e => setNewMsg(e.target.value)}
-                placeholder={isChatMuted ? "Giáo viên tạm khóa chat..." : "Nhập câu hỏi hoặc trao đổi cùng lớp..."}
-                disabled={isChatMuted}
-                className="flex-1 border p-3 rounded-xl text-xs outline-none bg-slate-50/50"
-              />
-              <button
-                type="submit"
-                disabled={isChatMuted || isSendingChat || (!newMsg.trim() && !chatFile)}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white px-5 rounded-xl text-xs font-bold flex items-center gap-1.5"
-              >
-                <Send className="w-4 h-4"/> Gửi
-              </button>
-            </form>
-          </div>
             </div>
         )}
       </div>

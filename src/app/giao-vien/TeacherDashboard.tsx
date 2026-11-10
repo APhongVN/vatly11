@@ -9,7 +9,7 @@ import { countAwaitingTeacherReview } from "@/lib/report-metrics.mjs";
 import { renameGroupInSubmissions } from "@/lib/group-submissions.mjs";
 import { buildClassReportMetrics } from "@/lib/class-report-metrics.mjs";
 import {
-  LogOut, Home, Video, Users, FileText, Bot, Upload, MessageSquare, Archive, RotateCcw,
+  LogOut, Home, Video, Users, FileText, Bot, Upload, Archive, RotateCcw,
   Send, Calendar, Download, CheckCircle, Trash2, ArrowLeft, Search,
   Save, X, Plus, Clock, Layers, BookOpen, Shuffle, RefreshCw, Camera,
   Sparkles, CheckSquare, Square, Merge, AlertTriangle, ExternalLink,
@@ -32,7 +32,6 @@ import LoadingState from "@/components/LoadingState";
 import TeacherRegradeTab from "@/components/teacher/TeacherRegradeTab";
 import TeacherOcrTab from "@/components/teacher/TeacherOcrTab";
 import TeacherCreateActivityTab from "@/components/teacher/TeacherCreateActivityTab";
-import TeacherChatTab from "@/components/teacher/TeacherChatTab";
 import TeacherAnalyticsTab from "@/components/teacher/TeacherAnalyticsTab";
 import ScoreHeatmap from "@/components/teacher/ScoreHeatmap";
 import TeacherQuestionsTab from "@/components/teacher/TeacherQuestionsTab";
@@ -4025,10 +4024,6 @@ clearRubricFileAndSave={() => void clearRubricFileAndSave()}
             onRespond={(id: string, response: string, status: string) => void respondToQuestion(id, response, status)}
             onSuggest={(id: string) => suggestQuestionAnswer(id)}
           />
-        )}
-
-        {activeTab === 'chat' && (
-          <TeacherChatTab previewMode={previewMode} onPreviewNotice={setPreviewNotice} getAvatar={(n) => getAvatar(n || "")} formatTime={formatTime} privateFileHref={privateFileHref} />
         )}
 
         {/* ĐỔI MẬT KHẨU TÀI KHOẢN GIÁO VIÊN */}
