@@ -188,7 +188,7 @@ export default function Chatbot({ initiallyOpen = false }: { initiallyOpen?: boo
 
   return (
     <section
-      aria-label="Trợ lý học tập Vật lí 11"
+      aria-label="Trợ lý học tập Vật lí"
       className={[
         "fixed z-[100] flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20",
         isExpanded
@@ -202,7 +202,7 @@ export default function Chatbot({ initiallyOpen = false }: { initiallyOpen?: boo
             <Bot className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-bold text-slate-900">Trợ lý Vật lí 11</h2>
+            <h2 className="truncate text-sm font-bold text-slate-900">Trợ lý Vật lí</h2>
             <p className="text-xs text-slate-500">Giải thích ngắn, gợi ý từng bước</p>
           </div>
         </div>

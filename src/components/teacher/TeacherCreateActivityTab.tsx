@@ -57,7 +57,7 @@ export default function TeacherCreateActivityTab({
   useEffect(() => {
     if (previewMode) {
       setRubricDocumentSchemaReady(true);
-      setCurriculumCourses([{ id: "preview-course-tu-dien", title: "Vật lí 11", subject: "Vật lí", grade_level: 11 }]);
+      setCurriculumCourses([{ id: "preview-course-tu-dien", title: "Vật lí", subject: "Vật lí", grade_level: 11 }]);
       setCurriculumChapters([{ id: "preview-chapter-tu-dien", course_id: "preview-course-tu-dien", title: "Tụ điện" }]);
       return;
     }
@@ -136,7 +136,7 @@ export default function TeacherCreateActivityTab({
 
       const { data: createdActivity, error } = await supabase.from("activities").insert({
         title: newActTitle.trim(),
-        description: newActDesc.trim() || "Bài tập rèn luyện Vật lí 11",
+        description: newActDesc.trim() || "Bài tập rèn luyện Vật lí",
         video_url: newActVideo.trim() || null,
         document_url: uploadedDocUrl || null,
         deadline: newActDeadline ? new Date(newActDeadline).toISOString() : null,

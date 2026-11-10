@@ -374,7 +374,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
       setGroupAssignments([]);
       setGroupSubmissions([]);
       setRubricDocumentSchemaReady(true);
-      setCurriculumCourses([{ id: "preview-course-tu-dien", title: "Vật lí 11", subject: "Vật lí", grade_level: 11 }]);
+      setCurriculumCourses([{ id: "preview-course-tu-dien", title: "Vật lí", subject: "Vật lí", grade_level: 11 }]);
       setCurriculumChapters([{ id: "preview-chapter-tu-dien", course_id: "preview-course-tu-dien", title: "Chuyên đề Tụ điện" }]);
       return;
     }
@@ -825,7 +825,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
 
       const { data: createdActivity, error } = await supabase.from('activities').insert({
         title: newActTitle.trim(),
-        description: newActDesc.trim() || "Bài tập rèn luyện Vật lí 11",
+        description: newActDesc.trim() || "Bài tập rèn luyện Vật lí",
         video_url: newActVideo.trim() || null,
         document_url: uploadedDocUrl || null,
         deadline: newActDeadline ? new Date(newActDeadline).toISOString() : null,
@@ -2442,7 +2442,7 @@ const handleRubricFileUpload = async (file: File | null) => {
 
     const workbook = new ExcelJS.Workbook();
     const generatedAt = new Date();
-    workbook.creator = "Vật lí 11";
+    workbook.creator = "Vật lí";
     workbook.created = generatedAt;
     workbook.modified = generatedAt;
 
@@ -2589,7 +2589,7 @@ const handleRubricFileUpload = async (file: File | null) => {
       groupSubmissions: reportGroupSubmissions,
     });
     const summary = workbook.addWorksheet("Tổng quan");
-    styleSheet(summary, "Báo cáo lớp học Vật lí 11", `Thời điểm xuất: ${generatedAt.toLocaleString("vi-VN")} · Đã tải toàn bộ các bảng theo từng trang dữ liệu`, ["Chỉ số", "Giá trị", "Ghi chú"], [34, 18, 68]);
+    styleSheet(summary, "Báo cáo lớp học Vật lí", `Thời điểm xuất: ${generatedAt.toLocaleString("vi-VN")} · Đã tải toàn bộ các bảng theo từng trang dữ liệu`, ["Chỉ số", "Giá trị", "Ghi chú"], [34, 18, 68]);
     summary.addRows([
       ["Tổng số học sinh", reportStudents.length, "Danh sách hồ sơ lớp, không cắt theo giới hạn màn hình"],
       ["Bài học", reportActivities.length, "Toàn bộ hoạt động hiện có trong cơ sở dữ liệu"],

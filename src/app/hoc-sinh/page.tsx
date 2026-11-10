@@ -236,7 +236,7 @@ export default function HocSinhPage() {
                 V11
               </div>
               <div>
-                <span className="text-slate-900 font-black text-lg block leading-none">VẬT LÍ 11</span>
+                <span className="text-slate-900 font-black text-lg block leading-none">VẬT LÍ</span>
                 <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Lớp học đảo ngược</span>
               </div>
             </Link>

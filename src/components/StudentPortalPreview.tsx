@@ -168,9 +168,9 @@ export default function StudentPortalPreview() {
     <main className="min-h-screen bg-[#f5f7fb] text-slate-900">
       <header className="border-b border-slate-200/80 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 md:px-8">
-          <Link href="/" className="flex items-center gap-3" aria-label="Về trang chủ Vật lí 11">
+          <Link href="/" className="flex items-center gap-3" aria-label="Về trang chủ Vật lí">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-700 font-black text-white shadow-lg shadow-blue-900/15">V11</span>
-            <span><b className="block text-sm tracking-wide">VẬT LÍ 11</b><small className="text-xs text-slate-500">Không gian học tập</small></span>
+            <span><b className="block text-sm tracking-wide">VẬT LÍ</b><small className="text-xs text-slate-500">Không gian học tập</small></span>
           </Link>
           <Link href="/chapters" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
             Tổng quan chương <ArrowRight className="h-4 w-4" />

@@ -106,7 +106,7 @@ export default function LoginPage() {
           <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-blue-500/30">
             <Sparkles className="w-7 h-7" />
           </div>
-          <h1 className="text-2xl font-black text-slate-900">Cổng Học Tập Vật Lí 11</h1>
+          <h1 className="text-2xl font-black text-slate-900">Cổng Học Tập Vật Lí</h1>
           <p className="text-xs text-slate-500 mt-1">Lớp học đảo ngược - Chuyên đề Tụ điện</p>
         </div>
 

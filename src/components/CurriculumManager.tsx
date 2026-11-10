@@ -42,7 +42,7 @@ type CurriculumActivity = {
 
 const previewCourse: Course = {
   id: "11111111-1111-4111-8111-111111111111",
-  title: "Vật lí 11",
+  title: "Vật lí",
   description: "Chương trình mẫu đang xem trước.",
   grade_level: 11,
   subject: "Vật lí",

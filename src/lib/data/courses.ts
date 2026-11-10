@@ -10,7 +10,7 @@ export type Course = {
 export const COURSES = [
   {
     id: "phys-11",
-    title: "Vật lí 11",
+    title: "Vật lí",
     description: "Chuyên đề Tụ điện theo mô hình lớp học đảo ngược.",
     grade_level: 11,
     subject: "Vật lí",

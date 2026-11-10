@@ -4,7 +4,7 @@ import "katex/dist/katex.min.css";
 import ChatbotLoader from "@/components/ChatbotLoader";
 
 export const metadata: Metadata = {
-  title: "Tụ điện - Vật lí 11",
+  title: "Vật lí - Tụ điện",
   description: "Website học tập Tụ điện theo mô hình lớp học đảo ngược",
 };
 
