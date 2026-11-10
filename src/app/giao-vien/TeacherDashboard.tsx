@@ -175,7 +175,6 @@ export default function GiaoVienPage({ previewMode = false }: { previewMode?: bo
   const activeStudents = students.filter((student) => student.is_active !== false);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [activityEvidence, setActivityEvidence] = useState<any[]>([]);
-  const [messages, setMessages] = useState<any[]>([]);
   const [quizzes, setQuizzes] = useState<any[]>([]);
   const [quizSubmissions, setQuizSubmissions] = useState<any[]>([]);
   const [studentQuestions, setStudentQuestions] = useState<any[]>([]);
@@ -369,7 +368,6 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
       // để tránh nhầm lẫn với dữ liệu thật của cô.
       setStudents([]);
       setSubmissions([]);
-      setMessages([]);
       setQuizzes([]);
       setGroupAssignments([]);
       setGroupSubmissions([]);
@@ -383,9 +381,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
         { data: acts, error: activitiesError },
         { data: studs, error: studentsError, accountFieldsReady, accountSchemaMissing, archiveSchemaMissing },
         { data: subs, error: submissionsError },
-        { data: msgs, error: messagesError },
         { data: qzs, error: quizzesError },
-        { data: setting, error: chatSettingsError },
         { data: gActs, error: groupAssignmentsError },
         { data: gSubs, error: groupSubmissionsError },
         guideResult,
@@ -395,9 +391,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
         supabase.from('activities').select('*').order('id').limit(300),
         loadTeacherStudentRoster(),
         supabase.from('submissions').select('*').order('submitted_at', { ascending: false }).limit(300),
-        supabase.from('messages').select('*').order('created_at', { ascending: false }).limit(100),
         supabase.from('quizzes').select('*').order('id').limit(300),
-        supabase.from('chat_settings').select('is_muted,deletion_blocked').eq('id', 1).single(),
         supabase.from('group_assignments').select('*').order('created_at', { ascending: false }).limit(100),
         supabase.from('group_submissions').select('*').order('submitted_at', { ascending: false }).limit(300),
         loadTeacherGradingGuides(),
@@ -409,9 +403,7 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
       if (activitiesError) failedSections.push("bài học");
       if (studentsError) failedSections.push("danh sách học sinh");
       if (submissionsError) failedSections.push("bài nộp");
-      if (messagesError) failedSections.push("kênh chat");
       if (quizzesError) failedSections.push("bộ câu hỏi");
-      if (chatSettingsError) failedSections.push("cài đặt chat");
       if (groupAssignmentsError) failedSections.push("bài tập nhóm");
       if (groupSubmissionsError) failedSections.push("bài nộp nhóm");
       if (coursesError) failedSections.push("môn học");
@@ -437,7 +429,6 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
         setStudents(sortedStuds);
       }
       if (subs) setSubmissions(subs);
-      if (msgs) setMessages([...msgs].reverse());
       if (qzs) setQuizzes(qzs.filter((quiz: any) => !quiz.archived_at));
       const { data: quizSubs } = await supabase.from("quiz_submissions").select("id,quiz_id,student_id,score,created_at,time_spent_seconds,students(full_name,class_name)").order("created_at", { ascending: false }).limit(2000);
       if (quizSubs) setQuizSubmissions(quizSubs);
@@ -542,19 +533,6 @@ const [importPreviewCodes, setImportPreviewCodes] = useState<string[]>([]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewMode]);
 
-  useEffect(() => {
-    if (previewMode) return;
-    const refreshMessages = async () => {
-      if (document.visibilityState !== "visible") return;
-      const { data } = await supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(100);
-      if (data) setMessages([...data].reverse());
-    };
-    const channel = supabase.channel("class-chat-teacher")
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => void refreshMessages())
-      .subscribe();
-    const timer = window.setInterval(() => void refreshMessages(), 30000);
-    return () => { window.clearInterval(timer); void supabase.removeChannel(channel); };
-  }, [previewMode]);
   const handleLogout = async () => {
     if (previewMode) { router.push("/"); return; }
     localStorage.removeItem('teacher_session');
@@ -2923,7 +2901,7 @@ const handleRubricFileUpload = async (file: File | null) => {
         activeTab={activeTab}
         navigateToTab={navigateToTab}
         onOpenTrash={() => void openTrash()}
-        counts={{ activities: activities.length, groups: groupAssignments.length, messages: messages.length, pendingQuestions: pendingQuestionCount, regrade: submissions.filter(s => s.ai_score === null || s.ai_score === -1).length, students: activeStudents.length }}
+        counts={{ activities: activities.length, groups: groupAssignments.length, messages: 0, pendingQuestions: pendingQuestionCount, regrade: submissions.filter(s => s.ai_score === null || s.ai_score === -1).length, students: activeStudents.length }}
         previewMode={previewMode}
         onLogout={handleLogout}
         mobileNavOpen={mobileNavOpen}

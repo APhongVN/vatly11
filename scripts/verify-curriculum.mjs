@@ -147,7 +147,6 @@ const activities = await readFile(new URL("../src/lib/data/activities.ts", impor
 const questions = await readFile(new URL("../src/lib/data/questions.ts", import.meta.url), "utf8");
 const interactions = await readFile(new URL("../src/components/ActivityInteractions.tsx", import.meta.url), "utf8");
 const dashboard = await readFile(new URL("../src/app/giao-vien/TeacherDashboard.tsx", import.meta.url), "utf8");
-const chatTab = await readFile(new URL("../src/components/teacher/TeacherChatTab.tsx", import.meta.url), "utf8");
 const groupMigration = await readFile(new URL("../supabase/migrations/20261031001100_named_groups.sql", import.meta.url), "utf8");
 const groupClassMigration = await readFile(new URL("../supabase/migrations/20261101000200_group_assignment_classes.sql", import.meta.url), "utf8");
 const groupFeedbackProtectionMigration = await readFile(new URL("../supabase/migrations/20261103000300_protect_group_teacher_feedback.sql", import.meta.url), "utf8");
@@ -199,8 +198,7 @@ assert.doesNotMatch(activities, /^\s*(?:model_answer|grading_rubric):/m, "Teache
 assert.match(activities, /title: "Các thí nghiệm liên quan đến tụ điện"/);
 assert.match(interactions, /Các mục 8, 9, 10 và 11 đã gộp/);
 assert.match(dashboard, /Sửa tên/);
-assert.match(dashboard, /<TeacherChatTab previewMode=\{previewMode\} onPreviewNotice=\{setPreviewNotice\}/);
-assert.match(chatTab, /if \(previewMode\) \{[\s\S]*?onPreviewNotice\(nextMuted \? "Đã khóa kênh chat mẫu[\s\S]*?return;[\s\S]*?supabase\.from\("chat_settings"\)\.update/);
+assert.match(dashboard, /loadStudentQuestions/);
 assert.match(groupMigration, /ADD COLUMN IF NOT EXISTS group_name/);
 const groupNameSyncFunction = groupMigration.match(/CREATE OR REPLACE FUNCTION public\.sync_group_submission_name\(\)([\s\S]*?)\$\$;/)?.[1] || "";
 assert.match(groupNameSyncFunction, /UPDATE public\.group_submissions[\s\S]*SET group_name = COALESCE\([\s\S]*WHERE group_id = NEW\.id/);
@@ -436,7 +434,8 @@ console.log("Shared student library, resource editing, original filenames and pa
 
 assert.match(gradeApi, /access\.profile\.role === "teacher" \? \{ model_answer:/, "AI model answers must only be returned to teachers.");
 console.log("Grading API keeps model answers teacher-only while students receive score and feedback.");
-assert.match(submissionPage, /model_answer: result\.model_answer \?\? ""/);
+assert.doesNotMatch(submissionPage, /model_answer/, "Student submission page must not request or show AI model answers (teacher-only).");
+assert.doesNotMatch(submissionPage, /api\/grade/, "Student submission page must not call the teacher-only grading API.");
 assert.doesNotMatch(submissionPage, /Không có đáp án mẫu/);
 assert.match(submissionPage, /fetch\("\/api\/submissions"/);
 assert.match(submissionPage, /id="submission-image-input"/);
@@ -582,7 +581,7 @@ assert.doesNotMatch(publishedResourceMigration, /FOR INSERT TO anon|FOR UPDATE T
 console.log("Four published microteaching videos, 18 persisted checkpoints, rubric-based project uploads and public read-only published resources verified.");
 
 const teacherDashboardSource = await readFile(new URL("../src/app/giao-vien/TeacherDashboard.tsx", import.meta.url), "utf8");
-const chatTabSource = await readFile(new URL("../src/components/teacher/TeacherChatTab.tsx", import.meta.url), "utf8");
+const chatbot = await readFile(new URL("../src/components/Chatbot.tsx", import.meta.url), "utf8");
 const chatRealtimeMigration = await readFile(new URL("../supabase/migrations/20261031001800_chat_realtime.sql", import.meta.url), "utf8");
 const chatAttachmentMigration = await readFile(new URL("../supabase/migrations/20261101000400_chat_attachment_mime_types.sql", import.meta.url), "utf8");
 const chatImageMigration = await readFile(new URL("../supabase/migrations/20261101000500_chat_image_mime_types.sql", import.meta.url), "utf8");
@@ -593,36 +592,19 @@ const teacherEvidenceReview = await readFile(new URL("../src/components/TeacherE
 const studentActivityResult = await readFile(new URL("../src/components/StudentActivityResult.tsx", import.meta.url), "utf8");
 assert.match(chatAttachmentMigration, /image\/heic[\s\S]+video\/quicktime/);
 assert.match(chatImageMigration, /image\/avif[\s\S]+image\/bmp/);
-assert.match(studentPortal, /isInlineChatImage\(m\.attachment_type\)/);
-assert.match(chatTabSource, /isInlineChatImage\(m\.attachment_type\)/);
 assert.match(chatAttachmentMigration, /bucket\.id = 'class-work'[\s\S]+allowed_mime_types IS NOT NULL/);
 assert.match(chatAttachmentModule, /\.heic[\s\S]+\.mov/);
+// Kênh thảo luận (class chat UI) đã gộp vào Góc hỏi đáp + chatbot AI; các tệp đính kèm học sinh dùng module chat-attachments chung.
 assert.match(studentPortal, /accept=\{CHAT_ATTACHMENT_ACCEPT\}/);
-assert.match(chatTabSource, /accept=\{CHAT_ATTACHMENT_ACCEPT\}/);
-assert.match(studentPortal, /chatAttachmentMimeType\(chatFile\)/);
-assert.match(chatTabSource, /chatAttachmentMimeType\(chatFile\)/);
-assert.match(studentPortal, /chatFile\.size > MAX_CHAT_ATTACHMENT_BYTES/);
-assert.match(chatTabSource, /chatFile\.size > MAX_CHAT_ATTACHMENT_BYTES/);
-assert.match(studentPortal, /channel\("class-chat-student"\)/);
-assert.match(studentPortal, /order\('created_at', \{ ascending: false \}\)\.limit\(300\)/);
-assert.match(teacherDashboardSource, /channel\("class-chat-teacher"\)/);
-assert.match(teacherDashboardSource, /table: "messages"/);
+assert.match(studentPortal, /chatAttachmentMimeType\(questionFile\)/);
+assert.match(studentPortal, /questionFile\.size > MAX_CHAT_ATTACHMENT_BYTES/);
 assert.match(chatRealtimeMigration, /ALTER PUBLICATION supabase_realtime ADD TABLE public\.messages/);
 assert.match(chatRealtimeMigration, /END;\s*\$\$;/, "The Realtime publication migration must close its PL/pgSQL block correctly.");
-assert.match(studentPortal, /setInterval\(\(\) => void refreshChat\(\), 30000\)/);
-assert.match(teacherDashboardSource, /setInterval\(\(\) => void refreshMessages\(\), 30000\)/);
-console.log("Teacher/student chat now uses Realtime, bounded history and a 30-second recovery poll.");
-const studentMessageDeleteSection = studentPortal.split("const deleteOwnMessage = async")[1]?.split("const speakText")[0] || "";
-const teacherMessageDeleteSection = chatTabSource.split("const deleteMessage = async")[1]?.split("return (")[0] || "";
-assert.match(studentPortal, /isMessageFromUser\(m, student\.auth_user_id\)/);
+console.log("Chat attachment MIME rules, private class-work bucket and the shared chat-attachments module verified.");
+// Chatbot AI: học sinh & giáo viên dùng /api/chat, đính kèm ảnh + tài liệu; lịch sử chat lưu riêng từng người.
+assert.match(chatbot, /\/api\/chat/);
+assert.match(chatbot, /image\/(png|jpeg|webp|gif)/);
 assert.match(studentPortal, /const authenticatedStudent = \{ \.\.\.profile, auth_user_id: user\.id \}/);
-assert.match(studentMessageDeleteSection, /isMessageFromUser\(message, student\?\.auth_user_id\)/);
-const studentDbDeleteIndex = studentMessageDeleteSection.indexOf('.from("messages").delete()');
-const studentFileDeleteIndex = studentMessageDeleteSection.indexOf('.from("class-work").remove(');
-assert.ok(studentDbDeleteIndex >= 0 && studentFileDeleteIndex > studentDbDeleteIndex, "Keep the attachment intact if database deletion fails.");
-const teacherDbDeleteIndex = teacherMessageDeleteSection.indexOf('.from("messages").delete()');
-const teacherFileDeleteIndex = teacherMessageDeleteSection.indexOf('.from("class-work").remove(');
-assert.ok(teacherDbDeleteIndex >= 0 && teacherFileDeleteIndex > teacherDbDeleteIndex, "Keep the attachment intact if database deletion fails.");
 const groupCreationSection = teacherDashboardSource.split("const createGroupAssignment = async")[1]?.split("const deleteGroupAssignment")[0] || "";
 assert.match(groupCreationSection, /rpc\("create_group_assignment_for_class"/);
 assert.doesNotMatch(groupCreationSection, /from\('group_assignment_(?:groups|members)'\)\.insert/);
@@ -754,7 +736,6 @@ assert.equal(isStudentTaskAwaitingWork(activeChatTask, null, Date.parse("2026-10
 assert.equal(isStudentTaskAwaitingWork(activeChatTask, "2026-10-30T00:00:00.000Z", Date.parse("2026-10-31T00:00:00.000Z")), false);
 assert.equal(isStudentTaskAwaitingWork({ ...activeChatTask, status: "draft" }, null), false);
 assert.equal(isStudentTaskAwaitingWork({ ...activeChatTask, deadline: "invalid" }, null), false);
-const chatbot = await readFile(new URL("../src/components/Chatbot.tsx", import.meta.url), "utf8");
 const chatApi = await readFile(new URL("../src/app/api/chat/route.ts", import.meta.url), "utf8");
 assert.match(chatbot, /context: \{ pathname: window\.location\.pathname, search: window\.location\.search \}/);
 assert.match(chatApi, /\.eq\("student_id", student\.id\)\.eq\("activity_id", activityId\)/);
@@ -842,7 +823,7 @@ assert.match(studentArchiveApi, /update\(\{ is_active: true \}\)/);
 assert.match(studentArchiveMigration, /ADD COLUMN IF NOT EXISTS is_active BOOLEAN/);
 assert.equal((studentArchiveMigration.match(/student\.is_active IS TRUE/g) || []).length, 4, "Both group creation and regrouping must use active students for counts and memberships.");
 assert.doesNotMatch(guestStudentRouteText, /supabase\.from\("students"\)\.delete\(\)/, "Archiving a roster record must preserve submission history.");
-assert.match(guestStudentRouteText, /showArchivedStudents \? archivedStudents : activeStudents/);
+assert.match(guestStudentRouteText, /activeStudents = students\.filter\(\(student\) => student\.is_active !== false\)/);
 assert.match(studentAccountApi, /provisionStudentAccount/);
 assert.match(createStudentApi, /authorizeApi\(\["teacher"\]/);
 assert.match(createStudentApi, /provisionStudentAccount/);

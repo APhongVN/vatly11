@@ -61,6 +61,85 @@ body {
   .home-glow { filter: blur(32px); opacity: .45; }
 }
 
+/* ===== EFFECTS: glassmorphism, CTA shine, parallax, scroll-reveal, physics lines ===== */
+
+/* 1) SCROLL-REVIEW — phần tử .reveal sẽ hiện dần khi cuộn */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); }
+  .reveal.reveal-in { opacity: 1; transform: none; }
+  .reveal-d1 { transition-delay: .08s; }
+  .reveal-d2 { transition-delay: .16s; }
+  .reveal-d3 { transition-delay: .24s; }
+}
+
+/* 2) GLASSMORPHISM — card trong suốt mờ */
+.glass {
+  background: linear-gradient(160deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,.12);
+}
+.glass-strong {
+  background: linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255,255,255,.16);
+}
+
+/* 3) NUT CTA HIỆU ỨNG SHINE (chạy ánh sáng khi hover) */
+.shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.55) 50%, transparent 60%);
+  transform: translateX(-120%);
+  transition: transform .8s ease;
+  pointer-events: none;
+}
+.shine:hover::after {
+  transform: translateX(120%);
+}
+
+/* 4) PARALLAX HỊNH ẢNH 3D — ảnh trôi nhẹ theo chuột */
+.parallax-stage { perspective: 900px; }
+.parallax-img {
+  transform: translate3d(var(--px, 0), var(--py, 0), 0);
+  transition: transform .25s ease-out;
+  will-change: transform;
+}
+
+/* 4b) ANH KHONG KHUNG — le anh mo dan hoa vao nen (mask), khong vi bo cung */
+.img-fade {
+  -webkit-mask-image: radial-gradient(ellipse 130% 125% at 50% 48%, #000 58%, transparent 97%);
+  mask-image: radial-gradient(ellipse 130% 125% at 50% 48%, #000 58%, transparent 97%);
+}
+.img-fade-sm {
+  -webkit-mask-image: radial-gradient(ellipse 135% 130% at 50% 45%, #000 60%, transparent 98%);
+  mask-image: radial-gradient(ellipse 135% 130% at 50% 45%, #000 60%, transparent 98%);
+}
+
+/* 5) ĐƯỜNG NÉT VẬT LÝ — sóng điện từ nền (SVG data-uri, tự co giãn, không khung) */
+.physics-lines {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='400'><g fill='none' stroke='%233b82f6' stroke-opacity='0.14' stroke-width='1.5'><path d='M0 120 C 200 80 400 160 600 120 S 1000 80 1200 120'/><path d='M0 200 C 200 160 400 240 600 200 S 1000 160 1200 200'/><path d='M0 280 C 200 240 400 320 600 280 S 1000 240 1200 280'/></g></svg>");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+}
+
+/* 6) NỀN VẬT LÝ TĂNG TƯƠNG THÍCH — lưới + điểm nút (dùng trong hero) */
+.physics-grid {
+  background-image:
+    radial-gradient(rgba(59,130,246,.35) 1px, transparent 1px),
+    linear-gradient(to right, rgba(59,130,246,.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(59,130,246,.07) 1px, transparent 1px);
+  background-size: 22px 22px, 44px 44px, 44px 44px;
+}
+
 @media print {
   body * { visibility: hidden !important; }
   .student-credentials-print,
