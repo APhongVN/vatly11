@@ -2,12 +2,20 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabasePublicKey } from "@/lib/supabase-config";
 
-const SESSION_COOKIE_OPTIONS = {
-  maxAge: 400 * 24 * 60 * 60,
-  path: "/",
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
-};
+// Cookie session: đánh dấu Secure chỉ khi trang thực sự dùng HTTPS.
+// Render chạy sau proxy nên phải đọc x-forwarded-proto; localhost/http:// thì
+// không đánh dấu Secure, nếu không trình duyệt TỪ CHỐI lưu cookie -> session mất
+// -> máy mới không vào được cổng (máy cũ vẫn vào vì đã có cookie sẵn).
+function buildSessionCookieOptions(request: NextRequest): CookieOptions {
+  const proto = request.headers.get("x-forwarded-proto") || request.nextUrl.protocol.replace(":", "");
+  const isHttps = proto === "https" || request.headers.get("x-forwarded-ssl") === "on";
+  return {
+    maxAge: 400 * 24 * 60 * 60,
+    path: "/",
+    sameSite: "lax" as const,
+    secure: isHttps,
+  };
+}
 
 function redirectWithRefreshedCookies(response: NextResponse, request: NextRequest, destination: string) {
   const redirect = NextResponse.redirect(new URL(destination, request.url));
@@ -32,7 +40,7 @@ export async function proxy(request: NextRequest) {
   }
 
   const supabase = createServerClient(url, key, {
-    cookieOptions: SESSION_COOKIE_OPTIONS,
+    cookieOptions: buildSessionCookieOptions(request),
     cookies: {
       getAll() {
         return request.cookies.getAll();
