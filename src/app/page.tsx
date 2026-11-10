@@ -3,7 +3,7 @@ import {
   GraduationCap, LayoutDashboard, Sparkles, BookOpen, ChevronRight, Microscope,
   Bot, Target, CheckCircle2, Zap, BatteryCharging, Waves, Gauge, ArrowRight,
 } from "lucide-react";
-import { CapacitorDiagram, CircuitDiagram, CapacitorIcon } from "@/components/home/PhysicsIllustrations";
+import { CapacitorIcon } from "@/components/home/PhysicsIllustrations";
 
 export default function HomePage() {
   return (
@@ -25,8 +25,8 @@ export default function HomePage() {
               <CapacitorIcon className="w-5 h-5 text-white" />
             </div>
             <div className="leading-none">
-              <span className="font-black tracking-wide text-base">VẬT LÍ</span>
-              <span className="block text-[9px] text-blue-400 font-semibold uppercase tracking-widest mt-1">Tụ điện</span>
+              <span className="font-black tracking-wide text-base">KHÁM PHÁ VẬT LÝ</span>
+              <span className="block text-[9px] text-blue-400 font-semibold uppercase tracking-widest mt-1">Thông minh · Tương tác</span>
             </div>
           </Link>
 
@@ -61,16 +61,16 @@ export default function HomePage() {
             </div>
 
             <h1 className="text-4xl md:text-6xl font-black leading-[1.08] tracking-tight">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-white to-cyan-200">Tụ điện</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-white to-cyan-200">Khám phá Vật lý</span>
               <br />
-              <span className="text-slate-100">Vật lí thông minh</span>
+              <span className="text-slate-100">Thông minh · Tương tác · AI</span>
             </h1>
 
             <p className="text-sm md:text-[15px] text-slate-400 leading-relaxed max-w-xl">
-              Nền tảng chuyển đổi số cho môn <strong className="text-slate-200">Vật lí</strong> theo mô hình
+              Nền tảng khám phá <strong className="text-slate-200">Vật lý</strong> theo mô hình
               <strong className="text-slate-200"> lớp học đảo ngược</strong>: thí nghiệm ảo tương tác,
-              chấm bài bằng AI, và trợ lý ảo giải thích công thức — giúp học sinh hiểu bản chất
-              hiện tượng điện trường thay vì chỉ thuộc công thức.
+              chấm bài bằng AI, và trợ lý ảo giải thích hiện tượng — giúp học sinh hiểu bản chất
+              vật lý thay vì chỉ thuộc công thức.
             </p>
 
             <div className="flex flex-wrap gap-6 pt-1">
@@ -109,12 +109,20 @@ export default function HomePage() {
           <div className="relative">
             <div className="relative rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-5 shadow-2xl">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Hình 1 · Tụ điện</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Hình 1 · Mô hình điện trường 3D</span>
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded-full px-2 py-0.5">
-                  <CapacitorIcon className="w-3 h-3" /> C = ε·S/d
+                  <Waves className="w-3 h-3" /> E = k·q/r²
                 </span>
               </div>
-              <CapacitorDiagram className="w-full h-auto" />
+              <div className="rounded-xl overflow-hidden border border-white/10 bg-slate-900/40">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/physics-field-3d.jpg"
+                  alt="Mô hình 3D mô phỏng đường sức điện trường giữa hai điện tích"
+                  className="w-full h-44 object-cover"
+                  loading="eager"
+                />
+              </div>
               <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                 {[
                   { icon: Zap, label: "Q = C·U", tone: "text-blue-400" },
@@ -129,9 +137,17 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="absolute -bottom-6 -left-6 hidden md:block w-52 rounded-2xl border border-white/10 bg-slate-900/90 backdrop-blur-md p-3 shadow-2xl">
-              <span className="block text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-1">Hình 2 · Mạch tích điện</span>
-              <CircuitDiagram className="w-full h-auto" />
+            <div className="absolute -bottom-6 -left-6 hidden md:block w-56 rounded-2xl border border-white/10 bg-slate-900/90 backdrop-blur-md p-3 shadow-2xl">
+              <span className="block text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-1.5">Hình 2 · Phóng điện tia lửa</span>
+              <div className="rounded-lg overflow-hidden border border-white/10">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/physics-vdg.jpg"
+                  alt="Máy phát Van de Graaff tạo phóng điện tia lửa giữa hai cực"
+                  className="w-full h-28 object-cover"
+                  loading="lazy"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -244,7 +260,7 @@ export default function HomePage() {
           <div className="relative space-y-5">
             <h2 className="text-2xl md:text-4xl font-black">Sẵn sàng bước vào lớp học?</h2>
             <p className="text-sm text-slate-300 max-w-xl mx-auto leading-relaxed">
-              Tham gia ngay hôm nay để trải nghiệm chuyên đề Tụ điện theo cách mới — tương tác, trực quan và được AI hỗ trợ từng bước.
+              Tham gia ngay hôm nay để khám phá vật lý theo cách mới — tương tác, trực quan và được AI hỗ trợ từng bước.
             </p>
             <div className="flex flex-wrap justify-center gap-3 pt-2">
               <Link href="/hoc-sinh" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white text-slate-900 text-sm font-bold hover:bg-slate-100 shadow-xl transition-all">
@@ -267,12 +283,12 @@ export default function HomePage() {
                   <CapacitorIcon className="w-4 h-4 text-white" />
                 </div>
                 <div className="leading-none">
-                  <span className="font-black text-sm">VẬT LÍ</span>
-                  <span className="block text-[9px] text-blue-400 font-semibold uppercase tracking-widest mt-0.5">Tụ điện</span>
+                  <span className="font-black text-sm">KHÁM PHÁ VẬT LÝ</span>
+                  <span className="block text-[9px] text-blue-400 font-semibold uppercase tracking-widest mt-0.5">Thông minh · Tương tác</span>
                 </div>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Nền tảng học tập Vật lí theo mô hình lớp học đảo ngược với trợ lý AI và phòng thí nghiệm ảo.
+                Nền tảng khám phá Vật lý theo mô hình lớp học đảo ngược với trợ lý AI và phòng thí nghiệm ảo.
               </p>
             </div>
             <div className="space-y-2.5">
@@ -293,8 +309,8 @@ export default function HomePage() {
             </div>
           </div>
           <div className="pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] text-slate-500">
-            <p>© 2026 Hệ thống Học tập Vật lí — Lớp học đảo ngược</p>
-            <p>Chuyên đề Tụ điện · Vật lí</p>
+            <p>© 2026 Khám phá Vật lý — Lớp học đảo ngược</p>
+            <p>Tương tác · Trực quan · AI hỗ trợ</p>
           </div>
         </div>
       </footer>
